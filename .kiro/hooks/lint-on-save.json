@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "lint-on-save",
+      "trigger": "PostFileSave",
+      "description": "Fix lint and format issues in the one TypeScript file that was just saved. The path comes from the hook's stdin JSON; the script never lints the whole repo.",
+      "matcher": "\\.(ts|tsx)$",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/lint-file.mjs"
+      },
+      "timeout": 60
+    }
+  ]
+}

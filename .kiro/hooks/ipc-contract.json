@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "ipc-contract-followups",
+      "trigger": "PostFileSave",
+      "description": "Keep main handlers, the worker, preload and renderer calls in step with the contracts.",
+      "matcher": "packages/ipc/src/.*\\.ts$",
+      "action": {
+        "type": "agent",
+        "prompt": "You changed the IPC or worker contract. Make sure every channel has a Zod-checked handler in apps/desktop/src/main/ipc, every worker message is handled in apps/desktop/src/worker, preload exposes nothing beyond window.alcyo.invoke and window.alcyo.on, and renderer calls still typecheck. Add a handler test for any new channel. Run pnpm typecheck and pnpm test."
+      }
+    }
+  ]
+}

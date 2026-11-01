@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "guard-footage",
+      "trigger": "PreToolUse",
+      "description": "Block shell commands that look like they upload or commit video or audio. One of three layers with the pre-commit hook and the CI check.",
+      "matcher": "shell",
+      "action": {
+        "type": "command",
+        "command": "node scripts/hooks/guard-footage.mjs"
+      },
+      "timeout": 10
+    }
+  ]
+}

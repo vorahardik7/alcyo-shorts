@@ -1,0 +1,26 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "validate-project-files",
+      "trigger": "PostFileSave",
+      "description": "Check project, version, preset, template and profile JSON against the Zod schemas when one is written.",
+      "matcher": "(project|short|draft|clip|profile|preset|\\d{4}\\.[a-z]+)\\.json$|\\.alcyo-template\\.json$|messages\\.jsonl$",
+      "action": {
+        "type": "command",
+        "command": "pnpm -s plan:validate"
+      },
+      "timeout": 60
+    },
+    {
+      "name": "schema-change-followups",
+      "trigger": "PostFileSave",
+      "description": "When a schema changes, keep fixtures, the demo project, migrations and the Claude JSON Schemas in step.",
+      "matcher": "packages/schema/src/.*\\.ts$",
+      "action": {
+        "type": "agent",
+        "prompt": "You changed a schema. Update test fixtures, examples/demo.alcyo and examples/demo-profile.json, the JSON Schemas passed to claude -p --json-schema and the API fallback, and .kiro/specs/schema/design.md. Keep all times as integer ms. If old files no longer parse, bump schemaVersion and add a migration with a test. Then run pnpm plan:validate and pnpm test."
+      }
+    }
+  ]
+}

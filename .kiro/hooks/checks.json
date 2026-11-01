@@ -1,0 +1,24 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "checks-after-task",
+      "trigger": "PostTaskExec",
+      "description": "Run lint, typecheck and tests after each spec task. Turborepo caching skips unchanged packages. The full build and packaging run once at the end of a spec, not per task.",
+      "action": {
+        "type": "command",
+        "command": "pnpm -s turbo run lint typecheck test --output-logs=errors-only"
+      },
+      "timeout": 600
+    },
+    {
+      "name": "checks-before-done",
+      "trigger": "Stop",
+      "description": "Remind the agent of the definition of done at the end of each turn.",
+      "action": {
+        "type": "agent",
+        "prompt": "If you changed code this turn, run pnpm lint, pnpm typecheck and pnpm test (the per-task hook already runs these after each spec task). If you finished a spec, also run pnpm build and pnpm package for this OS. If any fail, fix them before you say the work is done. Report which checks you ran."
+      }
+    }
+  ]
+}
