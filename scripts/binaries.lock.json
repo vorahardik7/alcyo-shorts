@@ -1,0 +1,105 @@
+{
+  "$comment": "Pinned bundled tools. scripts/fetch-binaries.ts verifies every sha256 before use. To update a pin, change url and sha256 together and run pnpm fetch-binaries.",
+  "version": 1,
+  "targets": {
+    "mac-arm64": {
+      "ffmpeg": {
+        "version": "9.0.2",
+        "kind": "archive",
+        "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip",
+        "sha256": "c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924",
+        "extract": { "ffmpeg": "ffmpeg" }
+      },
+      "ffprobe": {
+        "version": "9.0.2",
+        "kind": "archive",
+        "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffprobe.zip",
+        "sha256": "fcbe839537485eaee7a7a8bc5cbc0f90d53617e80943e8a5b2e31cb851197ea6",
+        "extract": { "ffprobe": "ffprobe" }
+      },
+      "whisper-cli": {
+        "version": "1.9.5",
+        "kind": "cmake",
+        "url": "https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v1.9.5.tar.gz",
+        "sha256": "ff1a9053feb509ff9d7729703355541ae9690073a6b1c40eb692c962e0dc1720",
+        "sourceDir": "whisper.cpp-1.9.5",
+        "cmakeArgs": [
+          "-DCMAKE_BUILD_TYPE=Release",
+          "-DCMAKE_OSX_ARCHITECTURES=arm64",
+          "-DCMAKE_OSX_DEPLOYMENT_TARGET=13.3",
+          "-DBUILD_SHARED_LIBS=OFF",
+          "-DGGML_NATIVE=OFF",
+          "-DGGML_METAL=ON",
+          "-DGGML_METAL_EMBED_LIBRARY=ON",
+          "-DWHISPER_BUILD_TESTS=OFF",
+          "-DWHISPER_BUILD_SERVER=OFF",
+          "-DWHISPER_SDL2=OFF"
+        ],
+        "cmakeTarget": "whisper-cli",
+        "built": { "build/bin/whisper-cli": "whisper-cli" }
+      },
+      "yt-dlp": {
+        "version": "2026.10.26",
+        "kind": "file",
+        "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp_macos",
+        "sha256": "0f922c15ccc0b83eefa1c8bc9104e434318c4bf16e408e1ee93b7745a6efe0aa",
+        "output": "yt-dlp",
+        "executable": true
+      },
+      "silero-vad": {
+        "version": "6.2.0",
+        "kind": "file",
+        "url": "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin",
+        "sha256": "2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987",
+        "output": "models/ggml-silero-v6.2.0.bin"
+      }
+    },
+    "win-x64": {
+      "ffmpeg": {
+        "version": "9.0.2",
+        "kind": "archive",
+        "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.zip",
+        "sha256": "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba",
+        "extract": {
+          "ffmpeg-9.0.2-essentials_build/bin/ffmpeg.exe": "ffmpeg.exe",
+          "ffmpeg-9.0.2-essentials_build/bin/ffprobe.exe": "ffprobe.exe"
+        }
+      },
+      "whisper-cli": {
+        "version": "1.9.5",
+        "kind": "archive",
+        "url": "https://github.com/ggml-org/whisper.cpp/releases/download/b5454/whisper-bin-x64.zip",
+        "sha256": "6ba69e3482d7826214f90a6a9c84ca07782aec1e1d0c6a7c30c994fd5d816ccb",
+        "extract": {
+          "Release/whisper-cli.exe": "whisper-cli.exe",
+          "Release/whisper.dll": "whisper.dll",
+          "Release/ggml.dll": "ggml.dll",
+          "Release/ggml-base.dll": "ggml-base.dll",
+          "Release/ggml-cpu-x64.dll": "ggml-cpu-x64.dll",
+          "Release/ggml-cpu-sse42.dll": "ggml-cpu-sse42.dll",
+          "Release/ggml-cpu-sandybridge.dll": "ggml-cpu-sandybridge.dll",
+          "Release/ggml-cpu-haswell.dll": "ggml-cpu-haswell.dll",
+          "Release/ggml-cpu-skylakex.dll": "ggml-cpu-skylakex.dll",
+          "Release/ggml-cpu-cannonlake.dll": "ggml-cpu-cannonlake.dll",
+          "Release/ggml-cpu-cascadelake.dll": "ggml-cpu-cascadelake.dll",
+          "Release/ggml-cpu-icelake.dll": "ggml-cpu-icelake.dll",
+          "Release/ggml-cpu-alderlake.dll": "ggml-cpu-alderlake.dll"
+        }
+      },
+      "yt-dlp": {
+        "version": "2026.10.26",
+        "kind": "file",
+        "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp.exe",
+        "sha256": "f5389d3698ecde4ef06f4e6b1ce0294fe9ac1396228c8990b8d3416d6d177a7d",
+        "output": "yt-dlp.exe"
+      },
+      "silero-vad": {
+        "version": "6.2.0",
+        "kind": "file",
+        "url": "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin",
+        "sha256": "2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987",
+        "output": "models/ggml-silero-v6.2.0.bin"
+      }
+    }
+  }
+}
