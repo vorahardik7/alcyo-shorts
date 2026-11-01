@@ -9,7 +9,6 @@
     "src/worker",
     "src/shared",
     "src/env.d.ts",
-    "e2e",
     "electron.vite.config.ts",
     "vitest.config.ts",
     "playwright.config.ts"

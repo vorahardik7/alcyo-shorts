@@ -1,0 +1,63 @@
+# Plan section 19. dmg for macOS arm64 (ad-hoc signed), nsis for Windows x64.
+appId: dev.alcyo.shorts
+productName: Alcyo Shorts
+copyright: Copyright (c) 2026 Hardik Vora
+artifactName: Alcyo-Shorts-${version}-${os}-${arch}.${ext}
+
+directories:
+  output: release
+  buildResources: build
+
+# electron-vite bundles every library into out/, so no node_modules ship.
+files:
+  - out/**
+  - package.json
+  - "!node_modules/**"
+npmRebuild: false
+nodeGypRebuild: false
+asar: true
+
+extraResources:
+  # Placed by scripts/fetch-binaries.ts; packaging runs --verify first.
+  - from: resources/bin/${os}-${arch}
+    to: bin
+    filter: ["**/*", "!manifest.json"]
+  - from: ../../LICENSE
+    to: LICENSE
+  - from: ../../THIRD_PARTY_NOTICES.md
+    to: THIRD_PARTY_NOTICES.md
+
+protocols:
+  - name: Alcyo link
+    schemes: [alcyo]
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64]
+  category: public.app-category.video
+  minimumSystemVersion: "13.3"
+  # Ad-hoc signature: no Developer ID yet (plan section 33). Ad-hoc builds
+  # can't use the hardened runtime or be notarized.
+  identity: "-"
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  notarize: false
+
+dmg:
+  writeUpdateInfo: false
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Alcyo Shorts
+  differentialPackage: false
+
+publish: null

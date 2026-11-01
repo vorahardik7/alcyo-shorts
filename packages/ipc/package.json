@@ -9,7 +9,7 @@
     "./names": "./src/names.ts"
   },
   "scripts": {
-    "lint": "eslint . && prettier --check .",
+    "lint": "eslint . && prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run"
   },
