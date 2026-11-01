@@ -1,0 +1,15 @@
+node_modules/
+out/
+dist/
+release/
+.turbo/
+.cache/
+.hook-log/
+test-results/
+playwright-report/
+pnpm-lock.yaml
+apps/desktop/resources/bin/
+# Pasted verbatim from the plan; keep their exact text.
+docs/
+.kiro/
+.agent-runs/

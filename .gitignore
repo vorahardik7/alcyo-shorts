@@ -1,0 +1,59 @@
+# Dependencies and build output
+node_modules/
+out/
+dist/
+release/
+.turbo/
+*.tsbuildinfo
+test-results/
+playwright-report/
+
+# Caches and generated project data
+cache/
+.cache/
+renders/
+.hook-log/
+
+# Fetched binaries (scripts/fetch-binaries.ts)
+apps/desktop/resources/bin/
+resources/bin/
+resources/models/*.bin
+
+# Video and audio never go in git, except the demo footage in examples/demo/.
+# Keep this list in step with scripts/media-extensions.mjs.
+*.mp4
+*.MP4
+*.mov
+*.MOV
+*.mkv
+*.webm
+*.avi
+*.m4v
+*.flv
+*.wmv
+*.mpg
+*.mpeg
+*.m2ts
+*.3gp
+*.wav
+*.WAV
+*.mp3
+*.MP3
+*.m4a
+*.aac
+*.flac
+*.ogg
+*.oga
+*.opus
+*.wma
+*.aif
+*.aiff
+*.caf
+!examples/demo/**
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.log
+
+# Never ignore .kiro/ (the Kiroween rules require it in the repo).

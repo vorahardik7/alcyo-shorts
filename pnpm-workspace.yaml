@@ -1,0 +1,14 @@
+packages:
+  - apps/*
+  - packages/*
+  - scripts
+
+# Dependencies allowed to run install scripts. electron downloads its binary;
+# electron-winstaller (Squirrel) isn't used because Windows ships as nsis.
+allowBuilds:
+  electron: true
+  esbuild: true
+  electron-winstaller: false
+
+minimumReleaseAgeExclude:
+  - globals@17.14.0
