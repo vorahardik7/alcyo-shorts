@@ -354,4 +354,23 @@ and in CI.
   spec 1 routes links. Spec 2 owns the rest of that package and adds the
   property test.
 - **Silero model** is downloaded with a pinned checksum instead of being
-  committed. It stays out of git and goes into the same bin folder.
+  committed. It stays out of git and goes into the same bin folder. The pin is
+  v6.2.0, the newer of the two models whisper.cpp v1.9.5's download script
+  offers.
+- **Pins** (Nov 1, 2026): ffmpeg/ffprobe 9.0.2 (martin-riedl.de arm64 build;
+  gyan.dev essentials for Windows), whisper.cpp v1.9.5 (Windows zip from
+  release b5454, the same commit), yt-dlp 2026.10.26.
+- **macOS minimum is 13.3**, not 12. whisper.cpp's Accelerate path uses
+  `cblas_sgemm`, which needs 13.3. That's set in the CMake flags and in
+  electron-builder's `minimumSystemVersion`.
+- **Windows packaging is checked in CI only.** A cross-build on this Mac got
+  as far as `win-unpacked` with every tool in `resources/bin`, then failed
+  because electron-builder's macOS `makensis` is an x86_64 binary and Rosetta
+  isn't installed (spawn error -86). This is a host limitation, not a config
+  error.
+- **Kiro CLI engine**: kiro-cli 2.34 defaults to the V2 engine, which ignores
+  `.kiro/hooks/*.json`. Run spec work with `kiro-cli chat --v3`, as recorded
+  in hook-self-test.md.
+- **Prettier in packages** gets the root `.gitignore` and `.prettierignore`
+  through `--ignore-path`, because Prettier 3 only reads ignore files from the
+  working directory.
