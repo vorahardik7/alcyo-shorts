@@ -93,8 +93,14 @@ async function place(from: string, out: string, rel: string, target: Target): Pr
 async function extract(archive: string, into: string): Promise<void> {
   await rm(into, { recursive: true, force: true });
   await mkdir(into, { recursive: true });
-  // bsdtar reads zip and tar.gz on macOS and on Windows 10+.
-  run("tar", ["-xf", archive, "-C", into]);
+  // bsdtar reads zip and tar.gz on macOS and on Windows 10+. On Windows, call
+  // the system one by path: Git's GNU tar is often first on PATH and can't
+  // read zip files.
+  const tar =
+    process.platform === "win32"
+      ? join(process.env["SystemRoot"] ?? "C:\\Windows", "System32", "tar.exe")
+      : "tar";
+  run(tar, ["-xf", archive, "-C", into]);
 }
 
 async function install(name: string, tool: Tool, target: Target, out: string): Promise<void> {

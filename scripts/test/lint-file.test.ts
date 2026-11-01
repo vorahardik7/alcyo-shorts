@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { savedPath, target } from "../hooks/lint-file.mjs";
 
@@ -19,7 +20,7 @@ describe("savedPath", () => {
 describe("target", () => {
   it("accepts a .ts file inside the repo", () => {
     expect(target("/r/src/a.ts", "/r", "/r")).toEqual({ file: "/r/src/a.ts" });
-    expect(target("src/b.tsx", "/r", "/r")).toEqual({ file: "/r/src/b.tsx" });
+    expect(target("src/b.tsx", "/r", "/r")).toEqual({ file: resolve("/r", "src/b.tsx") });
   });
 
   it("skips anything else", () => {

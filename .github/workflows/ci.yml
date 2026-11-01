@@ -1,0 +1,104 @@
+# Checks, end-to-end tests and packaging on macOS (arm64) and Windows (x64).
+# Plan section 19. Runs once the GitHub repo exists.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: mac-arm64
+            package: package:mac
+            executable: apps/desktop/release/mac-arm64/Alcyo Shorts.app/Contents/MacOS/Alcyo Shorts
+            artifact: apps/desktop/release/*.dmg
+          - os: windows-latest
+            target: win-x64
+            package: package:win
+            executable: apps/desktop/release/win-unpacked/Alcyo Shorts.exe
+            artifact: apps/desktop/release/*.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      # Ad-hoc signing on macOS; don't pick up any certificate on the runner.
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      TURBO_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: No media in git outside examples/demo/
+        run: pnpm check:media
+
+      - name: Cache downloaded tools
+        uses: actions/cache@v4
+        with:
+          path: .cache/binaries
+          key: binaries-${{ matrix.target }}-${{ hashFiles('scripts/binaries.lock.json') }}
+
+      - name: Fetch pinned tools
+        run: pnpm fetch-binaries --target ${{ matrix.target }}
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: End-to-end tests (built app)
+        run: pnpm test:e2e
+
+      - name: Package
+        run: pnpm ${{ matrix.package }}
+
+      - name: End-to-end tests (packaged app)
+        working-directory: apps/desktop
+        env:
+          ALCYO_E2E_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
+        run: pnpm exec playwright test
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: alcyo-shorts-${{ matrix.target }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.target }}
+          path: apps/desktop/test-results
+          if-no-files-found: ignore

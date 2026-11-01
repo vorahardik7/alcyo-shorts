@@ -57,7 +57,13 @@ export function checkEvent<E extends EventName>(
  * True when an IPC sender frame's URL is the app's own page: the dev server's
  * origin in dev, or the bundled index.html file when built.
  */
-export function isTrustedSenderUrl(senderUrl: string, appUrl: string): boolean {
+export function isTrustedSenderUrl(
+  senderUrl: string,
+  appUrl: string,
+  // Windows paths are case-insensitive, and Chromium and Node may disagree on
+  // the drive letter's case.
+  caseInsensitive = process.platform === "win32",
+): boolean {
   let sender: URL;
   let expected: URL;
   try {
@@ -67,7 +73,11 @@ export function isTrustedSenderUrl(senderUrl: string, appUrl: string): boolean {
     return false;
   }
   if (expected.protocol === "file:") {
-    return sender.protocol === "file:" && sender.pathname === expected.pathname;
+    const norm = (p: string) => {
+      const decoded = decodeURIComponent(p);
+      return caseInsensitive ? decoded.toLowerCase() : decoded;
+    };
+    return sender.protocol === "file:" && norm(sender.pathname) === norm(expected.pathname);
   }
   return sender.origin === expected.origin;
 }

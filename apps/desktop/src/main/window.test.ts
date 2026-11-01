@@ -1,3 +1,5 @@
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("electron", () => ({ BrowserWindow: class {} }));
@@ -20,7 +22,9 @@ describe("windowOptions", () => {
 describe("rendererUrl", () => {
   it("points at the bundled page when there's no dev server", () => {
     vi.stubEnv("ELECTRON_RENDERER_URL", "");
-    expect(rendererUrl("/app/out/main")).toBe("file:///app/out/renderer/index.html");
+    const url = rendererUrl(join("app", "out", "main"));
+    expect(url).toBe(pathToFileURL(join("app", "out", "renderer", "index.html")).href);
+    expect(url.endsWith("/app/out/renderer/index.html")).toBe(true);
     vi.unstubAllEnvs();
   });
 });

@@ -57,6 +57,13 @@ describe("isTrustedSenderUrl", () => {
     expect(isTrustedSenderUrl("http://localhost:5174/", "http://localhost:5173/")).toBe(false);
     expect(isTrustedSenderUrl("not a url", file)).toBe(false);
   });
+  it("ignores drive-letter case on Windows only", () => {
+    const win =
+      "file:///C:/Users/me/AppData/Local/Programs/Alcyo%20Shorts/resources/app.asar/out/renderer/index.html";
+    const lower = win.replace("file:///C:", "file:///c:");
+    expect(isTrustedSenderUrl(lower, win, true)).toBe(true);
+    expect(isTrustedSenderUrl(lower, win, false)).toBe(false);
+  });
   it("accepts the dev server origin", () => {
     expect(isTrustedSenderUrl("http://localhost:5173/#/renders", "http://localhost:5173")).toBe(
       true,
