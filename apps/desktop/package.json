@@ -1,0 +1,40 @@
+{
+  "name": "@alcyo/desktop",
+  "productName": "Alcyo Shorts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Turn a long stream into captioned vertical shorts, on your own computer.",
+  "author": "Hardik Vora",
+  "homepage": "https://alcyo.dev",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "lint": "eslint . && prettier --check .",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/renderer/tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "package:mac": "electron-vite build && node ../../scripts/fetch-binaries.ts --verify --target mac-arm64 && electron-builder --mac --arm64 --publish never",
+    "package:win": "electron-vite build && node ../../scripts/fetch-binaries.ts --verify --target win-x64 && electron-builder --win --x64 --publish never"
+  },
+  "devDependencies": {
+    "@alcyo/ipc": "workspace:*",
+    "@alcyo/schema": "workspace:*",
+    "@playwright/test": "^1.64.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/react-router": "^1.170.46",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "45.2.1",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.5",
+    "zod": "^4.6.7"
+  }
+}
