@@ -11,3 +11,4 @@ export * from "./presets.ts";
 export * from "./project.ts";
 export * from "./time.ts";
 export * from "./checks.ts";
+export * from "./migrate.ts";

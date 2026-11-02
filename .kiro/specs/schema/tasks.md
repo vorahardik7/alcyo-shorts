@@ -24,7 +24,7 @@ e2e and packaging run in task 7.
   - Unit tests and properties 3, 5 and 6
   - _Requirements: 3.3, 4.1–4.3_
 
-- [ ] 5. JSON Schema for Claude and migrations
+- [x] 5. JSON Schema for Claude and migrations
   - `claudeJsonSchemas`, Ajv tests, no-times and no-commands test
   - `migrate.ts` with a fake-chain test
   - _Requirements: 6.1–6.3, 7.1, 7.2_
