@@ -1,6 +1,6 @@
 // Buttons with one set of hover, active, focus and disabled states.
 import { Link, type LinkProps } from "@tanstack/react-router";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 export type Variant = "primary" | "secondary" | "ghost";
 
@@ -26,7 +26,7 @@ export function Button({
   className = "",
   type = "button",
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: "md" | "sm" }) {
+}: ComponentProps<"button"> & { variant?: Variant; size?: "md" | "sm" }) {
   return <button type={type} className={`${buttonClass(variant, size)} ${className}`} {...rest} />;
 }
 
@@ -45,7 +45,7 @@ export function IconButton({
   className = "",
   type = "button",
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
+}: ComponentProps<"button"> & {
   label: string;
   children: ReactNode;
   size?: "md" | "sm";

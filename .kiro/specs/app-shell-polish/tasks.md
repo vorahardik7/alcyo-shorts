@@ -12,12 +12,12 @@ e2e, screenshots and packaging run in task 8.
   - e2e launches headless; `test:e2e` excludes `@screens`
   - _Requirements: 6.1, 6.2_
 
-- [ ] 3. Links and routes for the new screens
+- [x] 3. Links and routes for the new screens
   - `AppLink`: `setup`, settings `section`; parser, formatter, route, tests
   - Routes: `/setup`, `/settings/$section`, `/renders` drawer, not found with Back
   - _Requirements: 1.7_
 
-- [ ] 4. Navigation layer
+- [x] 4. Navigation layer
   - `useBack`, `ScreenHeader`, overlay stack and Esc, Cmd+[ / Cmd+], Alt+arrows, mouse buttons, Cmd+, and Cmd+F
   - Page titles on every screen
   - _Requirements: 1.1–1.6_
@@ -28,7 +28,7 @@ e2e, screenshots and packaging run in task 8.
   - IPC `setup:check`, `app:paths`, `shell:openDataFolder`, `app:info` versions; handlers and tests; headless fixture
   - _Requirements: 3.1–3.5, 3.8, 3.9, 6.3_
 
-- [ ] 6. Setup and Settings screens
+- [x] 6. Setup and Settings screens
   - Setup screen with Check again, Continue, Skip for now; startup gate and splash
   - Settings with six sections and real state, "Comes in spec N" chips
   - _Requirements: 2.1–2.7, 3.5–3.7_

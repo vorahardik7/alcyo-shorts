@@ -1,22 +1,21 @@
-// Routes from plan section 5, with hash history. Spec 1 has placeholders for
-// everything below a stream; later specs fill them in.
+// Routes from plan section 5 plus Setup and Settings sections, with hash
+// history. Everything below a stream is a placeholder until spec 10.
+import { SETTINGS_SECTIONS, type SettingsSection } from "@alcyo/schema";
 import {
   createHashHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
+import { SettingsPage } from "./settings/SettingsPage";
+import { SetupPage } from "./setup/SetupPage";
 import { Layout } from "./shell/Layout";
-import { EmptyThread, NotFound, PlainPage, StreamPlaceholder } from "./shell/pages";
-import { SettingsPage } from "./shell/SettingsPage";
+import { Home, NotFound, StreamPlaceholder } from "./shell/pages";
+import { RenderQueuePage } from "./shell/RenderQueue";
 
 const rootRoute = createRootRoute({ component: Layout, notFoundComponent: NotFound });
 
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/",
-  component: EmptyThread,
-});
+const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: Home });
 
 const streamRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -35,24 +34,38 @@ const streamChildRoute = createRoute({
 const rendersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/renders",
-  component: () => <PlainPage title="Render queue" body="No renders yet." />,
+  component: RenderQueuePage,
+});
+
+const setupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup",
+  component: SetupPage,
 });
 
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
-  component: SettingsPage,
+  component: () => <SettingsPage section="profile" />,
 });
 
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/profile",
-  component: () => (
-    <PlainPage
-      title="Creator profile"
-      body="No creator profile yet. It's made during onboarding, after setup."
-    />
-  ),
+  component: () => <SettingsPage section="profile" />,
+});
+
+function isSection(value: string): value is SettingsSection {
+  return (SETTINGS_SECTIONS as readonly string[]).includes(value);
+}
+
+const sectionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings/$section",
+  component: function SectionPage() {
+    const { section } = sectionRoute.useParams();
+    return isSection(section) ? <SettingsPage section={section} /> : <NotFound />;
+  },
 });
 
 const routeTree = rootRoute.addChildren([
@@ -60,8 +73,10 @@ const routeTree = rootRoute.addChildren([
   streamRoute,
   streamChildRoute,
   rendersRoute,
+  setupRoute,
   settingsRoute,
   profileRoute,
+  sectionRoute,
 ]);
 
 export const router = createRouter({ routeTree, history: createHashHistory() });

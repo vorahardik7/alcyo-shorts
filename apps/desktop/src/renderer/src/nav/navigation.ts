@@ -2,7 +2,7 @@
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect } from "react";
 import { create } from "zustand";
-import { handleEscape } from "./overlays";
+import { closeTopOverlay, escapeScreen } from "./overlays";
 
 export const isMac = /Mac/.test(navigator.userAgent);
 
@@ -61,14 +61,16 @@ export function useNavShortcuts(): void {
       const mod = isMac ? e.metaKey : e.ctrlKey;
 
       if (e.key === "Escape") {
+        // Order: the topmost overlay, then leaving a text field, then the
+        // screen's own Esc (Back on non-thread screens).
+        e.preventDefault();
+        if (closeTopOverlay()) return;
         const active = document.activeElement;
-        // Esc in a field outside an overlay just leaves the field.
-        if (isTextField(active) && active.closest("[data-overlay]") === null) {
+        if (isTextField(active)) {
           active.blur();
-          e.preventDefault();
           return;
         }
-        if (handleEscape()) e.preventDefault();
+        escapeScreen();
         return;
       }
       if (mod && !e.shiftKey && !e.altKey && (e.key === "[" || e.code === "BracketLeft")) {

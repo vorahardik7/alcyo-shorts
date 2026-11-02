@@ -169,9 +169,13 @@ launch checks again. While incomplete, the sidebar shows a "Finish setup" row.
 - **Settings.** Header with Back and "Settings". Left rail of six sections
   (links, `aria-current`), right pane with cards of label/value rows. A
   `ComesIn` chip renders "Comes in spec N".
-- **Render queue drawer.** Right drawer 420 px, scrim over home, close button,
-  focus trapped to the drawer, empty state "No renders yet. Render a short
-  from its card or the editor; it shows up here with progress."
+- **Render queue drawer.** Right drawer 420 px with a scrim over the thread
+  area only, so the sidebar and its grid button stay usable (the drawer isn't
+  modal, so Tab isn't trapped). Focus moves to Close on open and back on
+  close. Empty state: "No renders yet", how renders get there, and
+  "Comes in spec 9".
+- **Esc order.** Topmost overlay first, then leaving a focused text field,
+  then the screen's Esc action (Back on non-thread screens).
 - **Not found.** Plain bad-link message, Back and Go home.
 
 ## App icon

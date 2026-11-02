@@ -1,58 +1,20 @@
 // End-to-end tests against the built app (pnpm build first), or a packaged
 // executable when ALCYO_E2E_EXECUTABLE is set.
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import {
-  _electron as electron,
-  type ElectronApplication,
-  expect,
-  type Page,
-  test,
-} from "@playwright/test";
-import electronBinary from "electron";
+import { expect, type Page, test } from "@playwright/test";
+import { command, type Launched, launch } from "./launch";
 
-const appDir = join(import.meta.dirname, "..");
-const packaged = process.env["ALCYO_E2E_EXECUTABLE"];
-const userData = mkdtempSync(join(tmpdir(), "alcyo-e2e-"));
-
-function env(): Record<string, string> {
-  const vars: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) {
-    if (v !== undefined && k !== "ELECTRON_RENDERER_URL" && k !== "ELECTRON_RUN_AS_NODE")
-      vars[k] = v;
-  }
-  vars["ALCYO_USER_DATA"] = userData;
-  vars["ALCYO_HEADLESS"] = "1";
-  return vars;
-}
-
-/** The command that starts the app, for both Playwright and a raw second instance. */
-const command =
-  packaged !== undefined && packaged.length > 0
-    ? { executable: packaged, args: [] as string[] }
-    : {
-        executable: electronBinary as unknown as string,
-        args: [join(appDir, "out", "main", "index.js")],
-      };
-
-let app: ElectronApplication;
+let run: Launched;
 let page: Page;
 
 test.beforeAll(async () => {
-  app = await electron.launch({
-    executablePath: command.executable,
-    args: command.args,
-    env: env(),
-  });
-  page = await app.firstWindow();
+  run = await launch("pass");
+  page = run.page;
   await page.getByTestId("sidebar").waitFor();
 });
 
 test.afterAll(async () => {
-  await app.close();
-  rmSync(userData, { recursive: true, force: true });
+  await run.close();
 });
 
 const hash = () => page.evaluate(() => window.location.hash);
@@ -60,9 +22,9 @@ const hash = () => page.evaluate(() => window.location.hash);
 test("opens to the chat shell with an empty sidebar", async () => {
   const testInfo = test.info();
   await expect(page.getByTestId("sidebar")).toBeVisible();
-  await expect(page.getByTestId("empty-streams")).toHaveText("No streams yet");
+  await expect(page.getByTestId("empty-streams")).toContainText("No streams yet");
   await expect(page.getByTestId("empty-thread")).toBeVisible();
-  await expect(page.getByPlaceholder("Message Alcyo")).toBeVisible();
+  await expect(page.getByPlaceholder("Paste a stream link or drop a recording")).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("shell.png") });
 });
 
@@ -127,7 +89,7 @@ test("a message round-trips through the utilityProcess worker", async () => {
 });
 
 test("macOS open-url routes a link to the renderer", async () => {
-  await app.evaluate(({ app: electronApp }) => {
+  await run.app.evaluate(({ app: electronApp }) => {
     electronApp.emit(
       "open-url",
       { preventDefault: () => undefined },
@@ -140,24 +102,24 @@ test("macOS open-url routes a link to the renderer", async () => {
 });
 
 test("Windows second-instance argv routes a link to the renderer", async () => {
-  await app.evaluate(({ app: electronApp }) => {
+  await run.app.evaluate(({ app: electronApp }) => {
     electronApp.emit(
       "second-instance",
       {},
       [
         "C:\\Program Files\\Alcyo Shorts\\Alcyo Shorts.exe",
         "--allow-file-access-from-files",
-        "alcyo://settings/",
+        "alcyo://settings/about/",
       ],
       "C:\\",
     );
   });
-  await expect.poll(hash).toBe("#/settings");
+  await expect.poll(hash).toBe("#/settings/about");
   await expect(page.getByTestId("notices")).toContainText("FFmpeg");
 });
 
 test("a malformed link shows the plain message", async () => {
-  await app.evaluate(({ app: electronApp }) => {
+  await run.app.evaluate(({ app: electronApp }) => {
     electronApp.emit("open-url", { preventDefault: () => undefined }, "alcyo://s/abc/nowhere");
   });
   await expect(page.getByTestId("link-notice")).toContainText(
@@ -170,11 +132,11 @@ test("a second instance exits and hands its link to the first", async () => {
     window.location.hash = "#/";
   });
   const second = spawn(command.executable, [...command.args, "alcyo://renders"], {
-    env: env(),
+    env: run.env,
     stdio: "ignore",
   });
   const code = await new Promise<number | null>((resolve) => second.once("exit", resolve));
   expect(code).toBe(0);
   await expect.poll(hash).toBe("#/renders");
-  await expect(page.getByText("No renders yet.")).toBeVisible();
+  await expect(page.getByTestId("render-queue")).toContainText("No renders yet");
 });

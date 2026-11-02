@@ -39,11 +39,23 @@ export function useEscape(kind: Kind, active: boolean, close: () => void): void 
   }, [active, kind]);
 }
 
-/** Runs the right close function for one Esc press. Returns false if none. */
-export function handleEscape(): boolean {
-  const { entries } = useEscStore.getState();
-  const overlays = entries.filter((e) => e.kind === "overlay");
-  const top = overlays.at(-1) ?? entries.filter((e) => e.kind === "screen").at(-1);
+/** Closes the topmost overlay. Returns false if none is open. */
+export function closeTopOverlay(): boolean {
+  const top = useEscStore
+    .getState()
+    .entries.filter((e) => e.kind === "overlay")
+    .at(-1);
+  if (top === undefined) return false;
+  top.close();
+  return true;
+}
+
+/** Runs the current screen's Esc action (usually Back). Returns false if none. */
+export function escapeScreen(): boolean {
+  const top = useEscStore
+    .getState()
+    .entries.filter((e) => e.kind === "screen")
+    .at(-1);
   if (top === undefined) return false;
   top.close();
   return true;
