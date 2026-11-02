@@ -25,6 +25,42 @@ describe("worker protocol over a MessagePort", () => {
     await expect(client.ping("hello")).resolves.toBe("hello");
   });
 
+  it("round-trips a setup check through the injected job", async () => {
+    const { port1, port2 } = new MessageChannel();
+    const report = {
+      checkedAt: "2026-11-01T12:00:00.000Z",
+      complete: false,
+      checks: [],
+      claude: { path: null, via: "none", version: null, signedIn: null },
+      tools: [],
+      ffmpeg: { subtitles: false, libx264: false },
+      encoders: [],
+      whisperModel: { name: "small.en", path: "/m/ggml-small.en.bin", present: false },
+    } as const;
+    const seen: unknown[] = [];
+    serveWorker(nodePort(port1), () => undefined, {
+      setupCheck: (req) => {
+        seen.push(req);
+        return Promise.resolve(structuredClone(report) as never);
+      },
+    });
+    const client = createWorkerClient(nodePort(port2));
+    const request = { binDir: "/b", modelsDir: "/m", platform: "darwin", arch: "arm64" } as const;
+    await expect(client.setupCheck(request)).resolves.toEqual(report);
+    expect(seen).toEqual([request]);
+  });
+
+  it("turns a failed setup job into a plain error", async () => {
+    const { port1, port2 } = new MessageChannel();
+    serveWorker(nodePort(port1), () => undefined, {
+      setupCheck: () => Promise.reject(new Error("boom")),
+    });
+    const client = createWorkerClient(nodePort(port2));
+    await expect(
+      client.setupCheck({ binDir: "/b", modelsDir: "/m", platform: "darwin", arch: "arm64" }),
+    ).rejects.toThrow("The setup check stopped unexpectedly.");
+  });
+
   it("answers a malformed request with an error and never acts on it", async () => {
     const { port1, port2 } = new MessageChannel();
     const logs: string[] = [];

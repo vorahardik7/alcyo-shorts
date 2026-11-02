@@ -4,6 +4,8 @@
 import { WorkerInit } from "@alcyo/ipc";
 import type { MessagePortMain } from "electron";
 import { electronPort, serveWorker } from "../shared/port";
+import { realSetupDeps } from "./exec";
+import { runSetupCheck } from "./setup";
 
 process.parentPort.once("message", (event: { data: unknown; ports: MessagePortMain[] }) => {
   const port = event.ports[0];
@@ -11,5 +13,8 @@ process.parentPort.once("message", (event: { data: unknown; ports: MessagePortMa
     console.error("[worker] Expected an init message with a port. Exiting.");
     process.exit(1);
   }
-  serveWorker(electronPort(port));
+  const deps = realSetupDeps();
+  serveWorker(electronPort(port), undefined, {
+    setupCheck: (request) => runSetupCheck(request, deps),
+  });
 });

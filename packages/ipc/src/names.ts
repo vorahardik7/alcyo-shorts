@@ -1,7 +1,13 @@
 // Channel and event names only, with no zod import, so the preload stays tiny.
 // contract.test.ts checks these lists match the contract.
 
-export const CHANNELS = ["app:info", "worker:ping"] as const;
+export const CHANNELS = [
+  "app:info",
+  "app:paths",
+  "shell:openDataFolder",
+  "setup:check",
+  "worker:ping",
+] as const;
 export type Channel = (typeof CHANNELS)[number];
 
 export const EVENTS = ["link:open", "link:invalid"] as const;

@@ -205,6 +205,9 @@ importers:
       '@alcyo/ipc':
         specifier: workspace:*
         version: link:../../packages/ipc
+      '@alcyo/planner':
+        specifier: workspace:*
+        version: link:../../packages/planner
       '@alcyo/schema':
         specifier: workspace:*
         version: link:../../packages/schema
@@ -255,6 +258,15 @@ importers:
         version: 5.0.16(@types/react@19.3.0)(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1))
 
   packages/ipc:
+    dependencies:
+      '@alcyo/schema':
+        specifier: workspace:*
+        version: link:../schema
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+
+  packages/planner:
     dependencies:
       '@alcyo/schema':
         specifier: workspace:*

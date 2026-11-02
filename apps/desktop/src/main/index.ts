@@ -1,9 +1,15 @@
 // Electron main: lifecycle, single instance, alcyo:// links, IPC, worker host.
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import type { SetupRequest } from "@alcyo/ipc";
 import { LINK_SCHEME } from "@alcyo/schema";
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, shell } from "electron";
+import { resolveBinDir } from "./bin";
 import { handle, sendEvent } from "./ipc";
 import { createHandlers } from "./ipc/handlers";
 import { findLinkInArgv, LinkQueue, linkEvent } from "./links";
+import { fixtureKind, fixtureReport } from "./setup-fixture";
+import { SetupService } from "./setup-service";
 import { createMainWindow, isHeadless, rendererUrl } from "./window";
 import { WorkerHost } from "./worker-host";
 
@@ -78,22 +84,63 @@ function run(): void {
   };
 
   void app.whenReady().then(() => {
+    const platform = process.platform as "darwin" | "win32" | "linux";
+    const userData = app.getPath("userData");
+    const paths = {
+      userData,
+      models: join(userData, "models"),
+      bin: resolveBinDir({
+        packaged: app.isPackaged,
+        resourcesPath: process.resourcesPath,
+        appPath: app.getAppPath(),
+        env: process.env,
+        platform: process.platform,
+        arch: process.arch,
+      }),
+    };
+    const setupRequest: SetupRequest = {
+      binDir: paths.bin,
+      modelsDir: paths.models,
+      platform,
+      arch: process.arch,
+    };
+    const fixture = fixtureKind(process.env, isHeadless());
+    const setup = new SetupService(() =>
+      fixture === null
+        ? worker.get().setupCheck(setupRequest)
+        : Promise.resolve(fixtureReport(fixture, setupRequest, new Date())),
+    );
+
     const handlers = createHandlers({
       appInfo: () => ({
         name: app.getName(),
         version: app.getVersion(),
-        platform: process.platform as "darwin" | "win32" | "linux",
+        platform,
         arch: process.arch,
         electron: process.versions.electron ?? "unknown",
+        chrome: process.versions.chrome ?? "unknown",
+        node: process.versions.node,
       }),
+      appPaths: () => paths,
+      openDataFolder: async () => {
+        await mkdir(userData, { recursive: true });
+        const error = await shell.openPath(userData);
+        if (error.length > 0) throw new Error(`Couldn't open the data folder: ${error}`);
+      },
+      setupCheck: (fresh) => setup.get(fresh),
       pingWorker: (text) => worker.get().ping(text),
       now: () => performance.now(),
     });
     const appUrl = () => rendererUrl(mainDir);
     handle("app:info", handlers["app:info"], appUrl);
+    handle("app:paths", handlers["app:paths"], appUrl);
+    handle("shell:openDataFolder", handlers["shell:openDataFolder"], appUrl);
+    handle("setup:check", handlers["setup:check"], appUrl);
     handle("worker:ping", handlers["worker:ping"], appUrl);
 
     worker.start();
+    // Start the first check now, so the window rarely has to wait for it.
+    setup.get().catch(() => undefined);
     openWindow();
 
     app.on("activate", () => {

@@ -22,7 +22,7 @@ e2e, screenshots and packaging run in task 8.
   - Page titles on every screen
   - _Requirements: 1.1–1.6_
 
-- [ ] 5. Setup checks
+- [x] 5. Setup checks
   - `@alcyo/planner` with `llm/claude-locate.ts` and tests
   - Worker `setup-check` message and `worker/setup.ts` with tests
   - IPC `setup:check`, `app:paths`, `shell:openDataFolder`, `app:info` versions; handlers and tests; headless fixture

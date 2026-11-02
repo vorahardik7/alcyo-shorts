@@ -31,6 +31,8 @@ describe("makeHandler", () => {
       platform: "darwin",
       arch: "arm64",
       electron: "45.2.1",
+      chrome: "142.0.0.0",
+      node: "24.11.0",
     } as const;
     await expect(makeHandler("app:info", () => info)({})).resolves.toEqual(info);
   });

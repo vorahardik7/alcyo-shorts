@@ -3,6 +3,7 @@
 import { AppLink } from "@alcyo/schema";
 import { z } from "zod";
 import type { Channel, EventName } from "./names";
+import { SetupReport } from "./setup";
 
 export const AppInfo = z.object({
   name: z.string(),
@@ -10,11 +11,29 @@ export const AppInfo = z.object({
   platform: z.enum(["darwin", "win32", "linux"]),
   arch: z.string(),
   electron: z.string(),
+  chrome: z.string(),
+  node: z.string(),
 });
 export type AppInfo = z.infer<typeof AppInfo>;
 
+/** Folders the app uses. Shown in Settings > Storage. */
+export const AppPaths = z.object({
+  userData: z.string(),
+  models: z.string(),
+  bin: z.string(),
+});
+export type AppPaths = z.infer<typeof AppPaths>;
+
 export const contract = {
   "app:info": { input: z.object({}), output: AppInfo },
+  "app:paths": { input: z.object({}), output: AppPaths },
+  /** Opens the app's own data folder in Finder or Explorer. Takes no path. */
+  "shell:openDataFolder": { input: z.object({}), output: z.object({}) },
+  /** The cached setup report, or a new one with fresh: true. */
+  "setup:check": {
+    input: z.object({ fresh: z.boolean().optional() }),
+    output: SetupReport,
+  },
   "worker:ping": {
     input: z.object({ text: z.string().max(1000) }),
     output: z.object({ text: z.string(), ms: z.number().nonnegative() }),
