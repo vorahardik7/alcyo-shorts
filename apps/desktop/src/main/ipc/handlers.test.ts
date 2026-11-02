@@ -1,4 +1,10 @@
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { CHANNELS, SetupReport } from "@alcyo/ipc";
+import * as F from "@alcyo/schema/testing";
+import { SettingsFile, StreamsIndex, hashFile, writeJsonAtomic } from "@alcyo/store";
+import { StreamService } from "../streams";
 import { describe, expect, it } from "vitest";
 import { makeHandler } from "./core";
 import { fixtureKind, fixtureReport } from "../setup-fixture";
@@ -33,6 +39,7 @@ function deps(overrides: Partial<HandlerDeps> = {}): HandlerDeps {
     setupCheck: (fresh) => Promise.resolve(fixtureReport(fresh ? "fail" : "pass", request, at)),
     pingWorker: (text) => Promise.resolve(text),
     now: () => (t += 5),
+    streams: {} as never,
     ...overrides,
   };
 }
@@ -137,5 +144,127 @@ describe("setup fixtures", () => {
       expect(report.complete).toBe(kind === "pass");
       for (const c of report.checks) if (c.state === "fail") expect(c.fix).not.toBeNull();
     }
+  });
+});
+
+describe("stream channels", () => {
+  async function setup() {
+    const root = await mkdtemp(join(tmpdir(), "alcyo-handlers-"));
+    const video = join(root, "clip.mp4");
+    await writeFile(video, "x");
+    const content = await hashFile(video);
+    const settings = new SettingsFile(join(root, "u"), "darwin");
+    const streams = new StreamService({
+      index: new StreamsIndex(join(root, "u")),
+      settings,
+      defaultStreamsDir: join(root, "Streams"),
+      worker: () => ({
+        analyze: (req) => ({
+          done: Promise.resolve({
+            sourceId: req.sourceId,
+            probe: {
+              durationMs: 10_000,
+              container: "mov,mp4",
+              video: null,
+              audio: null,
+              playsDirectly: false,
+            },
+            fingerprint: { ...content, durationMs: 10_000, layout: "" },
+            steps: {},
+            problems: [],
+            poster: null,
+            encoder: null,
+          }),
+          cancel: () => undefined,
+        }),
+      }),
+      analysisBase: () =>
+        Promise.resolve({
+          tools: { ffmpeg: "f", ffprobe: "p", whisper: "w" },
+          toolVersions: { ffmpeg: "1", whisper: "1" },
+          model: null,
+          vadModel: "v",
+          mode: "full",
+          encoder: null,
+          threads: 1,
+        }),
+      chooseVideo: () => Promise.resolve(video),
+      emit: () => undefined,
+      log: () => undefined,
+    });
+    const h = createHandlers(deps({ streams }));
+    const call = <C extends (typeof CHANNELS)[number]>(c: C, input: unknown) =>
+      makeHandler(c, h[c] as never)(input);
+    const out = (await call("source:chooseFile", {})) as { stream: { streamId: string } };
+    await streams.idle();
+    const streamId = out.stream.streamId;
+    const detail = (await call("stream:open", { streamId })) as {
+      sources: Array<{ source: { sourceId: string } }>;
+    };
+    const sourceId = detail.sources[0]!.source.sourceId;
+    const store = await streams.forStream(streamId);
+    await writeJsonAtomic(store.paths.analysis(sourceId, "transcript.json"), {
+      ...F.transcript,
+      sourceId,
+    });
+    return { call, streamId, sourceId, store, F };
+  }
+
+  it("list, open, messages, mark read and transcript reads are checked end to end", async () => {
+    const { call, streamId, sourceId } = await setup();
+    expect(await call("streams:list", {})).toMatchObject([
+      { streamId, name: "clip", unread: true },
+    ]);
+    await call("stream:markRead", { streamId });
+    expect(await call("streams:list", {})).toMatchObject([{ unread: false }]);
+    const messages = (await call("thread:messages", { streamId, limit: 10 })) as unknown[];
+    expect(messages.length).toBe(2);
+    await expect(call("thread:messages", { streamId, limit: 500 })).rejects.toThrow("bad input");
+    expect(
+      await call("transcript:window", { streamId, sourceId, fromMs: 4000, toMs: 5300 }),
+    ).toMatchObject({ words: [{ id: "w00004" }, { id: "w00005" }] });
+    expect(await call("transcript:search", { streamId, sourceId, query: "LIVE" })).toEqual([
+      { lineId: "L0001", startMs: 1000, endMs: 2100, text: "alright we're live" },
+    ]);
+    await expect(call("stream:open", { streamId: "s_nope" })).rejects.toThrow(
+      "That stream isn't in this app.",
+    );
+  });
+
+  it("short channels save drafts and versions, list and restore", async () => {
+    const { call, streamId, sourceId, store, F } = await setup();
+    const v1 = await store.createShort({
+      sourceId,
+      short: F.short,
+      createdBy: "claude",
+      note: "",
+      fromMessageId: null,
+    });
+    const shortId = v1.shortId;
+    const draft = { ...F.short, title: "Draft title" };
+    await call("short:saveDraft", { streamId, shortId, short: draft });
+    expect(await call("short:get", { streamId, shortId })).toMatchObject({
+      version: { version: 1 },
+      draft: { short: { title: "Draft title" } },
+    });
+    expect(
+      await call("short:saveVersion", { streamId, shortId, short: draft, note: "Editor" }),
+    ).toMatchObject({ version: 2, createdBy: "user", parent: 1 });
+    expect(await call("short:restore", { streamId, shortId, version: 1 })).toMatchObject({
+      version: 3,
+      note: "Restored v1",
+    });
+    expect(((await call("short:versions", { streamId, shortId })) as unknown[]).length).toBe(3);
+    await expect(
+      call("short:saveDraft", { streamId, shortId, short: { ...draft, segments: [] } }),
+    ).rejects.toThrow("bad input");
+  });
+
+  it("chooseFile and relink take no path from the renderer", async () => {
+    const { call, streamId, sourceId } = await setup();
+    // Extra keys are stripped, so a path can't sneak in.
+    expect(await call("source:relink", { streamId, sourceId, path: "/etc/passwd" })).toMatchObject({
+      source: { sourceId },
+    });
   });
 });

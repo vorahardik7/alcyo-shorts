@@ -13,7 +13,7 @@ Each task ends with lint, typecheck and test, then one local commit.
   - Unit tests
   - _Requirements: 1.1–1.4, 2.1–2.3, 3.1–3.3, 4.1–4.3, 5.1–5.3, 6.1, 6.2, 7.4_
 
-- [ ] 3. Main service and IPC
+- [x] 3. Main service and IPC
   - Contract channels and events; handlers; `StreamService` with the job
     queue, throttled status messages and finish bookkeeping
   - Tests with a fake worker

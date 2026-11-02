@@ -1,9 +1,12 @@
 // Electron main: lifecycle, single instance, alcyo:// links, IPC, worker host.
+import { existsSync, readdirSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
+import { availableParallelism } from "node:os";
 import { join } from "node:path";
-import type { SetupRequest } from "@alcyo/ipc";
+import { CHANNELS, type SetupRequest } from "@alcyo/ipc";
 import { LINK_SCHEME } from "@alcyo/schema";
-import { app, BrowserWindow, shell } from "electron";
+import { SettingsFile, StreamsIndex } from "@alcyo/store";
+import { app, BrowserWindow, dialog, shell } from "electron";
 import pkg from "../../package.json";
 import { resolveBinDir } from "./bin";
 import { handle, sendEvent } from "./ipc";
@@ -11,6 +14,7 @@ import { createHandlers } from "./ipc/handlers";
 import { findLinkInArgv, LinkQueue, linkEvent } from "./links";
 import { fixtureKind, fixtureReport } from "./setup-fixture";
 import { SetupService } from "./setup-service";
+import { StreamService } from "./streams";
 import { createMainWindow, isHeadless, rendererUrl } from "./window";
 import { WorkerHost } from "./worker-host";
 
@@ -30,6 +34,11 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   run();
+}
+
+function envPath(name: string): string | undefined {
+  const value = process.env[name];
+  return value !== undefined && value.length > 0 ? value : undefined;
 }
 
 function run(): void {
@@ -89,7 +98,8 @@ function run(): void {
     const userData = app.getPath("userData");
     const paths = {
       userData,
-      models: join(userData, "models"),
+      // Tests point these at throwaway (or real) folders.
+      models: envPath("ALCYO_MODELS_DIR") ?? join(userData, "models"),
       bin: resolveBinDir({
         packaged: app.isPackaged,
         resourcesPath: process.resourcesPath,
@@ -112,6 +122,54 @@ function run(): void {
         : Promise.resolve(fixtureReport(fixture, setupRequest, new Date())),
     );
 
+    const settings = new SettingsFile(userData, platform);
+    const exe = (name: string) => join(paths.bin, platform === "win32" ? `${name}.exe` : name);
+    const streams = new StreamService({
+      index: new StreamsIndex(userData),
+      settings,
+      defaultStreamsDir:
+        envPath("ALCYO_STREAMS_DIR") ?? join(app.getPath("videos"), "Alcyo Shorts"),
+      worker: () => worker.get(),
+      analysisBase: async () => {
+        const [current, report] = await Promise.all([settings.read(), setup.get()]);
+        const version = (name: string) =>
+          report.tools.find((t) => t.name === name)?.version ?? "unknown";
+        const modelPath = join(paths.models, `ggml-${current.whisperModel}.bin`);
+        const vadDir = join(paths.bin, "models");
+        const vad = existsSync(vadDir)
+          ? readdirSync(vadDir).find((f) => f.startsWith("ggml-silero"))
+          : undefined;
+        return {
+          tools: { ffmpeg: exe("ffmpeg"), ffprobe: exe("ffprobe"), whisper: exe("whisper-cli") },
+          toolVersions: { ffmpeg: version("ffmpeg"), whisper: version("whisper-cli") },
+          model: existsSync(modelPath) ? { path: modelPath, name: current.whisperModel } : null,
+          vadModel: join(vadDir, vad ?? "ggml-silero-v6.2.0.bin"),
+          mode: "full",
+          encoder: current.encoder,
+          threads: Math.max(1, Math.min(8, availableParallelism() - 1)),
+        };
+      },
+      chooseVideo: async () => {
+        const options: Electron.OpenDialogOptions = {
+          title: "Choose a recording",
+          properties: ["openFile"],
+          filters: [
+            {
+              name: "Videos",
+              extensions: ["mp4", "mov", "m4v", "mkv", "webm", "avi", "flv", "ts"],
+            },
+            { name: "All files", extensions: ["*"] },
+          ],
+        };
+        const result =
+          win === undefined || win.isDestroyed()
+            ? await dialog.showOpenDialog(options)
+            : await dialog.showOpenDialog(win, options);
+        return result.canceled ? null : (result.filePaths[0] ?? null);
+      },
+      emit: (event, payload) => sendEvent(win, event, payload),
+    });
+
     const handlers = createHandlers({
       appInfo: () => ({
         // From package.json, so unpackaged runs (where Electron reports its
@@ -133,13 +191,13 @@ function run(): void {
       setupCheck: (fresh) => setup.get(fresh),
       pingWorker: (text) => worker.get().ping(text),
       now: () => performance.now(),
+      streams,
     });
     const appUrl = () => rendererUrl(mainDir);
-    handle("app:info", handlers["app:info"], appUrl);
-    handle("app:paths", handlers["app:paths"], appUrl);
-    handle("shell:openDataFolder", handlers["shell:openDataFolder"], appUrl);
-    handle("setup:check", handlers["setup:check"], appUrl);
-    handle("worker:ping", handlers["worker:ping"], appUrl);
+    for (const channel of CHANNELS) {
+      // Each handler's types come from its channel; the loop just registers them.
+      handle(channel, handlers[channel] as never, appUrl);
+    }
 
     worker.start();
     // Start the first check now, so the window rarely has to wait for it.

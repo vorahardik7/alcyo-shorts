@@ -1,5 +1,6 @@
 // Handlers for every channel in @alcyo/ipc's contract.
 import type { AppInfo, AppPaths, Channel, SetupReport } from "@alcyo/ipc";
+import type { StreamService } from "../streams";
 import type { HandlerFn } from "./core";
 
 export interface HandlerDeps {
@@ -9,6 +10,7 @@ export interface HandlerDeps {
   setupCheck(fresh: boolean): Promise<SetupReport>;
   pingWorker(text: string): Promise<string>;
   now(): number;
+  streams: StreamService;
 }
 
 type Handlers = { [C in Channel]: HandlerFn<C> };
@@ -27,5 +29,48 @@ export function createHandlers(deps: HandlerDeps): Handlers {
       const reply = await deps.pingWorker(text);
       return { text: reply, ms: Math.max(0, Math.round(deps.now() - started)) };
     },
+
+    "streams:list": () => deps.streams.list(),
+    "stream:open": ({ streamId }) => deps.streams.open(streamId),
+    "stream:markRead": async ({ streamId }) => {
+      await deps.streams.markRead(streamId);
+      return {};
+    },
+    "source:chooseFile": ({ streamId }) => deps.streams.chooseFile(streamId),
+    "source:relink": ({ streamId, sourceId }) => deps.streams.relink(streamId, sourceId),
+    "analysis:start": ({ streamId, sourceId }) => deps.streams.startAnalysis(streamId, sourceId),
+    "job:cancel": async ({ jobId }) => {
+      await deps.streams.cancel(jobId);
+      return {};
+    },
+    "thread:messages": ({ streamId, limit, before }) =>
+      deps.streams.messages(streamId, limit, before),
+    "transcript:window": async ({ streamId, sourceId, fromMs, toMs }) =>
+      (await deps.streams.forStream(streamId)).transcriptWindow(sourceId, fromMs, toMs),
+    "transcript:search": async ({ streamId, sourceId, query }) =>
+      (await deps.streams.forStream(streamId)).searchTranscript(sourceId, query),
+    "short:get": async ({ streamId, shortId, version }) => {
+      const store = await deps.streams.forStream(streamId);
+      const v = await store.version(shortId, version);
+      // A draft only applies to the head.
+      const draft =
+        version === undefined || version === v.version ? await store.draft(shortId) : null;
+      return { version: v, draft };
+    },
+    "short:versions": async ({ streamId, shortId }) =>
+      (await deps.streams.forStream(streamId)).versions(shortId),
+    "short:saveDraft": async ({ streamId, shortId, short }) => {
+      await (await deps.streams.forStream(streamId)).saveDraft(shortId, short);
+      return {};
+    },
+    "short:saveVersion": async ({ streamId, shortId, short, note }) =>
+      (await deps.streams.forStream(streamId)).saveVersion(shortId, {
+        short,
+        note,
+        createdBy: "user",
+        fromMessageId: null,
+      }),
+    "short:restore": async ({ streamId, shortId, version }) =>
+      (await deps.streams.forStream(streamId)).restore(shortId, version),
   };
 }

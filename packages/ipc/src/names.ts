@@ -7,10 +7,31 @@ export const CHANNELS = [
   "shell:openDataFolder",
   "setup:check",
   "worker:ping",
+  "streams:list",
+  "stream:open",
+  "stream:markRead",
+  "source:chooseFile",
+  "source:relink",
+  "analysis:start",
+  "job:cancel",
+  "thread:messages",
+  "transcript:window",
+  "transcript:search",
+  "short:get",
+  "short:versions",
+  "short:saveDraft",
+  "short:saveVersion",
+  "short:restore",
 ] as const;
 export type Channel = (typeof CHANNELS)[number];
 
-export const EVENTS = ["link:open", "link:invalid"] as const;
+export const EVENTS = [
+  "link:open",
+  "link:invalid",
+  "streams:changed",
+  "thread:message",
+  "job:progress",
+] as const;
 export type EventName = (typeof EVENTS)[number];
 
 export function isChannel(value: unknown): value is Channel {

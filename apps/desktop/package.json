@@ -26,6 +26,7 @@
     "@alcyo/media": "workspace:*",
     "@alcyo/planner": "workspace:*",
     "@alcyo/schema": "workspace:*",
+    "@alcyo/store": "workspace:*",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-router": "^1.170.46",
