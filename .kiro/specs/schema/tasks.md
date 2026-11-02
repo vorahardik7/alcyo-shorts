@@ -13,7 +13,7 @@ e2e and packaging run in task 7.
   - Unit tests for each schema's accept and reject cases
   - _Requirements: 1.1–1.5_
 
-- [ ] 3. Checks and time math
+- [x] 3. Checks and time math
   - `checks.ts` with paths and reasons; `time.ts`
   - fast-check arbitraries in `testing/arbitraries.ts`
   - Unit tests and properties 1, 2, 4 and 7

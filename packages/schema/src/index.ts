@@ -9,3 +9,5 @@ export * from "./source.ts";
 export * from "./transcript.ts";
 export * from "./presets.ts";
 export * from "./project.ts";
+export * from "./time.ts";
+export * from "./checks.ts";

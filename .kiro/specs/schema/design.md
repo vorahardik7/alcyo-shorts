@@ -102,7 +102,7 @@ into the same shape.
 |---|---|
 | `checkShort(short, ctx)` | backwards segments; segments past `ctx.sourceDurationMs`; overlapping or out-of-order segments; crop keys out of order or outside the short; overrides naming words not in `ctx.wordIds`; duplicate overrides; a hook ending before it starts or after the short |
 | `checkVersion(v, ctx)` | `checkShort`, plus `parent` not below `version` |
-| `checkChatAction(a, ctx)` | `shortId` not in `ctx.shortIds`; `set_style` with scope `short` and no `shortId`; `set_style` with neither preset |
+| `checkChatAction(a, ctx)` | `shortId` not in `ctx.shortIds`; `set_style` with scope `short` and no `shortId`; `set_style` with neither preset; `retime_short` with neither a start nor an end word |
 | `checkTranscript(t)` | duplicate word or line ids; words out of time order; lines naming unknown words or words out of order; lines over 12 s; line times not matching their words |
 | `checkProfile(p)` | `lengthMs.min > lengthMs.max` |
 
