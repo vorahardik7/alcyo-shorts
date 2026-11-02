@@ -3,7 +3,6 @@ export * from "./cache.ts";
 export * from "./chunks.ts";
 export * from "./errors.ts";
 export * from "./ffmpeg-args.ts";
-export * from "./files.ts";
 export * from "./fingerprint.ts";
 export * from "./parse.ts";
 export * from "./peaks.ts";

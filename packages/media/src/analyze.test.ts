@@ -407,3 +407,19 @@ describe("analyze", () => {
     expect(await readdir(sourceDir)).toEqual(["stream.mp4"]);
   });
 });
+
+describe("analyze without a whisper model", () => {
+  it("skips the transcript with a note and runs the rest", async () => {
+    const fake = fakeTools();
+    const result = await analyze({ ...req, model: null }, { run: fake.run });
+    expect(result.steps.transcript).toBe("not-needed");
+    expect(result.problems).toEqual([
+      {
+        step: "transcript",
+        message: "The transcription model isn't downloaded yet. Open Setup to get it.",
+      },
+    ]);
+    expect(result.steps.proxy).toBe("done");
+    expect(ran(fake)).not.toContain("whisper");
+  });
+});

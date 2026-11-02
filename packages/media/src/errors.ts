@@ -24,3 +24,5 @@ export function stepFailed(step: string, log: string[]): MediaError {
     log,
   );
 }
+export const NO_MODEL_MESSAGE =
+  "The transcription model isn't downloaded yet. Open Setup to get it.";

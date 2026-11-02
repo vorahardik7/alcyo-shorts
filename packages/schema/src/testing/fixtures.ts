@@ -218,6 +218,7 @@ export const settings: Settings = {
   encoder: "h264_videotoolbox",
   ytDlp: { version: "2026.10.26", path: null },
   theme: "dark",
+  streamsDir: null,
 };
 
 export const streamsIndex: StreamsIndex = {
@@ -230,6 +231,7 @@ export const streamsIndex: StreamsIndex = {
       thumbnail: null,
       lastActivityAt: AT,
       unread: true,
+      preview: "Three shorts are ready.",
     },
   ],
 };

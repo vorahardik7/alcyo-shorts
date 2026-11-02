@@ -2,7 +2,7 @@
 // second, from the 16 kHz mono 16-bit WAV.
 import { open } from "node:fs/promises";
 import { AUDIO_RATE } from "./ffmpeg-args.ts";
-import { writeFileAtomic } from "./files.ts";
+import { writeFileAtomic } from "@alcyo/store";
 
 export const PEAKS_PER_SECOND = 100;
 const PER_BUCKET = AUDIO_RATE / PEAKS_PER_SECOND;

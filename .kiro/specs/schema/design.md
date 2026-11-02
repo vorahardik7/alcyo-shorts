@@ -171,3 +171,9 @@ Each is a fast-check property with at least 200 runs.
    `Segment`, starting on a word start and ending on a word end.
 7. **Links.** For any valid `AppLink` in canonical form (`edit` only with a
    `version`, and only `true`), `parseAppLink(formatAppLink(l))` equals `l`.
+
+## Later additions
+
+- Spec 4: `Settings.streamsDir` (nullable, default null) and
+  `StreamsIndex.streams[].preview` (default ""). Both have defaults, so files
+  written before them still parse and `schemaVersion` stays 1.

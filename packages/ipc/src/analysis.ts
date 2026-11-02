@@ -20,7 +20,8 @@ export const AnalysisRequest = z.object({
   }),
   /** Part of every cache key, so a tool update reruns its steps. */
   toolVersions: z.object({ ffmpeg: z.string().max(50), whisper: z.string().max(50) }),
-  model: z.object({ path: z.string().min(1), name: z.enum(["small.en", "base.en"]) }),
+  /** Null when the model isn't downloaded: the transcript step is skipped with a note. */
+  model: z.object({ path: z.string().min(1), name: z.enum(["small.en", "base.en"]) }).nullable(),
   vadModel: z.string().min(1),
   /** Quick: probe, audio, silences, transcript, scenes, loudness. */
   mode: z.enum(["full", "quick"]),

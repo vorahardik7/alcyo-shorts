@@ -25,6 +25,8 @@ export const StreamsIndex = z.object({
       thumbnail: z.string().nullable(),
       lastActivityAt: IsoDateTime,
       unread: z.boolean(),
+      /** The last message's text, cut short, for the sidebar. Added in spec 4. */
+      preview: z.string().max(200).default(""),
     }),
   ),
 });
@@ -63,6 +65,8 @@ export const Settings = z.object({
   encoder: z.string().nullable(),
   ytDlp: z.object({ version: z.string().nullable(), path: z.string().nullable() }),
   theme: z.enum(["dark", "light"]),
+  /** Where new stream folders go. Null means Movies (macOS) or Videos (Windows)/Alcyo Shorts. Added in spec 4. */
+  streamsDir: z.string().min(1).nullable().default(null),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -76,5 +80,6 @@ export function defaultSettings(platform: "darwin" | "win32" | "linux"): Setting
     encoder: null,
     ytDlp: { version: null, path: null },
     theme: "dark",
+    streamsDir: null,
   };
 }

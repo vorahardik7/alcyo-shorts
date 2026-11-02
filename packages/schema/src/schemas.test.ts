@@ -161,3 +161,14 @@ describe("section 22 rules", () => {
     });
   });
 });
+
+describe("fields added after the first release", () => {
+  it("parse old settings and streams files without them", () => {
+    const { streamsDir: _s, ...oldSettings } = F.settings;
+    expect(S.Settings.parse(oldSettings).streamsDir).toBeNull();
+    const { preview: _p, ...oldEntry } = F.streamsIndex.streams[0]!;
+    expect(
+      S.StreamsIndex.parse({ schemaVersion: 1, streams: [oldEntry] }).streams[0]!.preview,
+    ).toBe("");
+  });
+});

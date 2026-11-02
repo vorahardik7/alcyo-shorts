@@ -15,6 +15,7 @@
   "dependencies": {
     "@alcyo/ipc": "workspace:*",
     "@alcyo/schema": "workspace:*",
+    "@alcyo/store": "workspace:*",
     "zod": "^4.6.7"
   }
 }

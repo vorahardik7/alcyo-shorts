@@ -1,7 +1,7 @@
 // Cache keys and analysis/steps.json (section 14).
 import { createHash } from "node:crypto";
 import { AnalysisSteps, type AnalysisStepName, type Fingerprint } from "@alcyo/schema";
-import { readJson, writeJsonAtomic } from "./files.ts";
+import { readJson, writeJsonAtomic } from "@alcyo/store";
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;

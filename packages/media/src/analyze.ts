@@ -17,7 +17,13 @@ import {
 import { z } from "zod";
 import { readSteps, stepKey, writeSteps } from "./cache.ts";
 import { planChunks } from "./chunks.ts";
-import { MediaError, NO_AUDIO_MESSAGE, UNREADABLE_MESSAGE, stepFailed } from "./errors.ts";
+import {
+  MediaError,
+  NO_AUDIO_MESSAGE,
+  NO_MODEL_MESSAGE,
+  UNREADABLE_MESSAGE,
+  stepFailed,
+} from "./errors.ts";
 import {
   AUDIO_RATE,
   ENCODER_ORDER,
@@ -44,7 +50,7 @@ import {
   renameInto,
   tempPathFor,
   writeJsonAtomic,
-} from "./files.ts";
+} from "@alcyo/store";
 import { fingerprint as fingerprintOf } from "./fingerprint.ts";
 import { parseLoudness, parseScenes, parseSilences } from "./parse.ts";
 import { PEAKS_PER_SECOND, writePeaks } from "./peaks.ts";
@@ -244,7 +250,7 @@ export async function analyze(
         return { noiseDb: SILENCE_NOISE_DB, minMs: SILENCE_MIN_MS };
       case "transcript":
         return {
-          model: req.model.name,
+          model: req.model?.name ?? null,
           vad: "silero-v6.2.0",
           language: "en",
           nfa: true,
@@ -338,6 +344,7 @@ export async function analyze(
     },
 
     transcript: async (key) => {
+      const model = req.model!;
       const chunks = planChunks(durationMs, await readSilences());
       await mkdir(paths.chunks, { recursive: true });
       await mkdir(paths.tmp, { recursive: true });
@@ -380,8 +387,8 @@ export async function analyze(
           "transcript",
           req.tools.whisper,
           whisperArgs({
-            model: req.model.path,
-            modelName: req.model.name,
+            model: model.path,
+            modelName: model.name,
             vadModel: req.vadModel,
             wav,
             outBase,
@@ -411,7 +418,7 @@ export async function analyze(
       const transcript = buildTranscript({
         sourceId: req.sourceId,
         language,
-        model: req.model.name,
+        model: model.name,
         words: fixWordTimes(words),
       });
       const issues = checkTranscript(Transcript.parse(transcript));
@@ -530,9 +537,11 @@ export async function analyze(
         (NEEDS_VIDEO.has(step) && probe.video === null) ||
         (step === "proxy" && probe.playsDirectly) ||
         READS[step].some((r) => outcomes[r] === "failed" || outcomes[r] === "not-needed");
-      if (blocked) {
+      const noModel = step === "transcript" && req.model === null;
+      if (blocked || noModel) {
         if (step === "audio" && probe.audio === null)
           problems.push({ step, message: NO_AUDIO_MESSAGE });
+        if (noModel && !blocked) problems.push({ step, message: NO_MODEL_MESSAGE });
         delete stepsFile.steps[step];
         finish(step, "not-needed");
         continue;
