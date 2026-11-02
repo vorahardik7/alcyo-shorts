@@ -1,12 +1,12 @@
 // Screenshots of every screen, for review. Not part of test:e2e.
 // Run: pnpm --filter @alcyo/desktop screens (after a build). Headless: nothing
-// shows on screen. Output: .agent-runs/screens/pass2/.
+// shows on screen. Output: .agent-runs/screens/pass3/.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 import { type Launched, launch } from "./launch";
 
-const out = join(import.meta.dirname, "..", "..", "..", ".agent-runs", "screens", "pass2");
+const out = join(import.meta.dirname, "..", "..", "..", ".agent-runs", "screens", "pass3");
 mkdirSync(out, { recursive: true });
 
 let run: Launched;

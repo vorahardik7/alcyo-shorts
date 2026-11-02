@@ -6,7 +6,17 @@ import { closeTopOverlay, escapeScreen } from "./overlays";
 
 export const isMac = /Mac/.test(navigator.userAgent);
 
-/** Back one entry when there is one, otherwise home. */
+/**
+ * Moving between Settings sections replaces the history entry instead of
+ * adding one, so history only grows when you change screens. Back, Esc and
+ * Cmd+[ from any section then leave Settings for wherever you were before it,
+ * usually the chat.
+ */
+export function inSettings(pathname: string): boolean {
+  return pathname === "/settings" || pathname.startsWith("/settings/");
+}
+
+/** Back one screen when there is one, otherwise home. */
 export function useBack(): () => void {
   const router = useRouter();
   return useCallback(() => {
@@ -95,7 +105,10 @@ export function useNavShortcuts(): void {
       }
       if (mod && e.key === ",") {
         e.preventDefault();
-        void router.navigate({ to: "/settings" });
+        void router.navigate({
+          to: "/settings",
+          replace: inSettings(router.state.location.pathname),
+        });
         return;
       }
       if (mod && (e.key === "f" || e.key === "F") && !e.shiftKey) {

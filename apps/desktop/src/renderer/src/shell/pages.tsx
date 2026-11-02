@@ -1,19 +1,18 @@
 import { BAD_LINK_MESSAGE } from "@alcyo/schema";
 import { useParams } from "@tanstack/react-router";
-import { type ClipboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ClipboardEvent,
+  type ComponentProps,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useBack, usePageTitle, useUi } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
 import { AppMark } from "../ui/AppMark";
 import { Button, ButtonLink, IconButton } from "../ui/Button";
-import {
-  AlertIcon,
-  ArrowUpIcon,
-  FileIcon,
-  LinkIcon,
-  PlusIcon,
-  ShieldIcon,
-  SparkIcon,
-} from "../ui/icons";
+import { AlertIcon, ArrowUpIcon, FileIcon, LinkIcon, PlusIcon, SparkIcon } from "../ui/icons";
 import { toast } from "../ui/toast";
 
 const URL_RE = /^\s*https?:\/\/\S+\s*$/i;
@@ -97,10 +96,12 @@ function AttachMenu({ onClose, onLink }: { onClose: () => void; onLink: () => vo
 function Composer({
   placeholder,
   onText,
+  className = "mx-auto mb-6 max-w-3xl",
 }: {
   placeholder: string;
   /** What sending plain text does on this screen. */
   onText: () => void;
+  className?: string;
 }) {
   const [text, setText] = useState("");
   const [menu, setMenu] = useState(false);
@@ -127,7 +128,7 @@ function Composer({
       // A new key restarts the highlight each time something asks for the composer.
       key={focusRequest}
       data-testid="composer"
-      className={`relative mx-auto mb-6 flex w-full max-w-3xl items-center gap-2 rounded-full bg-bubble-claude py-2 pr-2 pl-2 ring-1 ring-hairline transition-shadow focus-within:ring-[#ffffff2e] ${focusRequest > 0 ? "pulse-ring" : ""}`}
+      className={`relative flex w-full items-center gap-2 rounded-full bg-bubble-claude py-2 pr-2 pl-2 ring-1 ring-hairline transition-shadow focus-within:ring-[#ffffff2e] ${className} ${focusRequest > 0 ? "pulse-ring" : ""}`}
       onSubmit={(e) => {
         e.preventDefault();
         send();
@@ -190,83 +191,64 @@ function ThreadFrame({
   );
 }
 
-const STEPS = [
-  {
-    icon: LinkIcon,
-    title: "Bring a stream",
-    body: "Paste a YouTube or Twitch link, or drop a recording. Add viewer clips the same way.",
-  },
-  {
-    icon: ShieldIcon,
-    title: "Analyzed here",
-    body: "Transcript and clip matching run on this computer. Video and audio never leave it.",
-  },
-  {
-    icon: SparkIcon,
-    title: "Shorts in the thread",
-    body: "Claude proposes three. Ask for changes like you'd text an editor, or open the editor.",
-  },
-];
+function Suggestion({
+  icon,
+  children,
+  ...rest
+}: { icon: ReactNode; children: ReactNode } & ComponentProps<"button">) {
+  return (
+    <button
+      type="button"
+      className="inline-flex h-9 items-center gap-2 rounded-full px-4 text-[14px] text-secondary ring-1 ring-hairline outline-none transition-colors hover:bg-bubble-claude hover:text-text focus-visible:ring-2 focus-visible:ring-unread active:scale-[0.97]"
+      {...rest}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
 
 export function Home() {
   usePageTitle("New stream");
-  const focusComposer = useUi((s) => s.focusComposer);
   return (
-    <ThreadFrame
-      header="New stream"
-      placeholder="Paste a stream link or drop a recording"
-      onText={() =>
-        toast(
-          "Start with a stream",
-          "Paste a stream link or drop a recording. Chat opens once a stream is in.",
-        )
-      }
-    >
-      <div data-testid="empty-thread" className="w-full max-w-2xl py-8 text-center">
-        <AppMark size={64} className="mx-auto drop-shadow-[0_10px_30px_rgba(79,107,245,0.35)]" />
-        <h1 className="mt-6 text-[28px] font-semibold tracking-tight">Turn a stream into shorts</h1>
-        <p className="mx-auto mt-2 max-w-lg text-body text-secondary">
-          Paste a stream link or drop in a recording to start. Everything is processed on this
-          computer.
-        </p>
-
-        <ol className="mt-8 grid grid-cols-3 gap-3 text-left">
-          {STEPS.map((step, i) => {
-            const Icon = step.icon;
-            return (
-              <li key={step.title} className="rounded-[20px] bg-card p-4 ring-1 ring-hairline">
-                <div className="flex items-center gap-2 text-[13px] text-tertiary">
-                  <span className="grid size-7 place-items-center rounded-full bg-bubble-user text-text">
-                    <Icon size={15} />
-                  </span>
-                  Step {i + 1}
-                </div>
-                <p className="mt-3 text-small font-medium">{step.title}</p>
-                <p className="mt-1 text-[14px] leading-snug text-secondary">{step.body}</p>
-              </li>
-            );
-          })}
-        </ol>
-
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Button variant="primary" data-testid="paste-link" onClick={focusComposer}>
-            <LinkIcon size={17} />
-            Paste a stream link
-          </Button>
-          <Button data-testid="choose-file" onClick={() => importFileToast()}>
-            <FileIcon size={17} />
-            Choose a file
-          </Button>
-          <Button variant="ghost" data-testid="open-demo" onClick={demoToast}>
-            Open the demo stream
-          </Button>
+    <section className="relative flex h-full flex-col">
+      <div className="drag absolute inset-x-0 top-0 h-12" aria-hidden />
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-8">
+        <div data-testid="empty-thread" className="w-full max-w-2xl pb-16">
+          <h1 className="text-center text-[28px] font-semibold tracking-tight">
+            Turn a stream into shorts
+          </h1>
+          <p className="mt-2 text-center text-body text-secondary">
+            Paste a link or drop in a recording. It&apos;s processed on this computer.
+          </p>
+          <Composer
+            className="mt-8"
+            placeholder="Paste a stream link or drop a recording"
+            onText={() =>
+              toast(
+                "Start with a stream",
+                "Paste a stream link or drop a recording. Chat opens once a stream is in.",
+              )
+            }
+          />
+          <div className="mt-4 flex justify-center gap-2">
+            <Suggestion
+              data-testid="choose-file"
+              icon={<FileIcon size={15} />}
+              onClick={() => importFileToast()}
+            >
+              Choose a file
+            </Suggestion>
+            <Suggestion data-testid="open-demo" icon={<SparkIcon size={15} />} onClick={demoToast}>
+              Open the demo stream
+            </Suggestion>
+          </div>
         </div>
-        <p className="mt-6 text-[13px] text-tertiary">
-          You can also drop a file anywhere in this window. Only download videos you own or have
-          permission to use.
-        </p>
       </div>
-    </ThreadFrame>
+      <p className="pb-5 text-center text-[13px] text-tertiary">
+        Only download videos you own or have permission to use.
+      </p>
+    </section>
   );
 }
 

@@ -1,6 +1,6 @@
 import { Outlet, useLocation, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { useNavShortcuts } from "../nav/navigation";
+import { inSettings, useNavShortcuts } from "../nav/navigation";
 import { useSetup } from "../setup/store";
 import { AppMark } from "../ui/AppMark";
 import { UploadIcon } from "../ui/icons";
@@ -107,7 +107,8 @@ export function Layout() {
   const ready = useStartupGate();
   const dropping = useFileDrop();
   const pathname = useLocation({ select: (l) => l.pathname });
-  const fullWindow = pathname === "/setup";
+  // Setup and Settings take the whole window; Settings brings its own nav.
+  const fullWindow = pathname === "/setup" || inSettings(pathname);
 
   if (!ready) return <Splash />;
 

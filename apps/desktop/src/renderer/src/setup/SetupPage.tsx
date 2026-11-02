@@ -2,9 +2,9 @@
 import type { CheckId, SetupCheck } from "@alcyo/ipc";
 import { useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { usePageTitle } from "../nav/navigation";
+import { BackButton } from "../nav/BackButton";
+import { isMac, usePageTitle } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
-import { ScreenHeader } from "../nav/ScreenHeader";
 import { AppMark } from "../ui/AppMark";
 import { Button } from "../ui/Button";
 import { RefreshIcon, ShieldIcon } from "../ui/icons";
@@ -25,15 +25,18 @@ function CheckRow({ check }: { check: SetupCheck }) {
     <li
       data-testid={`check-${check.id}`}
       data-state={check.state}
-      className="flex gap-4 border-b border-hairline px-5 py-3.5 last:border-b-0"
+      className="flex gap-3.5 border-b border-hairline px-5 py-3 last:border-b-0"
     >
-      <StateIcon state={check.state} />
+      <StateIcon state={check.state} size={24} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-small font-medium">{check.label}</span>
           {!check.required && <span className="text-[12px] text-tertiary">Optional for now</span>}
         </div>
-        <p className="mt-0.5 truncate text-[13px] text-secondary select-text" title={check.detail}>
+        <p
+          className={`mt-0.5 truncate text-[13px] select-text ${check.state === "pass" ? "text-tertiary" : "text-secondary"}`}
+          title={check.detail}
+        >
           {check.detail}
         </p>
         {check.fix !== null && (
@@ -88,24 +91,26 @@ export function SetupPage() {
 
   return (
     <div data-testid="setup" className="flex h-full flex-col bg-bg">
-      <ScreenHeader
-        fullWindow
-        title="Setup"
-        subtitle="Check this computer before the first stream"
-        onBack={leave}
-        backLabel={
-          router.history.canGoBack() ? "Back" : report?.complete === true ? "Home" : "Skip for now"
-        }
-      />
+      <div className={`drag flex h-[52px] shrink-0 items-center ${isMac ? "pl-[84px]" : "pl-3"}`}>
+        <BackButton
+          onBack={leave}
+          label={
+            router.history.canGoBack()
+              ? "Back"
+              : report?.complete === true
+                ? "Home"
+                : "Skip for now"
+          }
+        />
+      </div>
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-2xl px-8 pt-10 pb-8">
+        <div className="mx-auto w-full max-w-[640px] px-8 pt-6 pb-8">
           <div className="flex items-center gap-4">
-            <AppMark size={56} />
+            <AppMark size={44} />
             <div>
-              <h2 className="text-[24px] font-semibold tracking-tight">Set up Alcyo Shorts</h2>
+              <h1 className="text-[24px] font-semibold tracking-tight">Set up Alcyo Shorts</h1>
               <p className="mt-1 text-small text-secondary">
-                Everything runs on this computer. Alcyo needs Claude Code, signed in, and the tools
-                that ship with the app.
+                Alcyo needs Claude Code, signed in, and the tools that ship with the app.
               </p>
             </div>
           </div>
@@ -143,10 +148,8 @@ export function SetupPage() {
           <div className="mt-6 space-y-5">
             {GROUPS.map((group) => (
               <section key={group.title} aria-label={group.title}>
-                <h3 className="mb-2 px-1 text-[13px] font-semibold tracking-wide text-secondary uppercase">
-                  {group.title}
-                </h3>
-                <ul className="overflow-hidden rounded-[20px] bg-card ring-1 ring-hairline">
+                <h2 className="mb-2 px-1 text-[13px] font-medium text-tertiary">{group.title}</h2>
+                <ul className="overflow-hidden rounded-2xl bg-card ring-1 ring-hairline">
                   {report === null ? (
                     <LoadingRows />
                   ) : (
@@ -168,7 +171,7 @@ export function SetupPage() {
         </div>
       </div>
 
-      <footer className="flex shrink-0 items-center gap-3 border-t border-hairline bg-sidebar px-8 py-4">
+      <footer className="flex shrink-0 items-center gap-2 border-t border-hairline px-6 py-3">
         <span className="flex-1 text-[13px] text-tertiary">
           {report === null
             ? "Checking…"
@@ -176,6 +179,7 @@ export function SetupPage() {
         </span>
         <Button
           data-testid="check-again"
+          variant="ghost"
           onClick={() => void load(true)}
           disabled={loading}
           aria-busy={loading}

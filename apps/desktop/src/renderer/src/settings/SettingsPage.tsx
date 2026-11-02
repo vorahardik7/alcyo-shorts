@@ -1,13 +1,14 @@
 // Settings (plan section 4): Profile, Claude, Models, Encoder, Storage, About.
-// Every value comes from main; anything not built yet says which spec adds it.
+// Full window: the settings nav takes the sidebar's place, and Back returns to
+// the chat. Every value comes from main; unbuilt parts carry a quiet "Soon".
 import type { SetupCheck, SetupReport } from "@alcyo/ipc";
 import { Link } from "@tanstack/react-router";
 import { type ComponentType, type ReactNode, useEffect } from "react";
 import license from "../../../../../../LICENSE?raw";
 import notices from "../../../../../../THIRD_PARTY_NOTICES.md?raw";
-import { usePageTitle, useBack } from "../nav/navigation";
+import { BackButton } from "../nav/BackButton";
+import { isMac, useBack, usePageTitle } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
-import { ScreenHeader } from "../nav/ScreenHeader";
 import { openIssues, useAppFacts, useSetup } from "../setup/store";
 import { AppMark } from "../ui/AppMark";
 import { Button, ButtonLink } from "../ui/Button";
@@ -26,13 +27,13 @@ import { toast } from "../ui/toast";
 export type SectionId = "profile" | "claude" | "models" | "encoder" | "storage" | "about";
 
 type IconC = ComponentType<{ size?: number }>;
-const SECTIONS: Array<{ id: SectionId; label: string; icon: IconC; blurb: string }> = [
-  { id: "profile", label: "Profile", icon: UserIcon, blurb: "Your style, for every prompt" },
-  { id: "claude", label: "Claude", icon: ChatIcon, blurb: "Claude Code and sign-in" },
-  { id: "models", label: "Models", icon: WaveIcon, blurb: "Transcription models" },
-  { id: "encoder", label: "Encoder", icon: CpuIcon, blurb: "ffmpeg and video encoders" },
-  { id: "storage", label: "Storage", icon: FolderIcon, blurb: "Where Alcyo keeps things" },
-  { id: "about", label: "About", icon: InfoIcon, blurb: "Version and licenses" },
+const SECTIONS: Array<{ id: SectionId; label: string; icon: IconC }> = [
+  { id: "profile", label: "Profile", icon: UserIcon },
+  { id: "claude", label: "Claude", icon: ChatIcon },
+  { id: "models", label: "Models", icon: WaveIcon },
+  { id: "encoder", label: "Encoder", icon: CpuIcon },
+  { id: "storage", label: "Storage", icon: FolderIcon },
+  { id: "about", label: "About", icon: InfoIcon },
 ];
 
 function sectionLink(id: SectionId) {
@@ -65,11 +66,21 @@ function FixLine({ c }: { c: SetupCheck | undefined }) {
 function CheckAgain() {
   const { load, loading } = useSetup();
   return (
-    <Button size="sm" onClick={() => void load(true)} disabled={loading} data-testid="check-again">
+    <Button
+      size="sm"
+      variant="ghost"
+      onClick={() => void load(true)}
+      disabled={loading}
+      data-testid="check-again"
+    >
       {loading ? <Spinner size={12} /> : <RefreshIcon size={14} />}
       Check again
     </Button>
   );
+}
+
+function Note({ children }: { children: ReactNode }) {
+  return <p className="px-1 text-[13px] leading-relaxed text-tertiary">{children}</p>;
 }
 
 function SetupBanner() {
@@ -77,13 +88,13 @@ function SetupBanner() {
   if (report === null || report.complete) return null;
   const n = openIssues(report);
   return (
-    <div className="flex items-center gap-4 rounded-[20px] bg-warn/8 px-5 py-4 ring-1 ring-warn/25">
-      <div className="min-w-0 flex-1">
-        <p className="text-small font-medium">Setup isn&apos;t finished</p>
-        <p className="text-[14px] text-secondary">
-          {n} {n === 1 ? "check needs" : "checks need"} attention before Alcyo can make shorts.
-        </p>
-      </div>
+    <div className="flex items-center gap-4 rounded-2xl bg-warn/8 px-5 py-3.5 ring-1 ring-warn/20">
+      <p className="min-w-0 flex-1 text-[14px]">
+        <span className="font-medium">Setup isn&apos;t finished.</span>{" "}
+        <span className="text-secondary">
+          {n} {n === 1 ? "check needs" : "checks need"} attention.
+        </span>
+      </p>
       <ButtonLink to="/setup" size="sm" variant="primary">
         Open Setup
       </ButtonLink>
@@ -92,33 +103,18 @@ function SetupBanner() {
 }
 
 function ProfileSection() {
-  const fields = [
-    ["Streams and audience", "What you stream and who watches"],
-    ["Good moments", "Funny, skill, rage, wholesome, story, info, close calls"],
-    ["Short length", "15 to 60 s until you pick a range"],
-    ["Titles", "Your title rules and examples"],
-    ["Keep out", "Words, topics or people to avoid"],
-    ["Platforms", "TikTok, YouTube Shorts, Reels: sets safe areas"],
-    ["Caption look", "Bold pop, Clean, or your template"],
-  ] as const;
   return (
     <>
       <SetupBanner />
       <Card
         testId="profile-empty"
         title="No creator profile yet"
-        description="After setup, Claude asks you 5 to 8 questions about your streams and your shorts, and the app measures a few shorts you've already posted. The result is your profile. It goes into every prompt as text, and you can edit it here."
+        description="Claude asks a few questions about your streams and your shorts. The answers become your profile, which goes into every prompt as text."
         actions={<ComesIn spec={7} />}
-      >
-        {fields.map(([label, hint]) => (
-          <Row key={label} label={label}>
-            <span className="text-tertiary">{hint}</span>
-          </Row>
-        ))}
-      </Card>
+      />
       <Card
         title="Past shorts and templates"
-        description="Drop in up to 50 shorts you've posted, and any Alcyo template or .ass caption file. Only their measurements are kept; the videos are never copied."
+        description="Add shorts you've posted and caption templates. Only their measurements are kept."
         actions={<ComesIn spec={7} />}
       />
     </>
@@ -130,11 +126,11 @@ function ClaudeSection() {
   const found = check(report, "claude");
   const auth = check(report, "claude-auth");
   const via = {
-    saved: "Saved path",
-    "known-folder": "Standard install folder",
-    "login-shell": "Your login shell",
-    where: "PATH (where.exe)",
-    none: "Not found",
+    saved: "saved path",
+    "known-folder": "standard folder",
+    "login-shell": "login shell",
+    where: "PATH",
+    none: "",
   } as const;
   return (
     <>
@@ -148,7 +144,12 @@ function ClaudeSection() {
           {report === null ? (
             <Waiting />
           ) : (
-            <YesNo value={report.claude.path !== null} yes="Found" no="Not found" />
+            <span className="flex items-center gap-2">
+              <YesNo value={report.claude.path !== null} yes="Found" no="Not found" />
+              {report.claude.path !== null && (
+                <span className="text-[13px] text-tertiary">in a {via[report.claude.via]}</span>
+              )}
+            </span>
           )}
         </Row>
         <Row
@@ -160,7 +161,6 @@ function ClaudeSection() {
             {report === null ? "…" : (report.claude.path ?? "—")}
           </span>
         </Row>
-        <Row label="Found through">{report === null ? "…" : via[report.claude.via]}</Row>
         <Row label="Version">{report === null ? "…" : (report.claude.version ?? "—")}</Row>
         <Row label="Signed in">
           {report === null ? (
@@ -174,32 +174,28 @@ function ClaudeSection() {
         <FixLine c={found} />
         <FixLine c={auth} />
       </Card>
-      <Card
-        title="Setup checks"
-        description="Claude Code, sign-in, the bundled tools and models, with how to fix anything missing."
-        actions={
-          <ButtonLink to="/setup" size="sm" data-testid="open-setup">
-            Open Setup
-          </ButtonLink>
-        }
-      />
-      <Card
-        title="What Claude sees"
-        description="Numbered transcript lines and your profile, as text. Never video, audio or images. Claude answers with line ids and one action from a fixed list; the app checks every answer."
-      />
-      <Card
-        title="Locate claude by hand"
-        description="For installs in an unusual folder. The path is saved and tried first."
-        actions={<ComesIn spec={5} />}
-      />
-      <Card
-        title="Backup: Anthropic API key"
-        description="Used only if you choose it or Claude Code is missing. Stored encrypted on this computer."
-        actions={<ComesIn spec={5} />}
-      />
-      <p className="px-1 text-[13px] text-secondary">
-        Alcyo never offers a Claude login and never reads or stores your Claude credentials.
-      </p>
+      <Card title="More">
+        <Row
+          label="Setup checks"
+          aside={
+            <ButtonLink to="/setup" size="sm" variant="ghost" data-testid="open-setup">
+              Open Setup
+            </ButtonLink>
+          }
+        >
+          <span className="text-secondary">Every tool and model, with fixes</span>
+        </Row>
+        <Row label="Locate claude" aside={<ComesIn spec={5} />}>
+          <span className="text-secondary">For installs in an unusual folder</span>
+        </Row>
+        <Row label="API key backup" aside={<ComesIn spec={5} />}>
+          <span className="text-secondary">Used only if Claude Code is missing</span>
+        </Row>
+      </Card>
+      <Note>
+        Claude sees transcript text and your profile, never video or audio. Alcyo never offers a
+        Claude login and never reads or stores your Claude credentials.
+      </Note>
     </>
   );
 }
@@ -213,21 +209,20 @@ function ModelsSection() {
       <Card
         testId="models-card"
         title="Transcription"
-        description="whisper.cpp turns speech into words with timings, on this computer."
+        description="whisper.cpp turns speech into timed words on this computer."
         actions={<CheckAgain />}
       >
         <Row label="Model">
-          {report === null ? <Waiting /> : <span>{report.whisperModel.name}</span>}
-        </Row>
-        <Row label="Downloaded">
           {report === null ? (
             <Waiting />
-          ) : report.whisperModel.present ? (
-            <YesNo value />
           ) : (
             <span className="flex items-center gap-2">
-              <StateBadge state="pending">Not yet</StateBadge>
-              <ComesIn spec={5} />
+              {report.whisperModel.name}
+              {report.whisperModel.present ? (
+                <YesNo value yes="Downloaded" />
+              ) : (
+                <StateBadge state="pending">Not downloaded</StateBadge>
+              )}
             </span>
           )}
         </Row>
@@ -241,18 +236,20 @@ function ModelsSection() {
               ? `Version ${whisper.version ?? "unknown"}`
               : "Missing"}
         </Row>
-      </Card>
-      <Card
-        title="Voice activity detection"
-        description="Silero VAD skips silence, so transcription is faster and has fewer made-up words."
-      >
-        <Row label="Status">
-          {vad === undefined ? <Waiting /> : <StateBadge state={vad.state} />}
+        <Row label="Silence detection">
+          {vad === undefined ? (
+            <Waiting />
+          ) : (
+            <span className="flex items-center gap-2">
+              <StateBadge state={vad.state} />
+              <span className="text-[13px] text-tertiary">Silero VAD</span>
+            </span>
+          )}
         </Row>
-        <Row label="File" mono>
-          {vad?.detail.replace(/^Bundled: /, "") ?? "…"}
-        </Row>
       </Card>
+      <Note>
+        The model downloads once, on first run. Silero skips silence so transcripts are faster.
+      </Note>
     </>
   );
 }
@@ -267,30 +264,23 @@ function EncoderSection() {
       <Card
         testId="encoder-card"
         title="ffmpeg"
-        description="Every cut, crop and caption in a render is done by the bundled ffmpeg."
+        description="Every cut, crop and caption is done by the bundled ffmpeg."
         actions={<CheckAgain />}
       >
-        <Row label="ffmpeg">
+        <Row label="Version">
           {report === null ? (
             <Waiting />
           ) : ffmpeg?.present === true ? (
-            `Version ${ffmpeg.version ?? "unknown"}`
+            `${ffmpeg.version ?? "unknown"} (ffprobe ${ffprobe?.present === true ? (ffprobe.version ?? "unknown") : "missing"})`
           ) : (
             "Missing"
           )}
         </Row>
-        <Row label="ffprobe">
-          {report === null
-            ? "…"
-            : ffprobe?.present === true
-              ? `Version ${ffprobe.version ?? "unknown"}`
-              : "Missing"}
+        <Row label="Captions">
+          {report === null ? <Waiting /> : <YesNo value={report.ffmpeg.subtitles} yes="libass" />}
         </Row>
-        <Row label="Captions (libass)">
-          {report === null ? <Waiting /> : <YesNo value={report.ffmpeg.subtitles} />}
-        </Row>
-        <Row label="libx264">
-          {report === null ? <Waiting /> : <YesNo value={report.ffmpeg.libx264} />}
+        <Row label="H.264">
+          {report === null ? <Waiting /> : <YesNo value={report.ffmpeg.libx264} yes="libx264" />}
         </Row>
         <Row label="Path" mono>
           {ffmpeg?.path ?? "…"}
@@ -298,11 +288,11 @@ function EncoderSection() {
       </Card>
       <Card
         testId="encoders-card"
-        title="H.264 encoders in this build"
-        description="A 1-second test encode will pick the fastest one that works on this computer, with libx264 as the fallback."
+        title="Encoders"
+        description="A short test encode picks the fastest one that works here."
         actions={<ComesIn spec={3} />}
       >
-        <div className="flex flex-wrap gap-2 px-5 py-4">
+        <div className="flex flex-wrap gap-1.5 px-5 py-4">
           {report === null ? (
             <Waiting />
           ) : report.encoders.length === 0 ? (
@@ -311,10 +301,10 @@ function EncoderSection() {
             report.encoders.map((e) => (
               <span
                 key={e}
-                className={`rounded-full px-3 py-1 font-mono text-[12px] ring-1 ring-hairline ${hw.includes(e) ? "bg-unread/10 text-[#93b8fb]" : "bg-bubble-user"}`}
+                title={hw.includes(e) ? "Hardware" : undefined}
+                className={`rounded-full px-2.5 py-0.5 font-mono text-[12px] ${hw.includes(e) ? "bg-unread/10 text-[#93b8fb]" : "bg-bubble-user text-secondary"}`}
               >
                 {e}
-                {hw.includes(e) ? " · hardware" : ""}
               </span>
             ))
           )}
@@ -333,53 +323,41 @@ function StorageSection() {
       <Card
         testId="storage-card"
         title="Folders"
-        description="Alcyo keeps its settings, profile and models here. Nothing is written next to your videos."
+        description="Settings, profile and models live here. Nothing is written next to your videos."
+        actions={
+          paths !== null ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              data-testid="open-data-folder"
+              onClick={() => {
+                window.alcyo
+                  .invoke("shell:openDataFolder", {})
+                  .catch(() =>
+                    toast("Couldn't open the data folder", "Copy the path and open it by hand."),
+                  );
+              }}
+            >
+              Show in {folderApp}
+            </Button>
+          ) : undefined
+        }
       >
-        <Row
-          label="Data folder"
-          mono
-          aside={
-            paths !== null ? (
-              <>
-                <CopyButton text={paths.userData} />
-                <Button
-                  size="sm"
-                  data-testid="open-data-folder"
-                  onClick={() => {
-                    window.alcyo
-                      .invoke("shell:openDataFolder", {})
-                      .catch(() =>
-                        toast(
-                          "Couldn't open the data folder",
-                          "Copy the path and open it by hand.",
-                        ),
-                      );
-                  }}
-                >
-                  Show in {folderApp}
-                </Button>
-              </>
-            ) : undefined
-          }
-        >
+        <Row label="Data" mono aside={paths ? <CopyButton text={paths.userData} /> : undefined}>
           <span data-testid="data-folder">{paths?.userData ?? "…"}</span>
         </Row>
         <Row label="Models" mono aside={paths ? <CopyButton text={paths.models} /> : undefined}>
           {paths?.models ?? "…"}
         </Row>
-        <Row label="Bundled tools" mono aside={paths ? <CopyButton text={paths.bin} /> : undefined}>
+        <Row label="Tools" mono aside={paths ? <CopyButton text={paths.bin} /> : undefined}>
           {paths?.bin ?? "…"}
         </Row>
       </Card>
       <Card
         title="Streams"
-        description="Each stream is a folder ending in .alcyo, in a place you choose. The app keeps a list of them so links open the right folder."
+        description="Each stream is a .alcyo folder in a place you choose."
         actions={<ComesIn spec={4} />}
-      >
-        <Row label="Streams">
-          <span className="text-secondary">None yet</span>
-        </Row>
-      </Card>
+      />
     </>
   );
 }
@@ -388,30 +366,50 @@ function osName(platform: string): string {
   return platform === "darwin" ? "macOS" : platform === "win32" ? "Windows" : platform;
 }
 
+function Disclosure({
+  title,
+  children,
+  testId,
+}: {
+  title: string;
+  children: string;
+  testId?: string;
+}) {
+  return (
+    <details className="rounded-2xl bg-card ring-1 ring-hairline">
+      <summary className="cursor-pointer list-none rounded-2xl px-5 py-3.5 text-[14px] outline-none hover:bg-bubble-claude focus-visible:ring-2 focus-visible:ring-unread">
+        {title}
+      </summary>
+      <pre
+        data-testid={testId}
+        className="max-h-[480px] overflow-y-auto border-t border-hairline px-5 py-4 font-sans text-[13px] whitespace-pre-wrap text-secondary select-text"
+      >
+        {children}
+      </pre>
+    </details>
+  );
+}
+
 function AboutSection() {
   const info = useAppFacts((s) => s.info);
   const report = useSetup((s) => s.report);
   return (
     <>
-      <section className="flex items-center gap-5 rounded-[20px] bg-card px-5 py-5 ring-1 ring-hairline">
-        <AppMark size={64} />
+      <div className="flex items-center gap-4 px-1 py-2">
+        <AppMark size={48} />
         <div className="min-w-0">
-          <h3 className="text-[20px] font-semibold">Alcyo Shorts</h3>
-          <p data-testid="app-version" className="text-small text-secondary select-text">
+          <h3 className="text-body font-semibold">Alcyo Shorts</h3>
+          <p data-testid="app-version" className="text-[14px] text-secondary select-text">
             {info === null ? "Alcyo Shorts" : `Version ${info.version}`}
           </p>
-          <p className="mt-1 text-[14px] text-secondary">
-            Turns a long stream into captioned 9:16 shorts, on your own computer.
-          </p>
         </div>
-      </section>
-      <Card title="This computer">
-        <Row label="System">{info === null ? "…" : `${osName(info.platform)} · ${info.arch}`}</Row>
-        <Row label="Electron">{info?.electron ?? "…"}</Row>
-        <Row label="Chromium">{info?.chrome ?? "…"}</Row>
-        <Row label="Node">{info?.node ?? "…"}</Row>
-      </Card>
-      <Card title="Bundled tools" testId="about-tools">
+      </div>
+      <Card title="This computer" testId="about-tools">
+        <Row label="System">
+          {info === null
+            ? "…"
+            : `${osName(info.platform)} · ${info.arch} · Electron ${info.electron}`}
+        </Row>
         {report === null ? (
           <Row label="Tools">
             <Waiting />
@@ -424,25 +422,10 @@ function AboutSection() {
           ))
         )}
       </Card>
-      <details className="group rounded-[20px] bg-card ring-1 ring-hairline">
-        <summary className="cursor-pointer list-none rounded-[20px] px-5 py-4 text-small font-semibold outline-none hover:bg-bubble-claude focus-visible:ring-2 focus-visible:ring-unread">
-          License (MIT)
-        </summary>
-        <pre className="border-t border-hairline px-5 py-4 font-sans text-[13px] whitespace-pre-wrap text-secondary select-text">
-          {license}
-        </pre>
-      </details>
-      <details className="group rounded-[20px] bg-card ring-1 ring-hairline">
-        <summary className="cursor-pointer list-none rounded-[20px] px-5 py-4 text-small font-semibold outline-none hover:bg-bubble-claude focus-visible:ring-2 focus-visible:ring-unread">
-          Third-party notices
-        </summary>
-        <pre
-          data-testid="notices"
-          className="max-h-[480px] overflow-y-auto border-t border-hairline px-5 py-4 font-sans text-[13px] whitespace-pre-wrap text-secondary select-text"
-        >
-          {notices}
-        </pre>
-      </details>
+      <Disclosure title="License (MIT)">{license}</Disclosure>
+      <Disclosure title="Third-party notices" testId="notices">
+        {notices}
+      </Disclosure>
     </>
   );
 }
@@ -470,45 +453,48 @@ export function SettingsPage({ section }: { section: SectionId }) {
   const Content = CONTENT[section];
 
   return (
-    <div data-testid="settings" className="flex h-full flex-col">
-      <ScreenHeader title="Settings" subtitle={meta.label} />
-      <div className="flex min-h-0 flex-1">
-        <nav
-          aria-label="Settings sections"
-          className="w-60 shrink-0 space-y-0.5 overflow-y-auto border-r border-hairline p-3"
-        >
+    <div data-testid="settings" className="flex h-full">
+      <aside className="flex w-[240px] shrink-0 flex-col border-r border-hairline bg-sidebar">
+        {/* The macOS traffic lights sit in this strip. */}
+        <div className={`drag flex h-[52px] shrink-0 items-center ${isMac ? "pl-[84px]" : "pl-3"}`}>
+          <BackButton />
+        </div>
+        <h1 data-testid="screen-title" className="px-5 pt-3 pb-3 text-[20px] font-semibold">
+          Settings
+        </h1>
+        <nav aria-label="Settings sections" className="space-y-0.5 overflow-y-auto px-2">
           {SECTIONS.map((s) => {
             const Icon = s.icon;
             return (
               <Link
                 key={s.id}
                 {...sectionLink(s.id)}
+                // Sections replace each other in history, so Back leaves Settings.
+                replace
                 data-testid={`section-${s.id}`}
                 aria-current={s.id === section ? "page" : undefined}
-                className={`flex items-center gap-3 rounded-2xl px-3 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-unread ${
+                className={`flex h-9 items-center gap-3 rounded-xl px-3 text-[15px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-unread ${
                   s.id === section
-                    ? "bg-bubble-user text-text"
-                    : "text-secondary hover:bg-bubble-claude hover:text-text active:bg-bubble-user"
+                    ? "bg-bubble-claude text-text"
+                    : "text-secondary hover:bg-bubble-claude/60 hover:text-text"
                 }`}
               >
-                <Icon size={18} />
-                <span className="min-w-0">
-                  <span className="block text-small leading-tight">{s.label}</span>
-                  <span className="block truncate text-[12px] text-tertiary">{s.blurb}</span>
-                </span>
+                <Icon size={17} />
+                {s.label}
               </Link>
             );
           })}
         </nav>
-        <div className="min-w-0 flex-1 overflow-y-auto">
-          <div
-            key={section}
-            data-testid={`settings-${section}`}
-            className="fade-in mx-auto w-full max-w-2xl space-y-4 px-8 pt-8 pb-12"
-          >
-            <h2 className="text-[22px] font-semibold tracking-tight">{meta.label}</h2>
-            <Content />
-          </div>
+      </aside>
+      <div className="relative min-w-0 flex-1 overflow-y-auto">
+        <div className="drag sticky top-0 z-10 h-[52px] bg-bg/80 backdrop-blur" aria-hidden />
+        <div
+          key={section}
+          data-testid={`settings-${section}`}
+          className="fade-in mx-auto w-full max-w-[640px] space-y-4 px-10 pt-2 pb-16"
+        >
+          <h2 className="pb-1 text-[22px] font-semibold tracking-tight">{meta.label}</h2>
+          <Content />
         </div>
       </div>
     </div>

@@ -1,14 +1,13 @@
-// Sidebar (plan section 4): search and +, the creator header, the stream list,
-// and the settings row and render queue button pinned at the bottom.
+// Sidebar (plan section 4): search and +, the stream list, and Settings and the
+// render queue pinned at the bottom. The creator header joins it with profiles
+// (spec 7).
 import { Link, useLocation, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { isMac, useUi } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
 import { openIssues, useSetup } from "../setup/store";
-import { AppMark } from "../ui/AppMark";
-import { Button, IconButton, iconButtonClass } from "../ui/Button";
-import { ChatIcon, CloseIcon, GridIcon, PlusIcon, SearchIcon, SettingsIcon } from "../ui/icons";
-import { Kbd } from "../ui/parts";
+import { IconButton, iconButtonClass } from "../ui/Button";
+import { CloseIcon, GridIcon, PlusIcon, SearchIcon, SettingsIcon } from "../ui/icons";
 
 /** Streams arrive with the project store (spec 4); until then the list is empty. */
 const streams: Array<{ id: string; name: string; preview: string }> = [];
@@ -40,21 +39,11 @@ function SearchBox() {
   );
 }
 
-function EmptyStreams({ onNew }: { onNew: () => void }) {
+function EmptyStreams() {
   return (
-    <div data-testid="empty-streams" className="mx-2 mt-2 rounded-[20px] px-5 py-8 text-center">
-      <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-bubble-claude ring-1 ring-hairline">
-        <ChatIcon size={20} className="text-tertiary" />
-      </div>
-      <p className="mt-4 text-small font-medium">No streams yet</p>
-      <p className="mt-1 text-[14px] leading-snug text-secondary">
-        Paste a stream link or drop in a recording. Each stream becomes a conversation here.
-      </p>
-      <Button size="sm" variant="secondary" className="mt-4" onClick={onNew}>
-        <PlusIcon size={15} />
-        New stream
-      </Button>
-    </div>
+    <p data-testid="empty-streams" className="px-3 py-2 text-[14px] text-tertiary">
+      No streams yet
+    </p>
   );
 }
 
@@ -70,13 +59,12 @@ export function Sidebar() {
     focusComposer();
   };
   const onRenders = pathname === "/renders";
-  const inSettings = pathname.startsWith("/settings");
   const matches = streams.filter((s) => s.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
     <aside
       data-testid="sidebar"
-      className="flex w-[340px] shrink-0 flex-col border-r border-hairline bg-sidebar"
+      className="flex w-[280px] shrink-0 flex-col border-r border-hairline bg-sidebar"
     >
       {/* The macOS traffic lights sit in the top-left corner. */}
       <div
@@ -101,43 +89,27 @@ export function Sidebar() {
         </IconButton>
       </div>
 
-      <Link
-        to="/settings/profile"
-        data-testid="creator-header"
-        className="mx-3 mt-2 flex flex-col items-center gap-2 rounded-[20px] px-4 py-4 outline-none transition-colors hover:bg-bubble-claude focus-visible:ring-2 focus-visible:ring-unread"
-      >
-        <AppMark size={52} className="drop-shadow-[0_6px_18px_rgba(79,107,245,0.35)]" />
-        <div className="text-center">
-          <div className="text-small font-semibold">Alcyo Shorts</div>
-          <div className="text-[13px] text-secondary">No creator profile yet</div>
-        </div>
-      </Link>
-
-      <nav aria-label="Streams" className="mt-2 flex-1 overflow-y-auto px-2">
+      <nav aria-label="Streams" className="mt-1 flex-1 overflow-y-auto px-2">
         {searchOpen && query.length > 0 && matches.length === 0 ? (
-          <p data-testid="no-matches" className="px-4 py-8 text-center text-[14px] text-secondary">
+          <p data-testid="no-matches" className="px-3 py-2 text-[14px] text-tertiary">
             No streams match “{query}”.
           </p>
         ) : streams.length === 0 ? (
-          <EmptyStreams onNew={newStream} />
+          <EmptyStreams />
         ) : null}
       </nav>
 
-      <div className="shrink-0 space-y-1 border-t border-hairline p-2">
+      <div className="shrink-0 space-y-1 p-2">
         {report !== null && !report.complete && (
           <Link
             to="/setup"
             data-testid="setup-row"
-            className="flex items-center gap-3 rounded-2xl px-3 py-2.5 outline-none transition-colors hover:bg-bubble-claude focus-visible:ring-2 focus-visible:ring-unread active:bg-bubble-user"
+            className="flex h-10 items-center gap-3 rounded-xl px-3 text-[15px] outline-none transition-colors hover:bg-bubble-claude focus-visible:ring-2 focus-visible:ring-unread"
           >
-            <span className="grid size-8 place-items-center rounded-full bg-warn/15">
-              <span className="size-2 rounded-full bg-warn" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-small">Finish setup</span>
-              <span className="block text-[13px] text-secondary">
-                {issues} {issues === 1 ? "check needs" : "checks need"} attention
-              </span>
+            <span className="size-2 shrink-0 rounded-full bg-warn" />
+            <span className="min-w-0 flex-1 truncate">Finish setup</span>
+            <span className="text-[13px] text-tertiary">
+              {issues} {issues === 1 ? "issue" : "issues"}
             </span>
           </Link>
         )}
@@ -145,21 +117,11 @@ export function Sidebar() {
           <Link
             to="/settings"
             data-testid="settings-row"
-            aria-current={inSettings ? "page" : undefined}
-            className={`flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-3 py-2 outline-none transition-colors hover:bg-bubble-claude focus-visible:ring-2 focus-visible:ring-unread active:bg-bubble-user ${inSettings ? "bg-bubble-claude" : ""}`}
+            title={`Settings (${isMac ? "⌘," : "Ctrl+,"})`}
+            className="flex h-10 min-w-0 flex-1 items-center gap-3 rounded-xl px-3 text-[15px] text-secondary outline-none transition-colors hover:bg-bubble-claude hover:text-text focus-visible:ring-2 focus-visible:ring-unread"
           >
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-bubble-user text-text ring-1 ring-hairline">
-              <SettingsIcon size={17} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-small">Settings</span>
-              <span className="block truncate text-[13px] text-secondary">
-                Profile, Claude, models
-              </span>
-            </span>
-            <span className="hidden xl:inline">
-              <Kbd>{isMac ? "⌘," : "Ctrl+,"}</Kbd>
-            </span>
+            <SettingsIcon size={18} />
+            Settings
           </Link>
           <button
             type="button"
@@ -174,7 +136,7 @@ export function Sidebar() {
             }}
             className={iconButtonClass("md", onRenders)}
           >
-            <GridIcon />
+            <GridIcon size={18} />
           </button>
         </div>
       </div>

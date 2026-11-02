@@ -4,7 +4,6 @@ import { useBack, usePageTitle } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
 import { IconButton } from "../ui/Button";
 import { CloseIcon, FilmIcon } from "../ui/icons";
-import { ComesIn } from "../ui/parts";
 import { Home } from "./pages";
 
 function Drawer() {
@@ -38,7 +37,7 @@ function Drawer() {
             >
               Render queue
             </h2>
-            <p className="text-[13px] text-secondary">One render at a time, 1080×1920 MP4</p>
+            <p className="text-[13px] text-tertiary">1080×1920 MP4, one at a time</p>
           </div>
           <IconButton
             ref={closeButton}
@@ -54,17 +53,10 @@ function Drawer() {
             <FilmIcon size={26} />
           </div>
           <p className="mt-5 text-body font-medium">No renders yet</p>
-          <p className="mt-2 text-small leading-snug text-secondary">
-            Press Render on a short&apos;s card or in the editor. Progress shows here, and you get a
-            notification when the MP4 is ready.
+          <p className="mt-2 text-[14px] leading-snug text-secondary">
+            Press Render on a short to add it here.
           </p>
-          <div className="mt-5">
-            <ComesIn spec={9} />
-          </div>
         </div>
-        <footer className="border-t border-hairline px-5 py-4 text-[13px] text-tertiary">
-          Renders are saved in each stream&apos;s renders folder.
-        </footer>
       </div>
     </div>
   );

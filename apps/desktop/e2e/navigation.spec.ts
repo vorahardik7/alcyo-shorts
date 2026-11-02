@@ -45,39 +45,50 @@ test.describe("with setup complete", () => {
   }
 
   for (const way of ways) {
-    test(`every settings section opens from the sidebar and ${way} returns`, async () => {
-      await goHome();
-      await page.getByTestId("settings-row").click();
-      await expect.poll(hash).toBe("#/settings");
-      await expect(page.getByTestId("screen-title")).toHaveText("Settings");
-      await expect(page.getByTestId("settings-profile")).toBeVisible();
-      await expect.poll(title).toBe("Settings · Profile · Alcyo Shorts");
-
-      for (const section of ["claude", "models", "encoder", "storage", "about", "profile"]) {
-        const before = await hash();
+    test(`every settings section opens from the sidebar and ${way} returns to the chat`, async () => {
+      for (const section of ["profile", "claude", "models", "encoder", "storage", "about"]) {
+        await goHome();
+        await page.getByTestId("settings-row").click();
+        await expect.poll(hash).toBe("#/settings");
+        await expect(page.getByTestId("screen-title")).toHaveText("Settings");
+        await expect(page.getByTestId("sidebar")).toHaveCount(0);
         await page.getByTestId(`section-${section}`).click();
         await expect.poll(hash).toBe(`#/settings/${section}`);
         await expect(page.getByTestId(`settings-${section}`)).toBeVisible();
+        await expect
+          .poll(title)
+          .toBe(`Settings · ${section[0]!.toUpperCase()}${section.slice(1)} · Alcyo Shorts`);
         await goBack(way);
-        await expect.poll(hash).toBe(before);
-        await page.getByTestId(`section-${section}`).click();
-        await expect.poll(hash).toBe(`#/settings/${section}`);
+        await expect.poll(hash).toBe("#/");
+        await expect(page.getByTestId("empty-thread")).toBeVisible();
       }
-
-      // Back out of Settings entirely: the history unwinds to home.
-      await page.evaluate(() => window.history.go(-(window.history.length - 1)));
-      await goHome();
     });
   }
 
-  test("the creator header opens the profile; Back returns home", async () => {
+  test("Back after visiting several sections leaves Settings in one step", async () => {
     await goHome();
-    await page.getByTestId("creator-header").click();
-    await expect.poll(hash).toBe("#/settings/profile");
-    await expect(page.getByTestId("profile-empty")).toContainText("No creator profile yet");
-    await expect(page.getByTestId("comes-in").first()).toHaveText("Comes in spec 7");
+    await page.getByTestId("settings-row").click();
+    for (const section of ["claude", "models", "about", "storage", "encoder"]) {
+      await page.getByTestId(`section-${section}`).click();
+      await expect.poll(hash).toBe(`#/settings/${section}`);
+    }
     await page.getByTestId("back").click();
     await expect.poll(hash).toBe("#/");
+  });
+
+  test("Back from Settings returns to the stream it was opened from", async () => {
+    await page.evaluate(() => {
+      window.location.hash = "#/s/abc";
+    });
+    await expect(page.getByTestId("thread-header")).toHaveText("abc");
+    await page.keyboard.press(`${mod}+Comma`);
+    await expect.poll(hash).toBe("#/settings");
+    await page.getByTestId("section-claude").click();
+    await page.getByTestId("section-about").click();
+    await page.keyboard.press(`${mod}+Comma`);
+    await expect.poll(hash).toBe("#/settings");
+    await page.keyboard.press("Escape");
+    await expect.poll(hash).toBe("#/s/abc");
   });
 
   test("Setup opens from Settings > Claude and Back returns there", async () => {
@@ -147,7 +158,7 @@ test.describe("with setup complete", () => {
     await expect.poll(hash).toBe("#/");
   });
 
-  test("the mouse back and forward buttons and Cmd+] move through history", async () => {
+  test("the mouse back and forward buttons and Cmd+] move between screens", async () => {
     await goHome();
     await page.getByTestId("settings-row").click();
     await page.getByTestId("section-about").click();
@@ -157,15 +168,17 @@ test.describe("with setup complete", () => {
         window.dispatchEvent(new MouseEvent("mouseup", { button: b, bubbles: true }));
       }, button);
     await mouse(3);
-    await expect.poll(hash).toBe("#/settings");
+    await expect.poll(hash).toBe("#/");
     await mouse(4);
     await expect.poll(hash).toBe("#/settings/about");
     await page.keyboard.press(`${mod}+BracketLeft`);
-    await expect.poll(hash).toBe("#/settings");
+    await expect.poll(hash).toBe("#/");
     await page.keyboard.press(`${mod}+BracketRight`);
     await expect.poll(hash).toBe("#/settings/about");
     await page.keyboard.press(`${mod}+Comma`);
     await expect.poll(hash).toBe("#/settings");
+    await page.keyboard.press(`${mod}+BracketLeft`);
+    await expect.poll(hash).toBe("#/");
   });
 
   test("settings show real state from main", async () => {
@@ -226,7 +239,7 @@ test.describe("with setup complete", () => {
     await expect(page.getByTestId("toast")).toContainText("Importing files comes in spec 6");
     await page.getByTestId("open-demo").click();
     await expect(page.getByTestId("toast")).toContainText("spec 13");
-    await page.getByTestId("paste-link").click();
+    await page.getByTestId("new-stream").click();
     await expect(page.getByTestId("composer-input")).toBeFocused();
     await page.getByTestId("attach").click();
     await expect(page.getByTestId("attach-menu")).toBeVisible();

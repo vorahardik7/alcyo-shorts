@@ -50,14 +50,15 @@ export function StateBadge({ state, children }: { state: CheckState; children?: 
   );
 }
 
-/** "Comes in spec N": the plain note for things not built yet. */
+/** A quiet "Soon" tag for things not built yet. The spec number is in the tooltip. */
 export function ComesIn({ spec }: { spec: number }) {
   return (
     <span
       data-testid="comes-in"
-      className="inline-flex shrink-0 items-center rounded-full bg-unread/10 px-2.5 py-0.5 text-[12px] font-medium whitespace-nowrap text-[#93b8fb] ring-1 ring-unread/25"
+      title={`Comes in spec ${spec}`}
+      className="inline-flex shrink-0 items-center rounded-full bg-bubble-user px-2 py-0.5 text-[12px] whitespace-nowrap text-tertiary"
     >
-      Comes in spec {spec}
+      Soon
     </span>
   );
 }
@@ -78,10 +79,10 @@ export function Card({
   return (
     <section
       data-testid={testId}
-      className="rounded-[20px] bg-card ring-1 ring-hairline"
+      className="rounded-2xl bg-card ring-1 ring-hairline"
       aria-label={title}
     >
-      <div className="flex items-start gap-4 px-5 pt-4 pb-3">
+      <div className="flex items-center gap-4 px-5 py-4">
         <div className="min-w-0 flex-1">
           <h3 className="text-small font-semibold">{title}</h3>
           {description !== undefined && (
