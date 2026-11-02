@@ -1,6 +1,6 @@
 // The one link parser. alcyo:// URLs and in-app routes, as in plan section 5.
 import { z } from "zod";
-import { Id, Ms } from "./primitives";
+import { Id, Ms } from "./primitives.ts";
 
 /** Settings sections other than Profile, which has its own link. */
 export const SETTINGS_SECTIONS = ["claude", "models", "encoder", "storage", "about"] as const;

@@ -7,7 +7,7 @@ e2e and packaging run in task 7.
   - requirements.md (EARS), design.md with correctness properties, tasks.md
   - _Requirements: all_
 
-- [ ] 2. Schemas
+- [x] 2. Schemas
   - primitives, short, clip, message, profile, claude, source, transcript, presets, project/settings/indexes
   - `.ts` import extensions so Node can run the package directly
   - Unit tests for each schema's accept and reject cases
