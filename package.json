@@ -17,6 +17,7 @@
     "package:mac": "pnpm --filter @alcyo/desktop package:mac",
     "package:win": "pnpm --filter @alcyo/desktop package:win",
     "fetch-binaries": "node scripts/fetch-binaries.ts",
+    "plan:validate": "node scripts/validate-plan.ts",
     "hooks:install": "node scripts/install-git-hooks.mjs",
     "format": "prettier --write .",
     "check:media": "node scripts/check-no-media.mjs",

@@ -29,7 +29,7 @@ e2e and packaging run in task 7.
   - `migrate.ts` with a fake-chain test
   - _Requirements: 6.1–6.3, 7.1, 7.2_
 
-- [ ] 6. plan:validate
+- [x] 6. plan:validate
   - `files.ts` (`fileKindOf`, `parseProjectFile`), `scripts/validate-plan.ts`, root `plan:validate`
   - Tests with good and bad temp projects, hook stdin, torn JSONL line
   - _Requirements: 8.1–8.5_
