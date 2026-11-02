@@ -34,6 +34,6 @@ e2e and packaging run in task 7.
   - Tests with good and bad temp projects, hook stdin, torn JSONL line
   - _Requirements: 8.1–8.5_
 
-- [ ] 7. Wrap-up
+- [x] 7. Wrap-up
   - Full build, `pnpm test:e2e`, `pnpm package:mac`
   - _Requirements: all_
