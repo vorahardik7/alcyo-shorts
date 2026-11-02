@@ -136,7 +136,7 @@ export function Layout() {
         {dropping && (
           <div
             data-testid="drop-target"
-            className="fade-in pointer-events-none absolute inset-4 z-50 flex flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-unread/70 bg-[#0b0b0bd9] text-center"
+            className="fade-in pointer-events-none absolute inset-4 z-50 flex flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-unread/70 bg-[#0b0b0bf0] text-center backdrop-blur-md"
           >
             <span className="grid size-14 place-items-center rounded-2xl bg-unread/15 text-unread">
               <UploadIcon size={26} />

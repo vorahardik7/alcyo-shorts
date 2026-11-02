@@ -31,6 +31,9 @@ protocols:
   - name: Alcyo link
     schemes: [alcyo]
 
+# build/icon.png comes from build/icon.svg (pnpm --filter @alcyo/desktop icon).
+icon: build/icon.png
+
 mac:
   target:
     - target: dmg

@@ -33,7 +33,7 @@ e2e, screenshots and packaging run in task 8.
   - Settings with six sections and real state, "Comes in spec N" chips
   - _Requirements: 2.1–2.7, 3.5–3.7_
 
-- [ ] 7. Sidebar, empty states and visuals
+- [x] 7. Sidebar, empty states and visuals
   - App mark component and `build/icon.svg` / `icon.png`
   - Sidebar: traffic-light inset, header, empty state, search box, setup row, footer
   - Home welcome, composer + menu, paste/send URL toast, drop target and toast

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { SetupRequest } from "@alcyo/ipc";
 import { LINK_SCHEME } from "@alcyo/schema";
 import { app, BrowserWindow, shell } from "electron";
+import pkg from "../../package.json";
 import { resolveBinDir } from "./bin";
 import { handle, sendEvent } from "./ipc";
 import { createHandlers } from "./ipc/handlers";
@@ -92,7 +93,7 @@ function run(): void {
       bin: resolveBinDir({
         packaged: app.isPackaged,
         resourcesPath: process.resourcesPath,
-        appPath: app.getAppPath(),
+        appDir: join(mainDir, "..", ".."),
         env: process.env,
         platform: process.platform,
         arch: process.arch,
@@ -113,8 +114,10 @@ function run(): void {
 
     const handlers = createHandlers({
       appInfo: () => ({
-        name: app.getName(),
-        version: app.getVersion(),
+        // From package.json, so unpackaged runs (where Electron reports its
+        // own name and version) show the same as the packaged app.
+        name: pkg.productName,
+        version: pkg.version,
         platform,
         arch: process.arch,
         electron: process.versions.electron ?? "unknown",

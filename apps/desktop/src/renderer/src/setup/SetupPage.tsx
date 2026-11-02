@@ -37,15 +37,15 @@ function CheckRow({ check }: { check: SetupCheck }) {
           {check.detail}
         </p>
         {check.fix !== null && (
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex items-start gap-3">
             <p
               data-testid="fix"
-              className={`text-[14px] ${check.state === "fail" ? "text-[#fca5a5]" : "text-[#fcd34d]"}`}
+              className={`min-w-0 flex-1 pt-1 text-[14px] ${check.state === "fail" ? "text-[#fca5a5]" : "text-[#fcd34d]"}`}
             >
               {check.fix}
             </p>
             {check.command !== null && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-bubble-user py-0.5 pr-0.5 pl-3 font-mono text-[12px]">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-bubble-user py-0.5 pr-0.5 pl-3 font-mono text-[12px] whitespace-nowrap">
                 {check.command}
                 <CopyButton text={check.command} label="Copy command" />
               </span>
@@ -93,7 +93,9 @@ export function SetupPage() {
         title="Setup"
         subtitle="Check this computer before the first stream"
         onBack={leave}
-        backLabel={router.history.canGoBack() ? "Back" : "Skip for now"}
+        backLabel={
+          router.history.canGoBack() ? "Back" : report?.complete === true ? "Home" : "Skip for now"
+        }
       />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-2xl px-8 pt-10 pb-8">

@@ -46,13 +46,16 @@ body {
   background: #3b82f655;
 }
 
-/* Keyboard focus is always visible; mouse focus isn't. */
-:focus-visible {
-  outline: 2px solid var(--color-unread);
-  outline-offset: 2px;
-}
-:focus:not(:focus-visible) {
-  outline: none;
+/* Keyboard focus is always visible; mouse focus isn't. In the base layer, so
+   a component's own focus ring (a utility class) replaces this default. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-unread);
+    outline-offset: 2px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 /* Quiet scrollbars that match the dark theme. */

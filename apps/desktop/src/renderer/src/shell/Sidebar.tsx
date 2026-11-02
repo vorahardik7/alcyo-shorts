@@ -7,7 +7,7 @@ import { useEscape } from "../nav/overlays";
 import { openIssues, useSetup } from "../setup/store";
 import { AppMark } from "../ui/AppMark";
 import { Button, IconButton, iconButtonClass } from "../ui/Button";
-import { CloseIcon, GridIcon, PlusIcon, SearchIcon, SettingsIcon } from "../ui/icons";
+import { ChatIcon, CloseIcon, GridIcon, PlusIcon, SearchIcon, SettingsIcon } from "../ui/icons";
 import { Kbd } from "../ui/parts";
 
 /** Streams arrive with the project store (spec 4); until then the list is empty. */
@@ -44,7 +44,7 @@ function EmptyStreams({ onNew }: { onNew: () => void }) {
   return (
     <div data-testid="empty-streams" className="mx-2 mt-2 rounded-[20px] px-5 py-8 text-center">
       <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-bubble-claude ring-1 ring-hairline">
-        <PlusIcon size={20} className="text-secondary" />
+        <ChatIcon size={20} className="text-tertiary" />
       </div>
       <p className="mt-4 text-small font-medium">No streams yet</p>
       <p className="mt-1 text-[14px] leading-snug text-secondary">
@@ -154,7 +154,7 @@ export function Sidebar() {
             <span className="min-w-0 flex-1">
               <span className="block text-small">Settings</span>
               <span className="block truncate text-[13px] text-secondary">
-                Profile, Claude, models, storage
+                Profile, Claude, models
               </span>
             </span>
             <span className="hidden xl:inline">
