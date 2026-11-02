@@ -19,7 +19,7 @@ e2e and packaging run in task 7.
   - Unit tests from real tool output; properties for chunks and lines
   - _Requirements: 2.1–2.3, 3.1–3.3, 6.1, 6.2_
 
-- [ ] 4. Pipeline
+- [x] 4. Pipeline
   - `cache.ts`, `analyze.ts`: order, keys, skip, cascade, resume, events,
     cancel, quick mode, no-audio
   - Fake-runner tests
