@@ -7,7 +7,7 @@ e2e, screenshots and packaging run in task 8.
   - requirements.md (EARS), design.md, tasks.md
   - _Requirements: all_
 
-- [ ] 2. Headless mode for tests
+- [x] 2. Headless mode for tests
   - `ALCYO_HEADLESS=1`: never show the window, hide the Dock icon, no background throttling
   - e2e launches headless; `test:e2e` excludes `@screens`
   - _Requirements: 6.1, 6.2_

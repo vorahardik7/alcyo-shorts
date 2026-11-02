@@ -15,7 +15,8 @@
     "lint": "eslint . && prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/renderer/tsconfig.json && tsc --noEmit -p e2e/tsconfig.json",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --grep-invert @screens",
+    "screens": "playwright test --grep @screens",
     "package:mac": "electron-vite build && node ../../scripts/fetch-binaries.ts --verify --target mac-arm64 && electron-builder --mac --arm64 --publish never",
     "package:win": "electron-vite build && node ../../scripts/fetch-binaries.ts --verify --target win-x64 && electron-builder --win --x64 --publish never"
   },

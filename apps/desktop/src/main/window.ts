@@ -2,9 +2,21 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { BrowserWindow, type BrowserWindowConstructorOptions } from "electron";
 
+/**
+ * Headless mode (ALCYO_HEADLESS=1): e2e tests and screenshot runs. The window
+ * is created and painted but never shown, so nothing pops up on screen.
+ */
+export function isHeadless(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env["ALCYO_HEADLESS"] === "1";
+}
+
 /** Window options. Exported so a test can pin the security settings. */
-export function windowOptions(preloadPath: string): BrowserWindowConstructorOptions {
+export function windowOptions(
+  preloadPath: string,
+  headless = false,
+): BrowserWindowConstructorOptions {
   return {
+    ...(headless ? { paintWhenInitiallyHidden: true, skipTaskbar: true } : {}),
     width: 1280,
     height: 820,
     minWidth: 900,
@@ -24,6 +36,8 @@ export function windowOptions(preloadPath: string): BrowserWindowConstructorOpti
       allowRunningInsecureContent: false,
       webviewTag: false,
       spellcheck: false,
+      // A hidden window would otherwise stop painting and running timers.
+      backgroundThrottling: !headless,
     },
   };
 }
@@ -47,7 +61,10 @@ function samePage(a: string, b: string): boolean {
 
 export function createMainWindow(mainDir: string): BrowserWindow {
   const url = rendererUrl(mainDir);
-  const win = new BrowserWindow(windowOptions(join(mainDir, "..", "preload", "index.cjs")));
+  const headless = isHeadless();
+  const win = new BrowserWindow(
+    windowOptions(join(mainDir, "..", "preload", "index.cjs"), headless),
+  );
 
   // No new windows, no navigating away, no webviews.
   win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -59,7 +76,7 @@ export function createMainWindow(mainDir: string): BrowserWindow {
     callback(false),
   );
 
-  win.once("ready-to-show", () => win.show());
+  if (!headless) win.once("ready-to-show", () => win.show());
   void win.loadURL(url);
   return win;
 }

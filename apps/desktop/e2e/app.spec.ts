@@ -24,6 +24,7 @@ function env(): Record<string, string> {
       vars[k] = v;
   }
   vars["ALCYO_USER_DATA"] = userData;
+  vars["ALCYO_HEADLESS"] = "1";
   return vars;
 }
 

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("electron", () => ({ BrowserWindow: class {} }));
 
-const { windowOptions, rendererUrl } = await import("./window");
+const { isHeadless, windowOptions, rendererUrl } = await import("./window");
 
 describe("windowOptions", () => {
   it("locks the renderer down", () => {
@@ -16,6 +16,23 @@ describe("windowOptions", () => {
     expect(prefs.webSecurity).toBe(true);
     expect(prefs.webviewTag).toBe(false);
     expect(prefs.preload).toBe("/x/preload/index.cjs");
+  });
+});
+
+describe("headless mode", () => {
+  it("is on only for ALCYO_HEADLESS=1", () => {
+    expect(isHeadless({ ALCYO_HEADLESS: "1" })).toBe(true);
+    expect(isHeadless({ ALCYO_HEADLESS: "true" })).toBe(false);
+    expect(isHeadless({})).toBe(false);
+  });
+
+  it("keeps painting a hidden window and keeps the security settings", () => {
+    const opts = windowOptions("/x/preload/index.cjs", true);
+    expect(opts.show).toBe(false);
+    expect(opts.paintWhenInitiallyHidden).toBe(true);
+    expect(opts.webPreferences?.backgroundThrottling).toBe(false);
+    expect(opts.webPreferences?.sandbox).toBe(true);
+    expect(windowOptions("/x").webPreferences?.backgroundThrottling).toBe(true);
   });
 });
 

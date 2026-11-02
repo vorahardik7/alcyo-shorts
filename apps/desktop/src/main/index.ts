@@ -4,7 +4,7 @@ import { app, BrowserWindow } from "electron";
 import { handle, sendEvent } from "./ipc";
 import { createHandlers } from "./ipc/handlers";
 import { findLinkInArgv, LinkQueue, linkEvent } from "./links";
-import { createMainWindow, rendererUrl } from "./window";
+import { createMainWindow, isHeadless, rendererUrl } from "./window";
 import { WorkerHost } from "./worker-host";
 
 const mainDir = import.meta.dirname;
@@ -14,6 +14,9 @@ const userDataOverride = process.env["ALCYO_USER_DATA"];
 if (userDataOverride !== undefined && userDataOverride.length > 0) {
   app.setPath("userData", userDataOverride);
 }
+
+// Headless runs (tests, screenshots) show nothing, not even a Dock icon.
+if (isHeadless() && process.platform === "darwin") app.dock?.hide();
 
 if (!app.requestSingleInstanceLock()) {
   // Another instance owns the window; it gets our argv through second-instance.
