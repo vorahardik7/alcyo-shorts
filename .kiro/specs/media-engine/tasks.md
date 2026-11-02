@@ -35,6 +35,6 @@ e2e and packaging run in task 7.
   - `scripts/media-drift.ts`; record drift in design.md
   - _Requirements: 2.6, 5.1, 5.2_
 
-- [ ] 7. Wrap-up
+- [x] 7. Wrap-up
   - Full build, `pnpm test:e2e`, `pnpm package:mac`; plan section 36
   - _Requirements: all_

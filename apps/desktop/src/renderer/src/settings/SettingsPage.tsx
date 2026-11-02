@@ -290,7 +290,7 @@ function EncoderSection() {
         testId="encoders-card"
         title="Encoders"
         description="A short test encode picks the fastest one that works here."
-        actions={<ComesIn spec={3} />}
+        actions={<ComesIn spec={4} />}
       >
         <div className="flex flex-wrap gap-1.5 px-5 py-4">
           {report === null ? (

@@ -1657,11 +1657,36 @@ These are checks the build itself answers, plus two decisions only you can make.
 
 ## 36. Current status
 
-As of Nov 1:
+As of Nov 1, local `main` only (no GitHub repo yet).
 
-- `~/Desktop/projects/alcyo-shorts` exists with `git init` (branch `main`, no commits), the folder skeleton, and root `package.json`, `pnpm-workspace.yaml`, `turbo.json` and `tsconfig.base.json`. Nothing installed or built yet.
-- On this Mac: Node 24.18, pnpm 12.14, git 2.52, Homebrew ffmpeg and yt-dlp, `claude` at `~/.local/bin/claude`. whisper-cli is not installed; `fetch-binaries` builds it.
-- No GitHub repo.
+| Spec | State | Notes |
+|---|---|---|
+| 1 `project-setup` | Done | Monorepo, locked-down Electron, worker over MessagePort, pinned binaries, footage guard, dmg/nsis, e2e, CI workflow (not yet run: no repo). Hook self-test recorded. |
+| `app-shell-polish` (extra) | Done | Setup and Settings screens, navigation, sidebar, render queue drawer, headless e2e, screenshots. A second pass made Settings full-window with its own nav, so Back leaves Settings in one step, and quieted home, sidebar and Setup. |
+| 2 `schema` | Done | Section 22 schemas plus files, checks, time math, id mapping and snapping with property tests, Claude JSON Schemas, migrations, `plan:validate`. |
+| 3 `media-engine` | Done | `@alcyo/media`: probe, audio, silences, chunked transcript with resume, loudness, scenes, encoder test, proxy, peaks, thumbnails; cache keys; cancel; worker job. Real-tools test passes on this Mac. Not wired to a stream yet (needs spec 4). |
+| 4 `project-store` | Next | Also wires `analysis:start` and saves the encoder pick. |
+| 5 `setup-and-claude` | Partly done | The claude resolver and setup checks exist. Still to do: provider, `--safe-mode` check, model download, Locate claude, API key. |
+| 6–13 | Not started | |
+
+Answers recorded so far:
+
+- `--dtw` needs `-nfa` on whisper.cpp 1.9.5. With flash attention on, every `t_dtw` is −1.
+- Word-time drift on a synthetic clip (`small.en`, DTW, VAD): median 171 ms,
+  worst 273 ms, mostly a steady −160 ms offset with 40 ms of scatter. The
+  over-80 ms rule applies, so cut points snap to silence edges. Re-measure on
+  the hand-marked demo clip with `pnpm media:drift` before applying any
+  correction. Details are in `.kiro/specs/media-engine/design.md`.
+- ffprobe names MKV `matroska,webm`; H.264 MKV gets a proxy.
+- Hook self-test answers are in `.kiro/specs/project-setup/hook-self-test.md`.
+
+On this Mac: Node 24.18, pnpm 12.14, the pinned tools fetched, `small.en`
+downloaded to userData (SHA-1 `db8a495a91d927739e50b3fc1cc4c6b8f6c2d022`),
+`claude` 2.1.301 at `~/.local/bin/claude`, signed in.
+
+Waiting on Hardik: the demo clip with 20 hand-marked word times and two cut
+clips (section 33), a Windows PC or a decision that there isn't one, signing,
+and the go-ahead to create the GitHub repo.
 
 ---
 
