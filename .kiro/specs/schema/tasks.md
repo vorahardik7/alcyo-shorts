@@ -19,7 +19,7 @@ e2e and packaging run in task 7.
   - Unit tests and properties 1, 2, 4 and 7
   - _Requirements: 2.1–2.7, 3.1, 3.2, 3.4, 5.1, 5.2_
 
-- [ ] 4. Planner id mapping and snapping
+- [x] 4. Planner id mapping and snapping
   - `packages/planner/src/id-mapping.ts`, `snapping.ts`
   - Unit tests and properties 3, 5 and 6
   - _Requirements: 3.3, 4.1–4.3_
