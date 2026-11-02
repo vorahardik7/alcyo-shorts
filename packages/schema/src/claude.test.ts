@@ -80,7 +80,7 @@ describe("claudeJsonSchemas", () => {
     const walk = (node: unknown) => {
       if (Array.isArray(node)) node.forEach(walk);
       else if (node !== null && typeof node === "object") {
-        for (const [k, v] of Object.entries(node)) {
+        for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
           if (k === "properties" && v !== null && typeof v === "object") {
             for (const name of Object.keys(v)) keys.add(name);
           }
