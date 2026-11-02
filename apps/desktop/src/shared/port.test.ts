@@ -99,3 +99,123 @@ describe("worker protocol over a MessagePort", () => {
     await expect(client.ping("y")).rejects.toThrow("The worker stopped.");
   });
 });
+
+describe("analysis jobs over the worker protocol", () => {
+  const request = {
+    sourceId: "src1",
+    sourcePath: "/v/My Stream.mp4",
+    analysisDir: "/p/sources/src1/analysis",
+    cacheDir: "/p/cache/src1",
+    tools: { ffmpeg: "/b/ffmpeg", ffprobe: "/b/ffprobe", whisper: "/b/whisper-cli" },
+    toolVersions: { ffmpeg: "9.0.2", whisper: "1.9.5" },
+    model: { path: "/m/ggml-small.en.bin", name: "small.en" },
+    vadModel: "/b/models/silero.bin",
+    mode: "full",
+    encoder: null,
+    threads: 4,
+  } as const;
+  const result = {
+    sourceId: "src1",
+    probe: {
+      durationMs: 1000,
+      container: "mov,mp4",
+      video: null,
+      audio: { codec: "aac", sampleRate: 48000, channels: 2 },
+      playsDirectly: false,
+    },
+    fingerprint: {
+      sizeBytes: 1,
+      headSha256: "a".repeat(64),
+      tailSha256: "b".repeat(64),
+      durationMs: 1000,
+      layout: "a:aac:48000x2",
+    },
+    steps: { probe: "done", transcript: "done" },
+    problems: [],
+    poster: null,
+    encoder: null,
+  } as const;
+
+  it("streams checked events, then resolves with the result", async () => {
+    const { port1, port2 } = new MessageChannel();
+    serveWorker(nodePort(port1), () => undefined, {
+      setupCheck: () => Promise.reject(new Error("unused")),
+      analyze: (req, onEvent) => {
+        expect(req).toEqual(request);
+        onEvent({
+          kind: "progress",
+          step: "audio",
+          stage: "Extracting audio",
+          pct: 50,
+          overallPct: 4,
+        });
+        onEvent({ kind: "step-done", step: "transcript", skipped: false });
+        return Promise.resolve(structuredClone(result) as never);
+      },
+    });
+    const client = createWorkerClient(nodePort(port2));
+    const events: unknown[] = [];
+    const job = client.analyze(request, (e) => events.push(e));
+    await expect(job.done).resolves.toEqual(result);
+    expect(events).toEqual([
+      { kind: "progress", step: "audio", stage: "Extracting audio", pct: 50, overallPct: 4 },
+      { kind: "step-done", step: "transcript", skipped: false },
+    ]);
+  });
+
+  it("cancels a running job: the signal aborts and done rejects with code cancelled", async () => {
+    const { port1, port2 } = new MessageChannel();
+    let aborted = false;
+    serveWorker(nodePort(port1), () => undefined, {
+      setupCheck: () => Promise.reject(new Error("unused")),
+      analyze: (_req, onEvent, signal) =>
+        new Promise((_, reject) => {
+          onEvent({
+            kind: "progress",
+            step: "transcript",
+            stage: "Transcribing",
+            pct: 10,
+            overallPct: 20,
+          });
+          signal.addEventListener("abort", () => {
+            aborted = true;
+            reject(Object.assign(new Error("Cancelled."), { code: "cancelled" }));
+          });
+        }),
+    });
+    const client = createWorkerClient(nodePort(port2));
+    const job = client.analyze(request, (e) => {
+      if (e.kind === "progress") job.cancel();
+    });
+    await expect(job.done).rejects.toMatchObject({ message: "Cancelled.", code: "cancelled" });
+    expect(aborted).toBe(true);
+  });
+
+  it("passes the engine's plain message and code through", async () => {
+    const { port1, port2 } = new MessageChannel();
+    serveWorker(nodePort(port1), () => undefined, {
+      setupCheck: () => Promise.reject(new Error("unused")),
+      analyze: () =>
+        Promise.reject(
+          Object.assign(
+            new Error("This file couldn't be read. It may be damaged or not a video."),
+            {
+              code: "unreadable",
+            },
+          ),
+        ),
+    });
+    const client = createWorkerClient(nodePort(port2));
+    await expect(client.analyze(request, () => undefined).done).rejects.toMatchObject({
+      code: "unreadable",
+      message: "This file couldn't be read. It may be damaged or not a video.",
+    });
+  });
+
+  it("rejects a request with a bad field before it leaves main", async () => {
+    const client = createWorkerClient(nodePort(new MessageChannel().port2));
+    await expect(client.analyze({ ...request, threads: 0 }, () => undefined).done).rejects.toThrow(
+      "Too small",
+    );
+  });
+});

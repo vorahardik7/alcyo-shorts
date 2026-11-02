@@ -2,6 +2,7 @@
 // parentPort carrying a MessagePort; every job message after that goes over the
 // port and is checked against @alcyo/ipc's worker contract.
 import { WorkerInit } from "@alcyo/ipc";
+import { analyze, runTool } from "@alcyo/media";
 import type { MessagePortMain } from "electron";
 import { electronPort, serveWorker } from "../shared/port";
 import { realSetupDeps } from "./exec";
@@ -16,5 +17,6 @@ process.parentPort.once("message", (event: { data: unknown; ports: MessagePortMa
   const deps = realSetupDeps();
   serveWorker(electronPort(port), undefined, {
     setupCheck: (request) => runSetupCheck(request, deps),
+    analyze: (request, onEvent, signal) => analyze(request, { run: runTool }, onEvent, signal),
   });
 });

@@ -25,7 +25,7 @@ e2e and packaging run in task 7.
   - Fake-runner tests
   - _Requirements: 1.1–1.6, 2.4, 2.5, 4.1, 4.2, 6.3, 7.1_
 
-- [ ] 5. Worker job
+- [x] 5. Worker job
   - Contract messages, `serveWorker` and `createWorkerClient().analyze`
   - Worker wires the real runner; protocol test with a fake job and a cancel
   - _Requirements: 8.1, 8.2_

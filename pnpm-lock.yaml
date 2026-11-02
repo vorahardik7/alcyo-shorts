@@ -205,6 +205,9 @@ importers:
       '@alcyo/ipc':
         specifier: workspace:*
         version: link:../../packages/ipc
+      '@alcyo/media':
+        specifier: workspace:*
+        version: link:../../packages/media
       '@alcyo/planner':
         specifier: workspace:*
         version: link:../../packages/planner
