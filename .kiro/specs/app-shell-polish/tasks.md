@@ -40,7 +40,7 @@ e2e, screenshots and packaging run in task 8.
   - Render queue drawer, toasts, hover/active/focus states
   - _Requirements: 4.1–4.4, 5.1–5.7_
 
-- [ ] 8. E2E, screenshots and review
+- [x] 8. E2E, screenshots and review
   - e2e: every route and back (Back, Esc, Cmd+[), mouse back, titles, search, drawer, drop, paste, Setup gate with `fail`
   - `e2e/screens.spec.ts` to `.agent-runs/screens/pass2/`; review and fix
   - Full build, `pnpm test:e2e`, `pnpm package:mac`, e2e on the packaged app
