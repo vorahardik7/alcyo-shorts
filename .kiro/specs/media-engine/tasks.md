@@ -8,12 +8,12 @@ e2e and packaging run in task 7.
   - Check `--dtw` with and without `-nfa` on the pinned whisper-cli
   - _Requirements: all, 2.6_
 
-- [ ] 2. Package, process runner and files
+- [x] 2. Package, process runner and files
   - `@alcyo/media` package; `process.ts`, `errors.ts`, `files.ts`, `progress.ts`
   - Tests: args reach the child unchanged, cancel kills the child, atomic write
   - _Requirements: 1.5, 4.2, 5.3_
 
-- [ ] 3. Tool args and parsers
+- [x] 3. Tool args and parsers
   - probe, fingerprint, audio, silences, chunks, whisper, loudness, scenes,
     encoder, proxy, peaks, thumbnails
   - Unit tests from real tool output; properties for chunks and lines

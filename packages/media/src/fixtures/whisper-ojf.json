@@ -1,0 +1,367 @@
+{
+  "result": {
+    "language": "en"
+  },
+  "transcription": [
+    {
+      "offsets": {
+        "from": 0,
+        "to": 1870
+      },
+      "text": " All right chat, we are live.",
+      "tokens": [
+        {
+          "text": "[_BEG_]",
+          "offsets": {
+            "from": 0,
+            "to": 0
+          },
+          "p": 0.992774,
+          "t_dtw": -1
+        },
+        {
+          "text": " All",
+          "offsets": {
+            "from": 10,
+            "to": 250
+          },
+          "p": 0.219286,
+          "t_dtw": 16
+        },
+        {
+          "text": " right",
+          "offsets": {
+            "from": 250,
+            "to": 660
+          },
+          "p": 0.895864,
+          "t_dtw": 40
+        },
+        {
+          "text": " chat",
+          "offsets": {
+            "from": 660,
+            "to": 790
+          },
+          "p": 0.646292,
+          "t_dtw": 72
+        },
+        {
+          "text": ",",
+          "offsets": {
+            "from": 1090,
+            "to": 1150
+          },
+          "p": 0.713163,
+          "t_dtw": 106
+        },
+        {
+          "text": " we",
+          "offsets": {
+            "from": 1150,
+            "to": 1310
+          },
+          "p": 0.952874,
+          "t_dtw": 120
+        },
+        {
+          "text": " are",
+          "offsets": {
+            "from": 1310,
+            "to": 1560
+          },
+          "p": 0.989723,
+          "t_dtw": 138
+        },
+        {
+          "text": " live",
+          "offsets": {
+            "from": 1560,
+            "to": 1600
+          },
+          "p": 0.551737,
+          "t_dtw": 162
+        },
+        {
+          "text": ".",
+          "offsets": {
+            "from": 1920,
+            "to": 1920
+          },
+          "p": 0.627626,
+          "t_dtw": 196
+        },
+        {
+          "text": "[_TT_96]",
+          "offsets": {
+            "from": 1920,
+            "to": 1920
+          },
+          "p": 0.193914,
+          "t_dtw": -1
+        }
+      ]
+    },
+    {
+      "offsets": {
+        "from": 1870,
+        "to": 4640
+      },
+      "text": " Today we finally beat the boss, no way.",
+      "tokens": [
+        {
+          "text": " Today",
+          "offsets": {
+            "from": 1920,
+            "to": 2270
+          },
+          "p": 0.990985,
+          "t_dtw": 218
+        },
+        {
+          "text": " we",
+          "offsets": {
+            "from": 2270,
+            "to": 2410
+          },
+          "p": 0.823755,
+          "t_dtw": 240
+        },
+        {
+          "text": " finally",
+          "offsets": {
+            "from": 2410,
+            "to": 2710
+          },
+          "p": 0.997478,
+          "t_dtw": 274
+        },
+        {
+          "text": " beat",
+          "offsets": {
+            "from": 3010,
+            "to": 3190
+          },
+          "p": 0.999005,
+          "t_dtw": 304
+        },
+        {
+          "text": " the",
+          "offsets": {
+            "from": 3190,
+            "to": 3400
+          },
+          "p": 0.991329,
+          "t_dtw": 320
+        },
+        {
+          "text": " boss",
+          "offsets": {
+            "from": 3400,
+            "to": 3520
+          },
+          "p": 0.986043,
+          "t_dtw": 350
+        },
+        {
+          "text": ",",
+          "offsets": {
+            "from": 3860,
+            "to": 3860
+          },
+          "p": 0.311421,
+          "t_dtw": 386
+        },
+        {
+          "text": " no",
+          "offsets": {
+            "from": 3870,
+            "to": 4070
+          },
+          "p": 0.914779,
+          "t_dtw": 402
+        },
+        {
+          "text": " way",
+          "offsets": {
+            "from": 4070,
+            "to": 4290
+          },
+          "p": 0.999146,
+          "t_dtw": 440
+        },
+        {
+          "text": ".",
+          "offsets": {
+            "from": 4390,
+            "to": 4720
+          },
+          "p": 0.839288,
+          "t_dtw": 472
+        },
+        {
+          "text": "[_TT_236]",
+          "offsets": {
+            "from": 4720,
+            "to": 4720
+          },
+          "p": 0.733651,
+          "t_dtw": -1
+        }
+      ]
+    },
+    {
+      "offsets": {
+        "from": 4640,
+        "to": 5780
+      },
+      "text": " Did you see that?",
+      "tokens": [
+        {
+          "text": " Did",
+          "offsets": {
+            "from": 4730,
+            "to": 4930
+          },
+          "p": 0.99701,
+          "t_dtw": 486
+        },
+        {
+          "text": " you",
+          "offsets": {
+            "from": 4930,
+            "to": 5100
+          },
+          "p": 0.99963,
+          "t_dtw": 502
+        },
+        {
+          "text": " see",
+          "offsets": {
+            "from": 5200,
+            "to": 5350
+          },
+          "p": 0.998971,
+          "t_dtw": 524
+        },
+        {
+          "text": " that",
+          "offsets": {
+            "from": 5350,
+            "to": 5510
+          },
+          "p": 0.999657,
+          "t_dtw": 558
+        },
+        {
+          "text": "?",
+          "offsets": {
+            "from": 5800,
+            "to": 5860
+          },
+          "p": 0.875977,
+          "t_dtw": 588
+        },
+        {
+          "text": "[_TT_293]",
+          "offsets": {
+            "from": 5860,
+            "to": 5860
+          },
+          "p": 0.445046,
+          "t_dtw": -1
+        }
+      ]
+    },
+    {
+      "offsets": {
+        "from": 5780,
+        "to": 7330
+      },
+      "text": " That's the third time this run.",
+      "tokens": [
+        {
+          "text": " That",
+          "offsets": {
+            "from": 5870,
+            "to": 6110
+          },
+          "p": 0.996934,
+          "t_dtw": 600
+        },
+        {
+          "text": "'s",
+          "offsets": {
+            "from": 6110,
+            "to": 6230
+          },
+          "p": 0.998993,
+          "t_dtw": 610
+        },
+        {
+          "text": " the",
+          "offsets": {
+            "from": 6230,
+            "to": 6400
+          },
+          "p": 0.999234,
+          "t_dtw": 624
+        },
+        {
+          "text": " third",
+          "offsets": {
+            "from": 6400,
+            "to": 6650
+          },
+          "p": 0.988995,
+          "t_dtw": 642
+        },
+        {
+          "text": " time",
+          "offsets": {
+            "from": 6940,
+            "to": 6970
+          },
+          "p": 0.999622,
+          "t_dtw": 670
+        },
+        {
+          "text": " this",
+          "offsets": {
+            "from": 6970,
+            "to": 7220
+          },
+          "p": 0.984981,
+          "t_dtw": 690
+        },
+        {
+          "text": " run",
+          "offsets": {
+            "from": 7220,
+            "to": 7440
+          },
+          "p": 0.960915,
+          "t_dtw": 720
+        },
+        {
+          "text": ".",
+          "offsets": {
+            "from": 7440,
+            "to": 7460
+          },
+          "p": 0.967951,
+          "t_dtw": 738
+        },
+        {
+          "text": "[_TT_376]",
+          "offsets": {
+            "from": 7520,
+            "to": 7520
+          },
+          "p": 0.343088,
+          "t_dtw": -1
+        }
+      ]
+    }
+  ]
+}
