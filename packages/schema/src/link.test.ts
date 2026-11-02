@@ -24,6 +24,12 @@ const cases: Array<[string, AppLink, string]> = [
   ["alcyo://renders", { to: "renders" }, "/renders"],
   ["alcyo://settings", { to: "settings" }, "/settings"],
   ["alcyo://settings/profile", { to: "profile" }, "/settings/profile"],
+  ["alcyo://settings/claude", { to: "settings", section: "claude" }, "/settings/claude"],
+  ["alcyo://settings/models", { to: "settings", section: "models" }, "/settings/models"],
+  ["alcyo://settings/encoder", { to: "settings", section: "encoder" }, "/settings/encoder"],
+  ["alcyo://settings/storage", { to: "settings", section: "storage" }, "/settings/storage"],
+  ["alcyo://settings/about", { to: "settings", section: "about" }, "/settings/about"],
+  ["alcyo://setup", { to: "setup" }, "/setup"],
 ];
 
 describe("parseAppLink", () => {
@@ -72,6 +78,8 @@ describe("parseAppLink", () => {
     "alcyo://s/abc/source?t=1.5",
     "alcyo://s/%E0%A4%A",
     "alcyo://settings/other",
+    "alcyo://settings/claude/x",
+    "alcyo://setup/x",
     "alcyo://renders/x",
     `alcyo://s/${"a".repeat(3000)}`,
   ])("rejects %s", (url) => {

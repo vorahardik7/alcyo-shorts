@@ -2,6 +2,11 @@
 import { z } from "zod";
 import { Id, Ms } from "./primitives";
 
+/** Settings sections other than Profile, which has its own link. */
+export const SETTINGS_SECTIONS = ["claude", "models", "encoder", "storage", "about"] as const;
+export const SettingsSection = z.enum(SETTINGS_SECTIONS);
+export type SettingsSection = z.infer<typeof SettingsSection>;
+
 export const AppLink = z.discriminatedUnion("to", [
   z.object({ to: z.literal("stream"), streamId: Id }),
   z.object({ to: z.literal("message"), streamId: Id, messageId: Id }),
@@ -13,7 +18,10 @@ export const AppLink = z.discriminatedUnion("to", [
     edit: z.boolean().optional(),
   }),
   z.object({ to: z.literal("source"), streamId: Id, t: Ms.optional() }),
-  z.object({ to: z.enum(["renders", "settings", "profile"]) }),
+  // Settings sections and Setup have links too (app-shell-polish). Profile
+  // keeps its own `to` so section 22's links stay as they were.
+  z.object({ to: z.literal("settings"), section: SettingsSection.optional() }),
+  z.object({ to: z.enum(["renders", "profile", "setup"]) }),
 ]);
 export type AppLink = z.infer<typeof AppLink>;
 
@@ -56,8 +64,10 @@ function queryParam(query: string, name: string): string | null {
 function fromSegments(segments: string[], query: string): unknown {
   const [head, ...rest] = segments;
   if (head === "renders" && rest.length === 0) return { to: "renders" };
+  if (head === "setup" && rest.length === 0) return { to: "setup" };
   if (head === "settings" && rest.length === 0) return { to: "settings" };
   if (head === "settings" && rest.length === 1 && rest[0] === "profile") return { to: "profile" };
+  if (head === "settings" && rest.length === 1) return { to: "settings", section: rest[0] };
   if (head !== "s") return null;
 
   const [streamId, kind, ...tail] = rest;
@@ -116,8 +126,10 @@ function linkPath(link: AppLink): string {
   switch (link.to) {
     case "renders":
       return "renders";
+    case "setup":
+      return "setup";
     case "settings":
-      return "settings";
+      return link.section === undefined ? "settings" : `settings/${link.section}`;
     case "profile":
       return "settings/profile";
     case "stream":
