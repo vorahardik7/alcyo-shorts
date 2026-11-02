@@ -30,7 +30,7 @@ e2e and packaging run in task 7.
   - Worker wires the real runner; protocol test with a fake job and a cancel
   - _Requirements: 8.1, 8.2_
 
-- [ ] 6. Real runs and drift
+- [x] 6. Real runs and drift
   - Integration test on a generated clip in an awkward path; nothing next to the source
   - `scripts/media-drift.ts`; record drift in design.md
   - _Requirements: 2.6, 5.1, 5.2_

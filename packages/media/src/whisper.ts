@@ -12,6 +12,8 @@ export function whisperArgs(opts: {
   outBase: string;
   threads: number;
   language?: string;
+  /** Silero VAD. On by default; the drift script turns it off to compare. */
+  vad?: boolean;
 }): string[] {
   return [
     "-m",
@@ -20,9 +22,7 @@ export function whisperArgs(opts: {
     opts.wav,
     "-l",
     opts.language ?? "en",
-    "--vad",
-    "-vm",
-    opts.vadModel,
+    ...(opts.vad === false ? [] : ["--vad", "-vm", opts.vadModel]),
     "-ojf",
     "--dtw",
     opts.modelName,

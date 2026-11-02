@@ -34,19 +34,24 @@ function rate(text: string | undefined): { num: number; den: number } | null {
   return num > 0 && den > 0 ? { num, den } : null;
 }
 
-const DIRECT_CONTAINERS = ["mp4", "mov", "m4v", "webm"];
-const DIRECT_VIDEO = ["h264", "vp8", "vp9", "av1"];
-const DIRECT_AUDIO = ["aac", "mp3", "opus", "vorbis"];
+const MP4_VIDEO = ["h264", "vp9", "av1"];
+const MP4_AUDIO = ["aac", "mp3", "opus"];
+const WEBM_VIDEO = ["vp8", "vp9", "av1"];
+const WEBM_AUDIO = ["opus", "vorbis"];
 
 /**
  * True when a <video> element in Chromium plays the file as is. HEVC is left
- * out because Chromium on Windows needs an extension for it.
+ * out because Chromium on Windows needs an extension for it. ffprobe names
+ * both MKV and WebM "matroska,webm", so those count only with WebM's codecs.
  */
 export function playsDirectly(p: Omit<Probe, "playsDirectly">): boolean {
+  if (p.video === null) return false;
   const names = p.container.split(",");
-  if (!names.some((n) => DIRECT_CONTAINERS.includes(n))) return false;
-  if (p.video === null || !DIRECT_VIDEO.includes(p.video.codec)) return false;
-  return p.audio === null || DIRECT_AUDIO.includes(p.audio.codec);
+  const ok = (video: string[], audio: string[]) =>
+    video.includes(p.video!.codec) && (p.audio === null || audio.includes(p.audio.codec));
+  if (names.includes("mp4") || names.includes("mov")) return ok(MP4_VIDEO, MP4_AUDIO);
+  if (names.includes("webm")) return ok(WEBM_VIDEO, WEBM_AUDIO);
+  return false;
 }
 
 /** Parses ffprobe's JSON. Throws MediaError("unreadable") when it isn't a media file. */

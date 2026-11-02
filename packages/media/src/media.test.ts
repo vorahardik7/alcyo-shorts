@@ -86,13 +86,15 @@ describe("ffprobe", () => {
     }
   });
 
-  it("plays H.264 and VP9 directly, but not HEVC, MKV or PCM audio", () => {
+  it("plays H.264 MP4 and VP9 WebM directly, but not HEVC, H.264 MKV or PCM audio", () => {
     const base = { durationMs: 1000, container: "mov,mp4,m4a,3gp,3g2,mj2", audio: null };
     const v = (codec: string) => ({ codec, width: 1920, height: 1080, fpsNum: 30, fpsDen: 1 });
     expect(playsDirectly({ ...base, video: v("h264") })).toBe(true);
     expect(playsDirectly({ ...base, container: "matroska,webm", video: v("vp9") })).toBe(true);
     expect(playsDirectly({ ...base, video: v("hevc") })).toBe(false);
     expect(playsDirectly({ ...base, container: "matroska", video: v("h264") })).toBe(false);
+    // ffprobe names MKV "matroska,webm" too; H.264 there needs a proxy.
+    expect(playsDirectly({ ...base, container: "matroska,webm", video: v("h264") })).toBe(false);
     expect(
       playsDirectly({
         ...base,

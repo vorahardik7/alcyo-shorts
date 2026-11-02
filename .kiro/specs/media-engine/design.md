@@ -104,7 +104,32 @@ word's true start is known from where its audio was placed plus its own
 onset. The real demo clip (plan section 33, hand-marked) gets the same script
 once it exists.
 
-Results are filled in by task 6 below.
+Measured Nov 1, 2026 on this Mac (M-series, whisper.cpp 1.9.5, `small.en`),
+69 words, 67 matched:
+
+| Starts from | VAD | Median | 90th pct | Worst | Mean (signed) | Spread around mean |
+|---|---|---|---|---|---|---|
+| DTW (`t_dtw`) | on | 171 ms | 253 ms | 273 ms | −161 ms | 40 ms |
+| Token offsets | on | 468 ms | 756 ms | 803 ms | −465 ms | 64 ms |
+| DTW | off | 276 ms | 370 ms | 707 ms | +287 ms | n/a |
+| Token offsets | off | 170 ms | 428 ms | 594 ms | −85 ms | n/a |
+
+What this means:
+
+- DTW with VAD is the setting the engine uses. Its error is mostly a steady
+  offset (words come out about 160 ms early) with about 40 ms of scatter. The
+  other settings scatter more.
+- VAD changes the bias (−161 ms with it, +287 ms without), so the offset
+  likely comes from how whisper.cpp maps VAD-trimmed audio back to source
+  time, not from the speech itself.
+- The median is over 80 ms, so section 14's rule applies: cut points use the
+  nearest silence edge within 150 ms (specs 8 and 9).
+- No correction is applied yet. A synthetic clip with isolated words isn't
+  real speech, so a constant fix tuned on it could make real streams worse.
+  Once the hand-marked demo clip exists, run
+  `pnpm media:drift --clip examples/demo/clip.mp4 --marks marks.json`. If the
+  bias holds within about 30 ms, subtract it as a constant in
+  `tokensToWords`; that change also changes the transcript step's cache key.
 
 Rule from section 14: if the median drift is over 80 ms, cut points use the
 nearest silence edge within 150 ms. That rule lives in the render and planner

@@ -21,7 +21,8 @@
     "hooks:install": "node scripts/install-git-hooks.mjs",
     "format": "prettier --write .",
     "check:media": "node scripts/check-no-media.mjs",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "media:drift": "node scripts/media-drift.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
