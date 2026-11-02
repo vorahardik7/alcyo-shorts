@@ -1,5 +1,5 @@
 import { BAD_LINK_MESSAGE } from "@alcyo/schema";
-import { useParams } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 import {
   type ClipboardEvent,
   type ComponentProps,
@@ -13,6 +13,7 @@ import { useEscape } from "../nav/overlays";
 import { AppMark } from "../ui/AppMark";
 import { Button, ButtonLink, IconButton } from "../ui/Button";
 import { AlertIcon, ArrowUpIcon, FileIcon, LinkIcon, PlusIcon, SparkIcon } from "../ui/icons";
+import { chooseFile } from "../streams/store";
 import { toast } from "../ui/toast";
 
 const URL_RE = /^\s*https?:\/\/\S+\s*$/i;
@@ -34,7 +35,7 @@ export const importFileToast = (name?: string) =>
 const demoToast = () =>
   toast("The demo stream comes in spec 13", "It opens a ready-made stream with three shorts.");
 
-function HeaderPill({ label, icon }: { label: string; icon?: ReactNode }) {
+export function HeaderPill({ label, icon }: { label: string; icon?: ReactNode }) {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-3 z-[1] flex justify-center">
       <div
@@ -48,7 +49,15 @@ function HeaderPill({ label, icon }: { label: string; icon?: ReactNode }) {
   );
 }
 
-function AttachMenu({ onClose, onLink }: { onClose: () => void; onLink: () => void }) {
+function AttachMenu({
+  onClose,
+  onLink,
+  onFile,
+}: {
+  onClose: () => void;
+  onLink: () => void;
+  onFile: () => void;
+}) {
   useEscape("overlay", true, onClose);
   const first = useRef<HTMLButtonElement>(null);
   useEffect(() => first.current?.focus(), []);
@@ -82,7 +91,7 @@ function AttachMenu({ onClose, onLink }: { onClose: () => void; onLink: () => vo
           className={item}
           onClick={() => {
             onClose();
-            importFileToast();
+            onFile();
           }}
         >
           <FileIcon size={17} className="text-secondary" />
@@ -93,14 +102,17 @@ function AttachMenu({ onClose, onLink }: { onClose: () => void; onLink: () => vo
   );
 }
 
-function Composer({
+export function Composer({
   placeholder,
   onText,
+  onFile,
   className = "mx-auto mb-6 max-w-3xl",
 }: {
   placeholder: string;
   /** What sending plain text does on this screen. */
   onText: () => void;
+  /** What + > Choose a file does on this screen. */
+  onFile: () => void;
   className?: string;
 }) {
   const [text, setText] = useState("");
@@ -142,7 +154,13 @@ function Composer({
       >
         <PlusIcon size={20} />
       </IconButton>
-      {menu && <AttachMenu onClose={() => setMenu(false)} onLink={() => input.current?.focus()} />}
+      {menu && (
+        <AttachMenu
+          onClose={() => setMenu(false)}
+          onLink={() => input.current?.focus()}
+          onFile={onFile}
+        />
+      )}
       <input
         ref={input}
         data-testid="composer-input"
@@ -166,31 +184,6 @@ function Composer({
   );
 }
 
-function ThreadFrame({
-  header,
-  placeholder,
-  onText,
-  children,
-}: {
-  header: string;
-  placeholder: string;
-  onText: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <section className="flex h-full flex-col">
-      <div className="drag absolute inset-x-0 top-0 h-12" aria-hidden />
-      <HeaderPill label={header} />
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-8 pt-16">
-        {children}
-      </div>
-      <div className="px-6">
-        <Composer placeholder={placeholder} onText={onText} />
-      </div>
-    </section>
-  );
-}
-
 function Suggestion({
   icon,
   children,
@@ -208,8 +201,19 @@ function Suggestion({
   );
 }
 
+/** Choose a file, then open the new stream's thread. */
+export function useChooseFile(): () => void {
+  const router = useRouter();
+  return () => {
+    void chooseFile().then((streamId) => {
+      if (streamId !== null) void router.navigate({ to: "/s/$streamId", params: { streamId } });
+    });
+  };
+}
+
 export function Home() {
   usePageTitle("New stream");
+  const choose = useChooseFile();
   return (
     <section className="relative flex h-full flex-col">
       <div className="drag absolute inset-x-0 top-0 h-12" aria-hidden />
@@ -223,6 +227,7 @@ export function Home() {
           </p>
           <Composer
             className="mt-8"
+            onFile={choose}
             placeholder="Paste a stream link or drop a recording"
             onText={() =>
               toast(
@@ -232,11 +237,7 @@ export function Home() {
             }
           />
           <div className="mt-4 flex justify-center gap-2">
-            <Suggestion
-              data-testid="choose-file"
-              icon={<FileIcon size={15} />}
-              onClick={() => importFileToast()}
-            >
+            <Suggestion data-testid="choose-file" icon={<FileIcon size={15} />} onClick={choose}>
               Choose a file
             </Suggestion>
             <Suggestion data-testid="open-demo" icon={<SparkIcon size={15} />} onClick={demoToast}>
@@ -249,34 +250,6 @@ export function Home() {
         Only download videos you own or have permission to use.
       </p>
     </section>
-  );
-}
-
-export function StreamPlaceholder() {
-  const { streamId } = useParams({ strict: false });
-  const name = streamId ?? "Stream";
-  usePageTitle(name);
-  return (
-    <ThreadFrame
-      header={name}
-      placeholder={`Message ${name}`}
-      onText={() =>
-        toast("Chat comes in spec 10", "Messages to a stream go to Claude once streams exist.")
-      }
-    >
-      <div className="max-w-md text-center">
-        <p data-testid="stream-placeholder" className="text-body">
-          This stream isn&apos;t in the app yet.
-        </p>
-        <p className="mt-2 text-small text-secondary">
-          Streams open here once they&apos;re saved on this computer. Start one from the home
-          screen.
-        </p>
-        <ButtonLink to="/" className="mt-5" size="sm">
-          Go home
-        </ButtonLink>
-      </div>
-    </ThreadFrame>
   );
 }
 

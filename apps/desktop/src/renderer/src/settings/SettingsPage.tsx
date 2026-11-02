@@ -10,6 +10,7 @@ import { BackButton } from "../nav/BackButton";
 import { isMac, useBack, usePageTitle } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
 import { openIssues, useAppFacts, useSetup } from "../setup/store";
+import { useStreams } from "../streams/store";
 import { AppMark } from "../ui/AppMark";
 import { Button, ButtonLink } from "../ui/Button";
 import {
@@ -316,6 +317,7 @@ function EncoderSection() {
 
 function StorageSection() {
   const paths = useAppFacts((s) => s.paths);
+  const count = useStreams((s) => s.streams.length);
   const info = useAppFacts((s) => s.info);
   const folderApp = info?.platform === "win32" ? "Explorer" : "Finder";
   return (
@@ -354,10 +356,17 @@ function StorageSection() {
         </Row>
       </Card>
       <Card
+        testId="streams-card"
         title="Streams"
-        description="Each stream is a .alcyo folder in a place you choose."
-        actions={<ComesIn spec={4} />}
-      />
+        description="Each stream is a .alcyo folder. Recordings stay where they are."
+      >
+        <Row label="Folder" mono aside={paths ? <CopyButton text={paths.streams} /> : undefined}>
+          <span data-testid="streams-folder">{paths?.streams ?? "…"}</span>
+        </Row>
+        <Row label="Streams">
+          <span className="text-secondary">{count === 0 ? "None yet" : String(count)}</span>
+        </Row>
+      </Card>
     </>
   );
 }

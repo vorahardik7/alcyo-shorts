@@ -29,6 +29,8 @@ export function appEnv(userData: string, setup: SetupMode): Record<string, strin
   vars["ALCYO_USER_DATA"] = userData;
   vars["ALCYO_HEADLESS"] = "1";
   vars["ALCYO_TEST_SETUP"] = setup;
+  // New streams go inside the throwaway profile, never ~/Movies.
+  vars["ALCYO_STREAMS_DIR"] ??= join(userData, "Streams");
   return vars;
 }
 
@@ -39,9 +41,12 @@ export interface Launched {
   close: () => Promise<void>;
 }
 
-export async function launch(setup: SetupMode = "pass"): Promise<Launched> {
+export async function launch(
+  setup: SetupMode = "pass",
+  extraEnv: Record<string, string> = {},
+): Promise<Launched> {
   const userData = mkdtempSync(join(tmpdir(), "alcyo-e2e-"));
-  const env = appEnv(userData, setup);
+  const env = { ...appEnv(userData, setup), ...extraEnv };
   const app = await electron.launch({
     executablePath: command.executable,
     args: command.args,
@@ -57,4 +62,17 @@ export async function launch(setup: SetupMode = "pass"): Promise<Launched> {
       rmSync(userData, { recursive: true, force: true });
     },
   };
+}
+
+/** Makes main's next file dialogs answer with these paths (null = cancelled). */
+export async function stubFileDialog(app: ElectronApplication, path: string | null): Promise<void> {
+  await app.evaluate(({ dialog }, chosen) => {
+    const answer = () =>
+      Promise.resolve(
+        chosen === null
+          ? { canceled: true, filePaths: [] }
+          : { canceled: false, filePaths: [chosen] },
+      );
+    dialog.showOpenDialog = answer;
+  }, path);
 }

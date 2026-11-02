@@ -1645,7 +1645,8 @@ Use your own footage or Soul's with written permission. Mute or cut music you do
 
 These are checks the build itself answers, plus two decisions only you can make.
 
-- Your decisions: signing (unsigned with instructions, or pay for signing), and whether a Windows PC is available.
+- Your decision: signing (unsigned with instructions, or pay for signing).
+- Windows PC: not available. CI on `windows-latest` is the only Windows check.
 - Answered in spec 1: does `PostFileSave` fire on agent edits in CLI V3, and is `shell` the matcher name?
 - Answered in spec 5: does `--safe-mode` work with `-p` on your Claude Code version?
 - Answered in spec 6: how often does yt-dlp's clip info include a VOD offset for Twitch and YouTube clips?
@@ -1665,9 +1666,9 @@ As of Nov 1, local `main` only (no GitHub repo yet).
 | `app-shell-polish` (extra) | Done | Setup and Settings screens, navigation, sidebar, render queue drawer, headless e2e, screenshots. A second pass made Settings full-window with its own nav, so Back leaves Settings in one step, and quieted home, sidebar and Setup. |
 | 2 `schema` | Done | Section 22 schemas plus files, checks, time math, id mapping and snapping with property tests, Claude JSON Schemas, migrations, `plan:validate`. |
 | 3 `media-engine` | Done | `@alcyo/media`: probe, audio, silences, chunked transcript with resume, loudness, scenes, encoder test, proxy, peaks, thumbnails; cache keys; cancel; worker job. Real-tools test passes on this Mac. Not wired to a stream yet (needs spec 4). |
-| 4 `project-store` | Next | Also wires `analysis:start` and saves the encoder pick. |
+| 4 `project-store` | Done | `@alcyo/store` (stream folders, streams.json, settings, thread, sources with Locate file, versions that never overwrite, drafts, transcript reads), the stream service and job queue in main, IPC for streams, analysis, thread, transcript and shorts. Choose a file makes a stream and analyzes it; the sidebar lists streams; the thread shows status with Cancel. Ran end to end on Soul's 5-minute edit. |
 | 5 `setup-and-claude` | Partly done | The claude resolver and setup checks exist. Still to do: provider, `--safe-mode` check, model download, Locate claude, API key. |
-| 6–13 | Not started | |
+| 6–13 | Not started | Dropping files waits for spec 6 (a dropped file's path needs the preload). |
 
 Answers recorded so far:
 
@@ -1684,9 +1685,18 @@ On this Mac: Node 24.18, pnpm 12.14, the pinned tools fetched, `small.en`
 downloaded to userData (SHA-1 `db8a495a91d927739e50b3fc1cc4c6b8f6c2d022`),
 `claude` 2.1.301 at `~/.local/bin/claude`, signed in.
 
+No Windows PC is available (Hardik, Nov 1). Windows is checked only by CI on
+`windows-latest`, which needs the GitHub repo; until then Windows builds are
+untested. Windows-only code paths (claude.exe lookup, nsis, EPERM retries,
+path rules) have unit tests that run on macOS.
+
+Footage on hand: `~/Desktop/Soul47_Edit_Assets` (Soul's 5-minute edit, the
+VOD's yt-dlp info and YouTube word times, cut list, fonts, CC-BY music). Used
+locally for tests only; nothing from it is in the repo.
+
 Waiting on Hardik: the demo clip with 20 hand-marked word times and two cut
-clips (section 33), a Windows PC or a decision that there isn't one, signing,
-and the go-ahead to create the GitHub repo.
+clips (section 33), or written permission to cut them from Soul's VOD;
+signing; and the go-ahead to create the GitHub repo.
 
 ---
 

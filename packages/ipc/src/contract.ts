@@ -34,6 +34,8 @@ export const AppPaths = z.object({
   userData: z.string(),
   models: z.string(),
   bin: z.string(),
+  /** Where new stream folders go. */
+  streams: z.string(),
 });
 export type AppPaths = z.infer<typeof AppPaths>;
 

@@ -21,7 +21,12 @@ const info = {
   node: "24.11.0",
 } as const;
 
-const paths = { userData: "/data", models: "/data/models", bin: "/app/bin" };
+const paths = {
+  userData: "/data",
+  models: "/data/models",
+  bin: "/app/bin",
+  streams: "/Users/me/Movies/Alcyo Shorts",
+};
 const request = {
   binDir: "/app/bin",
   modelsDir: "/data/models",

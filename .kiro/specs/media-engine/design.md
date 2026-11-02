@@ -191,3 +191,21 @@ onEvent)` returns `{ jobId, done, cancel }`. Analysis has no reply timeout.
 - Integration (`analyze.integration.test.ts`): real binaries on a generated
   clip in a folder named with spaces, quotes and non-ASCII. Skipped, with a
   note, when the binaries or the whisper model aren't present.
+
+## Real speech check: Soul47 (Nov 1, 2026)
+
+`~/Desktop/Soul47_Edit_Assets` holds a 4:55 edit of Soul's 4h42m VOD plus
+YouTube's auto-caption word starts for the whole VOD (`transcript/words.json`).
+Matching 4-word runs of our transcript of the edit against the VOD's words
+placed 341 of 762 words and recovered the edit's 29 cuts and their VOD times,
+which line up with the cut list in `PROMPT_5min_edit.md`. Within each cut, our
+word starts sit within 80 ms (median) of YouTube's, 90th percentile 860 ms.
+YouTube's times are rough too, so this bounds agreement, not error. Two notes
+for later specs:
+
+- Text matching alone finds where a clip sits in a VOD, which is spec 6's
+  first step. Unique 4-word runs gave false hits only rarely (a few cuts
+  landed past the VOD's end, so the matcher needs a range check and the audio
+  refine step).
+- The VOD transcript is 28,510 words, about 45k tokens as lines: under the
+  150k window limit in section 16, so Find shorts on a 4.7 h stream is one call.

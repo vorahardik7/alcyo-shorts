@@ -142,3 +142,17 @@ to open.
   finishes, the thread shows it. With `ALCYO_E2E_SOURCE` and
   `ALCYO_MODELS_DIR` set, the same test runs on a real recording with the
   real model.
+
+## Real run (Nov 1, 2026)
+
+`soul47_5min_final.mp4` (Soul's 4:55 YouTube edit, 1080p60 H.264/AAC, 92 MB,
+music beds and SFX under the voice), chosen through the app with the dialog
+stubbed: stream created, file referenced in place, analysis finished in
+about 45 s on this Mac (transcript 20 s), 762 words in 79 lines. It plays
+directly, so no proxy was made. Nothing was written in the Soul47 folder.
+Run it with:
+
+```
+ALCYO_E2E_SOURCE=<recording> ALCYO_MODELS_DIR=<models folder> \
+  pnpm --filter @alcyo/desktop exec playwright test e2e/streams.spec.ts -g "real recording"
+```

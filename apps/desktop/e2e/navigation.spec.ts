@@ -1,6 +1,6 @@
 // Navigation, empty states and the Setup gate (app-shell-polish).
 import { expect, type Page, test } from "@playwright/test";
-import { type Launched, launch } from "./launch";
+import { type Launched, launch, stubFileDialog } from "./launch";
 
 const mod = process.platform === "darwin" ? "Meta" : "Control";
 
@@ -80,7 +80,7 @@ test.describe("with setup complete", () => {
     await page.evaluate(() => {
       window.location.hash = "#/s/abc";
     });
-    await expect(page.getByTestId("thread-header")).toHaveText("abc");
+    await expect(page.getByTestId("stream-placeholder")).toBeVisible();
     await page.keyboard.press(`${mod}+Comma`);
     await expect.poll(hash).toBe("#/settings");
     await page.getByTestId("section-claude").click();
@@ -138,8 +138,10 @@ test.describe("with setup complete", () => {
     await page.evaluate(() => {
       window.location.hash = "#/s/abc/short/sh1/v/2/edit";
     });
-    await expect(page.getByTestId("thread-header")).toHaveText("abc");
-    await expect.poll(title).toBe("abc · Alcyo Shorts");
+    await expect(page.getByTestId("stream-placeholder")).toHaveText(
+      "That stream isn't in this app.",
+    );
+    await expect.poll(title).toBe("Stream · Alcyo Shorts");
     await page.keyboard.press(`${mod}+BracketLeft`);
     await expect.poll(hash).toBe("#/");
 
@@ -235,8 +237,10 @@ test.describe("with setup complete", () => {
 
   test("home actions all respond", async () => {
     await goHome();
+    await stubFileDialog(run.app, null);
     await page.getByTestId("choose-file").click();
-    await expect(page.getByTestId("toast")).toContainText("Importing files comes in spec 6");
+    await page.waitForTimeout(200);
+    await expect.poll(hash).toBe("#/");
     await page.getByTestId("open-demo").click();
     await expect(page.getByTestId("toast")).toContainText("spec 13");
     await page.getByTestId("new-stream").click();

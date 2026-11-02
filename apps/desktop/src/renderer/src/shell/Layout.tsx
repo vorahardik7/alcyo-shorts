@@ -8,6 +8,7 @@ import { Spinner } from "../ui/parts";
 import { Toaster } from "../ui/toast";
 import { importFileToast } from "./pages";
 import { Sidebar } from "./Sidebar";
+import { watchStreams } from "../streams/store";
 import { useLinks } from "./useLinks";
 
 const SLOW_CHECK_MS = 6000;
@@ -106,6 +107,7 @@ export function Layout() {
   useNavShortcuts();
   const ready = useStartupGate();
   const dropping = useFileDrop();
+  useEffect(() => watchStreams(), []);
   const pathname = useLocation({ select: (l) => l.pathname });
   // Setup and Settings take the whole window; Settings brings its own nav.
   const fullWindow = pathname === "/setup" || inSettings(pathname);

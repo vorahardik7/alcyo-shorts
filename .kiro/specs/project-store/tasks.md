@@ -19,12 +19,12 @@ Each task ends with lint, typecheck and test, then one local commit.
   - Tests with a fake worker
   - _Requirements: 7.1–7.4, 8.1, 8.2_
 
-- [ ] 4. UI
+- [x] 4. UI
   - Sidebar list, Choose a file, stream thread with status messages and
     Cancel, Locate file, Storage settings
   - _Requirements: 8.3–8.5_
 
-- [ ] 5. e2e, real run and wrap-up
+- [x] 5. e2e, real run and wrap-up
   - Playwright import test; the real-recording run; screenshots
   - Full build, `pnpm test:e2e`, `pnpm package:mac`; plan section 36
   - _Requirements: 8.6, all_

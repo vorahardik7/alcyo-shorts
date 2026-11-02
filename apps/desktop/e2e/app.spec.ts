@@ -97,8 +97,7 @@ test("macOS open-url routes a link to the renderer", async () => {
     );
   });
   await expect.poll(hash).toBe("#/s/abc/short/sh1/v/2");
-  await expect(page.getByTestId("stream-placeholder")).toBeVisible();
-  await expect(page.getByTestId("thread-header")).toHaveText("abc");
+  await expect(page.getByTestId("stream-placeholder")).toHaveText("That stream isn't in this app.");
 });
 
 test("Windows second-instance argv routes a link to the renderer", async () => {

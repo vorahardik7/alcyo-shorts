@@ -1,16 +1,47 @@
 // Sidebar (plan section 4): search and +, the stream list, and Settings and the
 // render queue pinned at the bottom. The creator header joins it with profiles
 // (spec 7).
+import type { StreamSummary } from "@alcyo/ipc";
 import { Link, useLocation, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { isMac, useUi } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
 import { openIssues, useSetup } from "../setup/store";
+import { useStreams } from "../streams/store";
 import { IconButton, iconButtonClass } from "../ui/Button";
 import { CloseIcon, GridIcon, PlusIcon, SearchIcon, SettingsIcon } from "../ui/icons";
 
-/** Streams arrive with the project store (spec 4); until then the list is empty. */
-const streams: Array<{ id: string; name: string; preview: string }> = [];
+function StreamRow({ stream, active }: { stream: StreamSummary; active: boolean }) {
+  return (
+    <Link
+      to="/s/$streamId"
+      params={{ streamId: stream.streamId }}
+      data-testid="stream-row"
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center gap-3 rounded-xl px-2.5 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-unread ${
+        active ? "bg-bubble-claude" : "hover:bg-bubble-claude/60"
+      }`}
+    >
+      <span
+        aria-hidden
+        className="grid size-9 shrink-0 place-items-center rounded-full bg-bubble-user text-[14px] font-semibold text-secondary"
+      >
+        {[...stream.name][0]?.toUpperCase() ?? "S"}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] leading-tight">{stream.name}</span>
+        <span className="block truncate text-[13px] text-tertiary">
+          {stream.missing ? "Folder moved" : stream.preview || "New stream"}
+        </span>
+      </span>
+      {stream.unread && (
+        <span data-testid="unread-dot" className="size-2 shrink-0 rounded-full bg-unread">
+          <span className="sr-only">New activity</span>
+        </span>
+      )}
+    </Link>
+  );
+}
 
 function SearchBox() {
   const { query, setQuery, setSearch } = useUi();
@@ -59,7 +90,10 @@ export function Sidebar() {
     focusComposer();
   };
   const onRenders = pathname === "/renders";
+  const streams = useStreams((s) => s.streams);
+  const loaded = useStreams((s) => s.loaded);
   const matches = streams.filter((s) => s.name.toLowerCase().includes(query.toLowerCase()));
+  const activeId = /^\/s\/([^/]+)/.exec(pathname)?.[1];
 
   return (
     <aside
@@ -95,8 +129,14 @@ export function Sidebar() {
             No streams match “{query}”.
           </p>
         ) : streams.length === 0 ? (
-          <EmptyStreams />
-        ) : null}
+          loaded && <EmptyStreams />
+        ) : (
+          <div className="space-y-0.5">
+            {matches.map((s) => (
+              <StreamRow key={s.streamId} stream={s} active={s.streamId === activeId} />
+            ))}
+          </div>
+        )}
       </nav>
 
       <div className="shrink-0 space-y-1 p-2">

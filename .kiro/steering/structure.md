@@ -4,8 +4,8 @@ inclusion: always
 # Structure
 
 apps/desktop/src/
-  main/       lifecycle, single instance, alcyo:// links, IPC, store,
-              job queue, alcyo-media://, worker host
+  main/       lifecycle, single instance, alcyo:// links, IPC, stream
+              service and job queue, alcyo-media://, worker host
   worker/     utilityProcess: import, media, profile, planner, render jobs
   preload/    window.alcyo (invoke, on). Nothing else.
   renderer/   sidebar, thread, cards, editor, render queue, setup,
@@ -13,6 +13,8 @@ apps/desktop/src/
 packages/
   schema/    Zod schemas, JSON Schema export, migrations, link format. Pure.
   ipc/       IPC and worker contracts. Pure.
+  store/     stream folders, streams.json, settings.json, thread, sources,
+             versions, drafts, atomic writes. Node fs; no electron.
   media/     ffprobe, ffmpeg, whisper wrappers, analysis steps, encoder probe.
   import/    yt-dlp, file import, clip matching.
   profile/   past-short measures, templates, style summary prompt.

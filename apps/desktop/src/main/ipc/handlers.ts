@@ -5,7 +5,7 @@ import type { HandlerFn } from "./core";
 
 export interface HandlerDeps {
   appInfo(): AppInfo;
-  appPaths(): AppPaths;
+  appPaths(): AppPaths | Promise<AppPaths>;
   openDataFolder(): Promise<void>;
   setupCheck(fresh: boolean): Promise<SetupReport>;
   pingWorker(text: string): Promise<string>;

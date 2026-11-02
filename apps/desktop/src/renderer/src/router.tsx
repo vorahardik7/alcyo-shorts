@@ -1,5 +1,5 @@
 // Routes from plan section 5 plus Setup and Settings sections, with hash
-// history. Everything below a stream is a placeholder until spec 10.
+// history.
 import { SETTINGS_SECTIONS, type SettingsSection } from "@alcyo/schema";
 import {
   createHashHistory,
@@ -10,7 +10,8 @@ import {
 import { SettingsPage } from "./settings/SettingsPage";
 import { SetupPage } from "./setup/SetupPage";
 import { Layout } from "./shell/Layout";
-import { Home, NotFound, StreamPlaceholder } from "./shell/pages";
+import { Home, NotFound } from "./shell/pages";
+import { StreamThread } from "./streams/StreamThread";
 import { RenderQueuePage } from "./shell/RenderQueue";
 
 const rootRoute = createRootRoute({ component: Layout, notFoundComponent: NotFound });
@@ -20,15 +21,15 @@ const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", com
 const streamRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/s/$streamId",
-  component: StreamPlaceholder,
+  component: StreamThread,
 });
 
 // Messages, shorts, versions, the editor and source moments all sit below a
-// stream. Until the store exists (spec 4) they show the same placeholder.
+// stream. Until specs 10 and 11 they show the stream's thread.
 const streamChildRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/s/$streamId/$",
-  component: StreamPlaceholder,
+  component: StreamThread,
 });
 
 const rendersRoute = createRoute({

@@ -100,6 +100,7 @@ function run(): void {
       userData,
       // Tests point these at throwaway (or real) folders.
       models: envPath("ALCYO_MODELS_DIR") ?? join(userData, "models"),
+      streams: envPath("ALCYO_STREAMS_DIR") ?? join(app.getPath("videos"), "Alcyo Shorts"),
       bin: resolveBinDir({
         packaged: app.isPackaged,
         resourcesPath: process.resourcesPath,
@@ -182,7 +183,10 @@ function run(): void {
         chrome: process.versions.chrome ?? "unknown",
         node: process.versions.node,
       }),
-      appPaths: () => paths,
+      appPaths: async () => ({
+        ...paths,
+        streams: (await settings.read()).streamsDir ?? paths.streams,
+      }),
       openDataFolder: async () => {
         await mkdir(userData, { recursive: true });
         const error = await shell.openPath(userData);
