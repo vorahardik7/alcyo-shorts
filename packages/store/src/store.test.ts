@@ -176,6 +176,47 @@ describe("a stream folder", () => {
     expect((await readdir(join(root, "Videos 名前"))).length).toBe(1);
   });
 
+  it("registers a download inside the project with its info", async () => {
+    const sourceId = "src_dl";
+    const path = join(store.paths.sourceDir(sourceId), "media.mp4");
+    await mkdir(store.paths.sourceDir(sourceId), { recursive: true });
+    await writeFile(path, "video bytes");
+    const info = {
+      id: "abc",
+      title: "Long stream",
+      uploader: null,
+      uploadDate: "20261030",
+      durationMs: 3_600_000,
+      webpageUrl: "https://www.youtube.com/watch?v=abc",
+      extractor: "Youtube",
+    };
+    const url = "https://www.youtube.com/watch?v=abc";
+    const source = await store.addDownloadedSource({ sourceId, url, path, info });
+    expect(source.origin).toEqual({ kind: "url", url, path });
+    expect(source.info).toEqual(info);
+    expect((await store.project()).sources).toEqual([{ sourceId }]);
+    expect((await store.sources())[0]?.missing).toBe(false);
+  });
+
+  it("adds clips in order and saves a match", async () => {
+    const media = join(store.paths.clipDir("clip_a"), "media.mp4");
+    await store.addClip({
+      clipId: "clip_a",
+      origin: { kind: "url", url: "https://clips.twitch.tv/Abc", path: media },
+      title: "Big play",
+      durationMs: 30_000,
+    });
+    await store.addClip({ clipId: "clip_b", origin: { kind: "file", path: video }, durationMs: 0 });
+    expect((await store.clips()).map((c) => c.clipId)).toEqual(["clip_a", "clip_b"]);
+    expect((await store.project()).clips).toEqual(["clip_a", "clip_b"]);
+    const match = { srcIn: 1000, srcOut: 31_000, confidence: 0.9, method: "audio" as const };
+    const saved = await store.updateClip("clip_a", { match });
+    expect((await store.clip("clip_a")).match).toEqual(match);
+    expect(ProjectStore.clipMedia(saved)).toBe(media);
+    // A file clip stays where it is; nothing is written next to it.
+    expect(await readdir(join(root, "Videos 名前"))).toEqual(["soul47 stream.mp4"]);
+  });
+
   it("relinks a moved source only to the same file", async () => {
     const source = await store.addFileSource(video);
     const moved = join(root, "moved.mp4");

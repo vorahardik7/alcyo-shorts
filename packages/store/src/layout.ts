@@ -21,6 +21,9 @@ export function layout(folder: string) {
     version: (id: string, n: number, by: "claude" | "user") =>
       join(folder, "shorts", id, "versions", `${pad(n)}.${by}.json`),
     clips: join(folder, "clips"),
+    clipDir: (id: string) => join(folder, "clips", id),
+    clip: (id: string) => join(folder, "clips", id, "clip.json"),
+    clipAnalysisDir: (id: string) => join(folder, "clips", id, "analysis"),
     renders: join(folder, "renders"),
     cache: join(folder, "cache"),
     logs: join(folder, "logs"),

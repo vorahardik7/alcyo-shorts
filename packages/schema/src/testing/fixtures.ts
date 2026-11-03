@@ -221,6 +221,7 @@ export const settings: Settings = {
   ytDlp: { version: "2026.10.26", path: null },
   theme: "dark",
   streamsDir: null,
+  urlNoteShown: false,
 };
 
 export const streamsIndex: StreamsIndex = {

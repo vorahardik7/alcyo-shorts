@@ -1,7 +1,7 @@
 // Settings (plan section 4): Profile, Claude, Models, Encoder, Storage, About.
 // Full window: the settings nav takes the sidebar's place, and Back returns to
 // the chat. Every value comes from main; unbuilt parts carry a quiet "Soon".
-import type { LocalAgentId, SetupCheck, SetupReport } from "@alcyo/ipc";
+import type { DownloaderInfo, LocalAgentId, SetupCheck, SetupReport } from "@alcyo/ipc";
 import { Link } from "@tanstack/react-router";
 import { type ComponentType, type ReactNode, useEffect, useState } from "react";
 import license from "../../../../../../LICENSE?raw";
@@ -11,7 +11,7 @@ import { isMac, useBack, usePageTitle } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
 import { DownloadButton } from "../setup/download";
 import { openIssues, useAppFacts, useSetup } from "../setup/store";
-import { useStreams } from "../streams/store";
+import { plainError, useStreams } from "../streams/store";
 import { AppMark } from "../ui/AppMark";
 import { Button, ButtonLink } from "../ui/Button";
 import {
@@ -541,6 +541,80 @@ function Disclosure({
   );
 }
 
+function DownloaderCard() {
+  const [info, setInfo] = useState<DownloaderInfo | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.alcyo.invoke("downloader:info", {}).then(setInfo, () => undefined);
+  }, []);
+
+  const act = (channel: "downloader:update" | "downloader:useBundled") => {
+    setBusy(true);
+    setNote(null);
+    window.alcyo
+      .invoke(channel, {})
+      .then(
+        (next) => {
+          setInfo(next);
+          setNote(next.note ?? null);
+        },
+        (error: unknown) => setNote(plainError(error)),
+      )
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <Card
+      testId="downloader-card"
+      title="Downloader"
+      description="yt-dlp downloads links. Sites change often, so a newer version may be needed."
+      actions={
+        <>
+          {info?.updated === true && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              data-testid="downloader-bundled"
+              onClick={() => act("downloader:useBundled")}
+            >
+              Use the bundled version
+            </Button>
+          )}
+          <Button
+            size="sm"
+            disabled={busy || info === null}
+            data-testid="downloader-update"
+            onClick={() => act("downloader:update")}
+          >
+            {busy && <Spinner size={12} />}
+            Update downloader
+          </Button>
+        </>
+      }
+    >
+      <Row label="In use">
+        <span data-testid="downloader-version">
+          {info === null
+            ? "Checking…"
+            : `${info.version ?? "Unknown"}${info.updated ? " (updated)" : " (bundled)"}`}
+        </span>
+      </Row>
+      {info?.updated === true && <Row label="Bundled">{info.bundled ?? "Unknown"}</Row>}
+      {note !== null && (
+        <p
+          data-testid="downloader-note"
+          className="border-t border-hairline px-5 py-3 text-[14px] text-secondary"
+        >
+          {note}
+        </p>
+      )}
+    </Card>
+  );
+}
+
 function AboutSection() {
   const info = useAppFacts((s) => s.info);
   const report = useSetup((s) => s.report);
@@ -573,6 +647,7 @@ function AboutSection() {
           ))
         )}
       </Card>
+      <DownloaderCard />
       <Disclosure title="License (MIT)">{license}</Disclosure>
       <Disclosure title="Third-party notices" testId="notices">
         {notices}

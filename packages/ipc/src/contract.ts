@@ -3,6 +3,7 @@
 import {
   AnalysisStepName,
   AppLink,
+  ClipFile,
   Draft,
   Id,
   Message,
@@ -57,7 +58,9 @@ export const StreamDetail = z.object({
   stream: StreamSummary,
   project: Project,
   sources: z.array(z.object({ source: Source, missing: z.boolean() })),
-  /** Analysis jobs running or queued for this stream. */
+  /** Viewer clips, in the order they were added. */
+  clips: z.array(ClipFile),
+  /** Jobs running or queued for this stream. sourceId is the source or clip. */
   jobs: z.array(z.object({ jobId: Id, sourceId: Id })),
 });
 export type StreamDetail = z.infer<typeof StreamDetail>;
@@ -66,6 +69,21 @@ export const LineHit = z.object({ lineId: z.string(), startMs: Ms, endMs: Ms, te
 export type LineHit = z.infer<typeof LineHit>;
 
 export const JobRef = z.object({ jobId: Id });
+
+const LinkUrl = z.url({ protocol: /^https?$/ }).max(2000);
+
+export const DownloaderInfo = z.object({
+  /** The version in use. */
+  version: z.string().max(40).nullable(),
+  /** The version bundled with the app. */
+  bundled: z.string().max(40).nullable(),
+  /** True when an updated copy in userData is in use. */
+  updated: z.boolean(),
+  path: z.string(),
+  /** Set by downloader:update: what happened, in one line. */
+  note: z.string().max(200).optional(),
+});
+export type DownloaderInfo = z.infer<typeof DownloaderInfo>;
 
 const StreamRef = z.object({ streamId: Id });
 const ShortInput = StreamRef.extend({ shortId: Id });
@@ -128,6 +146,34 @@ export const contract = {
     ]),
   },
   "analysis:start": { input: StreamRef.extend({ sourceId: Id }), output: JobRef },
+  /**
+   * A pasted link. With no streamId, the link is read first and a stream is
+   * made only when it can be downloaded.
+   */
+  "link:add": {
+    input: z.object({ streamId: Id.optional(), url: LinkUrl }),
+    output: z.union([
+      z.object({ streamId: Id }),
+      z.object({ failed: z.literal(true), message: z.string().max(300) }),
+    ]),
+  },
+  /** The answer to "Use this as the stream, or add it as a clip?". */
+  "link:answer": {
+    input: StreamRef.extend({ messageId: Id, choice: z.enum(["stream", "clip"]) }),
+    output: z.object({}),
+  },
+  /** A file dialog in main; the file becomes a clip of this stream, referenced in place. */
+  "clip:chooseFile": {
+    input: StreamRef,
+    output: z.union([z.object({ clipId: Id }), z.object({ cancelled: z.literal(true) })]),
+  },
+  /** Place by hand: where the clip starts in the stream's recording. */
+  "clip:place": { input: StreamRef.extend({ clipId: Id, srcIn: Ms }), output: ClipFile },
+  "downloader:info": { input: z.object({}), output: DownloaderInfo },
+  /** Fetches the newest yt-dlp release and keeps it only if its SHA-256 matches. */
+  "downloader:update": { input: z.object({}), output: DownloaderInfo },
+  /** Goes back to the yt-dlp bundled with the app. */
+  "downloader:useBundled": { input: z.object({}), output: DownloaderInfo },
   "job:cancel": { input: JobRef, output: z.object({}) },
   "thread:messages": {
     input: StreamRef.extend({ before: Id.optional(), limit: z.number().int().min(1).max(200) }),

@@ -16,8 +16,9 @@ fileMatchPattern: ["packages/media/**/*.ts", "packages/render/**/*.ts", "package
 - whisper-cli: 16 kHz mono WAV, --vad -vm <silero>, -ojf, --dtw <model>,
   chunks split at silences. Check whether --dtw needs -nfa.
 - yt-dlp: --no-config --no-cache-dir --no-playlist --ffmpeg-location
-  <bundled> -f "bv*[height<=1080]+ba/b[height<=1080]" --merge-output-format
+  <bundled> -f "bv*[height<=?1080]+ba/b[height<=?1080]" --merge-output-format
   mp4 --write-info-json, then "--" and the URL. Info JSON through Zod.
+  "<=?" keeps formats with no known height (plain file links).
 - Clip matching: transcript fuzzy match, then audio envelope
   cross-correlation within ±5 s.
 - Integer ms in saved files. Convert at the tool boundary.

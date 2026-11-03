@@ -2,7 +2,7 @@
 // This spec shows text and status messages; spec 10 adds cards, replies and
 // the rest.
 import type { StreamDetail } from "@alcyo/ipc";
-import type { Message } from "@alcyo/schema";
+import type { ClipFile, Message } from "@alcyo/schema";
 import { useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePageTitle } from "../nav/navigation";
@@ -11,6 +11,7 @@ import { Button, ButtonLink } from "../ui/Button";
 import { AlertIcon, CheckIcon } from "../ui/icons";
 import { Spinner } from "../ui/parts";
 import { toast } from "../ui/toast";
+import { ClipsBubble, QuestionBubble } from "./clips";
 import { mergeMessage, plainError } from "./store";
 
 const PAGE = 200;
@@ -71,9 +72,37 @@ function StatusBubble({ body }: { body: Extract<Message["body"], { kind: "status
   );
 }
 
-function MessageView({ message }: { message: Message }) {
+function MessageView({
+  message,
+  streamId,
+  clips,
+  answered,
+  onChange,
+}: {
+  message: Message;
+  streamId: string;
+  clips: readonly ClipFile[];
+  answered: boolean;
+  onChange: () => void;
+}) {
   const mine = message.author === "user";
   const body = message.body;
+  if (body.kind === "question" || body.kind === "clips") {
+    return (
+      <div id={`m-${message.id}`} data-testid="message" className="flex justify-start">
+        {body.kind === "question" ? (
+          <QuestionBubble streamId={streamId} message={{ ...message, body }} answered={answered} />
+        ) : (
+          <ClipsBubble
+            streamId={streamId}
+            clipIds={body.clipIds}
+            clips={clips}
+            onChange={onChange}
+          />
+        )}
+      </div>
+    );
+  }
   return (
     <div
       id={`m-${message.id}`}
@@ -162,8 +191,9 @@ function Thread({ streamId }: { streamId: string }) {
       if (e.streamId !== streamId) return;
       setMessages((list) => mergeMessage(list, e.message));
       void window.alcyo.invoke("stream:markRead", { streamId }).catch(() => undefined);
-      // A finished job changes the source (probe) and the job list.
-      if (e.message.body.kind === "status" && e.message.body.state !== "running") reload();
+      // A finished job changes the sources, clips and job list.
+      const body = e.message.body;
+      if ((body.kind === "status" && body.state !== "running") || body.kind === "clips") reload();
     });
     void window.alcyo.invoke("stream:markRead", { streamId }).catch(() => undefined);
     return offMessage;
@@ -198,8 +228,17 @@ function Thread({ streamId }: { streamId: string }) {
           {missing.map(({ source }) => (
             <MissingSource key={source.sourceId} streamId={streamId} sourceId={source.sourceId} />
           ))}
-          {messages.map((m) => (
-            <MessageView key={m.id} message={m} />
+          {messages.map((m, i) => (
+            <MessageView
+              key={m.id}
+              message={m}
+              streamId={streamId}
+              clips={detail?.clips ?? []}
+              answered={
+                m.body.kind === "question" && messages.slice(i + 1).some((n) => n.author === "user")
+              }
+              onChange={reload}
+            />
           ))}
           <div ref={end} />
         </div>
@@ -210,9 +249,19 @@ function Thread({ streamId }: { streamId: string }) {
           onText={() =>
             toast("Chat comes in spec 10", "Messages to a stream go to Claude once it's built.")
           }
-          onFile={() =>
-            toast("Adding viewer clips comes in spec 6", "Start a new stream from the home screen.")
-          }
+          onUrl={(url) => {
+            window.alcyo
+              .invoke("link:add", { streamId, url })
+              .catch((e: unknown) => toast("Couldn't use that link", plainError(e)));
+          }}
+          onFile={() => {
+            // With a recording in, a chosen file is a viewer clip; before that, it's the recording.
+            const asClip = (detail?.sources.length ?? 0) > 0;
+            const call = asClip
+              ? window.alcyo.invoke("clip:chooseFile", { streamId })
+              : window.alcyo.invoke("source:chooseFile", { streamId });
+            call.then(reload, (e: unknown) => toast("Couldn't add that file", plainError(e)));
+          }}
         />
       </div>
     </section>

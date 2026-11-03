@@ -222,25 +222,32 @@ test.describe("with setup complete", () => {
     await expect(page.getByTestId("search-input")).toHaveCount(0);
   });
 
-  test("New stream focuses the composer; a sent or pasted link shows the import note", async () => {
+  test("New stream focuses the composer; a sent or pasted link is read, and a bad one makes no stream", async () => {
     await goHome();
     await page.getByTestId("new-stream").click();
     const input = page.getByTestId("composer-input");
     await expect(input).toBeFocused();
-    await input.fill("https://www.twitch.tv/videos/123");
+    // Port 9 refuses connections, so yt-dlp fails fast and nothing leaves the machine.
+    await input.fill("http://127.0.0.1:9/stream.mp4");
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("toast")).toContainText("Importing links comes in spec 6");
+    await expect(page.getByTestId("toast").last()).toContainText("Couldn't use that link", {
+      timeout: 30_000,
+    });
     await expect(input).toHaveValue("");
+    await expect.poll(hash).toBe("#/");
+    await expect(page.getByTestId("stream-row")).toHaveCount(0);
     await page.keyboard.press("Escape");
-    await expect(page.getByTestId("toast")).toHaveCount(0);
 
     await input.focus();
     await input.evaluate((el) => {
       const data = new DataTransfer();
-      data.setData("text/plain", "https://youtu.be/abc");
+      data.setData("text/plain", "http://127.0.0.1:9/clip.mp4");
       el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true }));
     });
-    await expect(page.getByTestId("toast")).toContainText("Importing links comes in spec 6");
+    await expect(page.getByTestId("toast").last()).toContainText("Couldn't use that link", {
+      timeout: 30_000,
+    });
+    await expect(input).toHaveValue("");
   });
 
   test("home actions all respond", async () => {

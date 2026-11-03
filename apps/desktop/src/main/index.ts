@@ -1,4 +1,5 @@
 // Electron main: lifecycle, single instance, alcyo:// links, IPC, worker host.
+import { execFile } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { availableParallelism } from "node:os";
@@ -14,6 +15,7 @@ import { handle, sendEvent } from "./ipc";
 import { createHandlers } from "./ipc/handlers";
 import { findLinkInArgv, LinkQueue, linkEvent } from "./links";
 import { ApiKeyFile } from "./api-key";
+import { Downloader } from "./downloader";
 import { fixtureKind, fixtureReport } from "./setup-fixture";
 import { SetupService } from "./setup-service";
 import { StreamService } from "./streams";
@@ -142,6 +144,21 @@ function run(): void {
     });
     let download: Promise<{ path: string; name: WhisperModelName }> | undefined;
     const exe = (name: string) => join(paths.bin, platform === "win32" ? `${name}.exe` : name);
+    const downloader = new Downloader({
+      settings,
+      userBinDir: join(userData, "bin"),
+      bundledPath: exe("yt-dlp"),
+      platform,
+      versionOf: (file) =>
+        new Promise((resolve) => {
+          execFile(file, ["--version"], { timeout: 15_000, windowsHide: true }, (error, stdout) => {
+            const version = /^(\d{4}\.\d{2}\.\d{2}(?:\.\d+)?)/.exec(String(stdout).trim())?.[1];
+            resolve(error === null && version !== undefined ? version : null);
+          });
+        }),
+    });
+    // The bundled yt-dlp takes a few seconds to start once; ask early so Settings doesn't wait.
+    void downloader.info().catch(() => undefined);
     const streams = new StreamService({
       index: new StreamsIndex(userData),
       settings,
@@ -185,6 +202,7 @@ function run(): void {
             : await dialog.showOpenDialog(win, options);
         return result.canceled ? null : (result.filePaths[0] ?? null);
       },
+      importBase: async () => ({ ytDlp: await downloader.path(), ffmpegDir: paths.bin }),
       emit: (event, payload) => sendEvent(win, event, payload),
     });
 
@@ -266,6 +284,7 @@ function run(): void {
       },
       clearApiKey: () => apiKey.clear(),
       pingWorker: (text) => worker.get().ping(text),
+      downloader,
       now: () => performance.now(),
       streams,
     });

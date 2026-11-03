@@ -4,6 +4,14 @@ import {
   type AnalysisEvent,
   type AnalysisRequest,
   type AnalysisResult,
+  type ClipMatchRequest,
+  type ClipMatchResult,
+  type DownloadRequest,
+  type DownloadResult,
+  type ImportEvent,
+  type JobEvent,
+  type LinkInfoRequest,
+  type LinkInfoResult,
   MainToWorker,
   type SetupReport,
   type SetupRequest,
@@ -43,11 +51,21 @@ export interface WorkerJobs {
     onEvent: (event: AnalysisEvent) => void,
     signal: AbortSignal,
   ) => Promise<AnalysisResult>;
+  linkInfo: (request: LinkInfoRequest) => Promise<LinkInfoResult>;
+  download: (
+    request: DownloadRequest,
+    onEvent: (event: ImportEvent) => void,
+    signal: AbortSignal,
+  ) => Promise<DownloadResult>;
+  matchClip: (request: ClipMatchRequest, signal: AbortSignal) => Promise<ClipMatchResult>;
 }
 
 const noJobs: WorkerJobs = {
   setupCheck: () => Promise.reject(new Error("This worker can't run setup checks.")),
   analyze: () => Promise.reject(new Error("This worker can't run analysis.")),
+  linkInfo: () => Promise.reject(new Error("This worker can't read links.")),
+  download: () => Promise.reject(new Error("This worker can't download.")),
+  matchClip: () => Promise.reject(new Error("This worker can't match clips.")),
 };
 
 /** An error's plain message and code, when it carries them (MediaError does). */
@@ -71,6 +89,28 @@ export function serveWorker(
   const jobs: WorkerJobs = { ...noJobs, ...given };
   const send = (message: WorkerToMain) => port.send(WorkerToMain.parse(message));
   const running = new Map<string, AbortController>();
+
+  /** A cancellable job: events go out as job-event, then one reply or an error. */
+  const runJob = (
+    id: string,
+    jobId: string,
+    what: string,
+    start: (emit: (event: JobEvent) => void, signal: AbortSignal) => Promise<WorkerToMain>,
+  ) => {
+    if (running.has(jobId)) {
+      send({ type: "error", id, message: "That job is already running." });
+      return;
+    }
+    const controller = new AbortController();
+    running.set(jobId, controller);
+    start((event) => send({ type: "job-event", jobId, event }), controller.signal)
+      .then(send, (error: unknown) => {
+        const { message: text, code } = describeError(error);
+        if (code !== "cancelled") log(`${what} ${jobId} failed: ${text}`);
+        send({ type: "error", id, message: text, ...(code === undefined ? {} : { code }) });
+      })
+      .finally(() => running.delete(jobId));
+  };
 
   port.onMessage((data) => {
     const parsed = MainToWorker.safeParse(data);
@@ -101,28 +141,41 @@ export function serveWorker(
         return;
       }
       case "analysis-run": {
-        const { id, jobId } = message;
-        if (running.has(jobId)) {
-          send({ type: "error", id, message: "That job is already running." });
-          return;
-        }
-        const controller = new AbortController();
-        running.set(jobId, controller);
-        jobs
-          .analyze(
-            message.request,
-            (event) => send({ type: "job-event", jobId, event }),
-            controller.signal,
-          )
-          .then(
-            (result) => send({ type: "analysis-result", id, result }),
-            (error: unknown) => {
-              const { message: text, code } = describeError(error);
-              if (code !== "cancelled") log(`Analysis ${jobId} failed: ${text}`);
-              send({ type: "error", id, message: text, ...(code === undefined ? {} : { code }) });
-            },
-          )
-          .finally(() => running.delete(jobId));
+        const { request } = message;
+        runJob(message.id, message.jobId, "Analysis", (emit, signal) =>
+          jobs
+            .analyze(request, emit, signal)
+            .then((result) => ({ type: "analysis-result", id: message.id, result }) as const),
+        );
+        return;
+      }
+      case "download-run": {
+        const { request } = message;
+        runJob(message.id, message.jobId, "Download", (emit, signal) =>
+          jobs
+            .download(request, emit, signal)
+            .then((result) => ({ type: "download-result", id: message.id, result }) as const),
+        );
+        return;
+      }
+      case "clip-match-run": {
+        const { request } = message;
+        runJob(message.id, message.jobId, "Clip match", (_emit, signal) =>
+          jobs
+            .matchClip(request, signal)
+            .then((result) => ({ type: "clip-match-result", id: message.id, result }) as const),
+        );
+        return;
+      }
+      case "link-info": {
+        const { id } = message;
+        jobs.linkInfo(message.request).then(
+          (result) => send({ type: "link-info-result", id, result }),
+          (error: unknown) => {
+            const { message: text, code } = describeError(error);
+            send({ type: "error", id, message: text, ...(code === undefined ? {} : { code }) });
+          },
+        );
         return;
       }
       case "job-cancel":
@@ -147,6 +200,17 @@ export interface WorkerClient {
     request: AnalysisRequest,
     onEvent: (event: AnalysisEvent) => void,
   ): { jobId: string; done: Promise<AnalysisResult>; cancel: () => void };
+  /** Asks yt-dlp what a link is. A minute at most. */
+  linkInfo(request: LinkInfoRequest): Promise<LinkInfoResult>;
+  download(
+    request: DownloadRequest,
+    onEvent: (event: ImportEvent) => void,
+  ): { jobId: string; done: Promise<DownloadResult>; cancel: () => void };
+  matchClip(request: ClipMatchRequest): {
+    jobId: string;
+    done: Promise<ClipMatchResult>;
+    cancel: () => void;
+  };
   /** Rejects every pending call, for when the worker exits. */
   close(reason: string): void;
 }
@@ -177,7 +241,7 @@ export function createWorkerClient(
   }: { timeoutMs?: number; setupTimeoutMs?: number; log?: Log } = {},
 ): WorkerClient {
   const pending = new Map<string, Pending>();
-  const listeners = new Map<string, (event: AnalysisEvent) => void>();
+  const listeners = new Map<string, (event: JobEvent) => void>();
   let nextId = 1;
   let closedReason: string | undefined;
   let markReady: () => void = () => undefined;
@@ -210,8 +274,8 @@ export function createWorkerClient(
     clearTimeout(call.timer);
     if (message.type === "pong") call.resolve(message.text);
     else if (message.type === "setup-report") call.resolve(message.report);
-    else if (message.type === "analysis-result") call.resolve(message.result);
-    else call.reject(new WorkerError(message.message, message.code));
+    else if (message.type === "error") call.reject(new WorkerError(message.message, message.code));
+    else call.resolve(message.result);
   });
 
   function request<T>(build: (id: string) => MainToWorker, waitMs: number | null): Promise<T> {
@@ -230,6 +294,24 @@ export function createWorkerClient(
     });
   }
 
+  /** A job with no reply timeout. Events stream to onEvent until it settles. */
+  function job<T>(
+    onEvent: (event: JobEvent) => void,
+    build: (id: string, jobId: string) => MainToWorker,
+  ): { jobId: string; done: Promise<T>; cancel: () => void } {
+    const jobId = `job-${nextId++}`;
+    listeners.set(jobId, onEvent);
+    const done = request<T>((id) => build(id, jobId), null).finally(() => listeners.delete(jobId));
+    return {
+      jobId,
+      done,
+      cancel: () => {
+        if (closedReason === undefined)
+          port.send(MainToWorker.parse({ type: "job-cancel", jobId }));
+      },
+    };
+  }
+
   return {
     ready,
     ping: (text) => request<string>((id) => ({ type: "ping", id, text }), timeoutMs),
@@ -237,20 +319,28 @@ export function createWorkerClient(
     setupCheck: (req) =>
       request<SetupReport>((id) => ({ type: "setup-check", id, request: req }), setupTimeoutMs),
     analyze(req, onEvent) {
-      const jobId = `job-${nextId++}`;
-      listeners.set(jobId, onEvent);
-      const done = request<AnalysisResult>(
-        (id) => ({ type: "analysis-run", id, jobId, request: req }),
-        null,
-      ).finally(() => listeners.delete(jobId));
-      return {
-        jobId,
-        done,
-        cancel: () => {
-          if (closedReason === undefined)
-            port.send(MainToWorker.parse({ type: "job-cancel", jobId }));
+      return job<AnalysisResult>(
+        (event) => {
+          if (event.kind !== "import-progress") onEvent(event);
         },
-      };
+        (id, jobId) => ({ type: "analysis-run", id, jobId, request: req }),
+      );
+    },
+    linkInfo: (req) =>
+      request<LinkInfoResult>((id) => ({ type: "link-info", id, request: req }), setupTimeoutMs),
+    download(req, onEvent) {
+      return job<DownloadResult>(
+        (event) => {
+          if (event.kind === "import-progress") onEvent(event);
+        },
+        (id, jobId) => ({ type: "download-run", id, jobId, request: req }),
+      );
+    },
+    matchClip(req) {
+      return job<ClipMatchResult>(
+        () => undefined,
+        (id, jobId) => ({ type: "clip-match-run", id, jobId, request: req }),
+      );
     },
     close(reason) {
       closedReason = reason;

@@ -13,8 +13,8 @@ import { useEscape } from "../nav/overlays";
 import { AppMark } from "../ui/AppMark";
 import { Button, ButtonLink, IconButton } from "../ui/Button";
 import { AlertIcon, ArrowUpIcon, FileIcon, LinkIcon, PlusIcon, SparkIcon } from "../ui/icons";
-import { chooseFile } from "../streams/store";
-import { toast } from "../ui/toast";
+import { chooseFile, plainError } from "../streams/store";
+import { toast, useToasts } from "../ui/toast";
 
 const URL_RE = /^\s*https?:\/\/\S+\s*$/i;
 
@@ -22,15 +22,11 @@ export function looksLikeUrl(text: string): boolean {
   return URL_RE.test(text);
 }
 
-export const importLinkToast = () =>
-  toast(
-    "Importing links comes in spec 6",
-    "Once it's built, a pasted link starts a stream here. Nothing was downloaded.",
-  );
+/** Dropping needs the file's path, which the preload doesn't give the page yet. */
 export const importFileToast = (name?: string) =>
   toast(
-    "Importing files comes in spec 6",
-    `${name === undefined ? "Files" : `“${name}”`} will open as a stream here. Nothing was copied or uploaded.`,
+    "Dropping files doesn't work yet",
+    `Use + then Choose a file to add ${name === undefined ? "it" : `“${name}”`}. Nothing was copied or uploaded.`,
   );
 const demoToast = () =>
   toast("The demo stream comes in spec 13", "It opens a ready-made stream with three shorts.");
@@ -105,12 +101,15 @@ function AttachMenu({
 export function Composer({
   placeholder,
   onText,
+  onUrl,
   onFile,
   className = "mx-auto mb-6 max-w-3xl",
 }: {
   placeholder: string;
   /** What sending plain text does on this screen. */
   onText: () => void;
+  /** A sent or pasted http(s) link. */
+  onUrl: (url: string) => void;
   /** What + > Choose a file does on this screen. */
   onFile: () => void;
   className?: string;
@@ -127,12 +126,17 @@ export function Composer({
 
   const send = () => {
     if (text.trim().length === 0) return;
-    if (looksLikeUrl(text)) importLinkToast();
+    if (looksLikeUrl(text)) onUrl(text.trim());
     else onText();
     setText("");
   };
+  // A link pasted into an empty composer goes straight in, like + > Paste a link.
   const onPaste = (e: ClipboardEvent<HTMLInputElement>) => {
-    if (looksLikeUrl(e.clipboardData.getData("text"))) importLinkToast();
+    const pasted = e.clipboardData.getData("text");
+    if (text.trim().length === 0 && looksLikeUrl(pasted)) {
+      e.preventDefault();
+      onUrl(pasted.trim());
+    }
   };
 
   return (
@@ -201,6 +205,30 @@ function Suggestion({
   );
 }
 
+/** A link from Home: main reads it, makes the stream, and we open it. */
+export function useAddLink(): (url: string) => void {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  return (url) => {
+    if (busy) return;
+    setBusy(true);
+    toast("Reading the link", "This takes a few seconds. Nothing is downloaded yet.");
+    window.alcyo
+      .invoke("link:add", { url })
+      .then(
+        (out) => {
+          if ("failed" in out) toast("Couldn't use that link", out.message);
+          else {
+            useToasts.getState().dismiss();
+            void router.navigate({ to: "/s/$streamId", params: { streamId: out.streamId } });
+          }
+        },
+        (error: unknown) => toast("Couldn't use that link", plainError(error)),
+      )
+      .finally(() => setBusy(false));
+  };
+}
+
 /** Choose a file, then open the new stream's thread. */
 export function useChooseFile(): () => void {
   const router = useRouter();
@@ -214,6 +242,7 @@ export function useChooseFile(): () => void {
 export function Home() {
   usePageTitle("New stream");
   const choose = useChooseFile();
+  const addLink = useAddLink();
   return (
     <section className="relative flex h-full flex-col">
       <div className="drag absolute inset-x-0 top-0 h-12" aria-hidden />
@@ -223,16 +252,17 @@ export function Home() {
             Turn a stream into shorts
           </h1>
           <p className="mt-2 text-center text-body text-secondary">
-            Paste a link or drop in a recording. It&apos;s processed on this computer.
+            Paste a link or choose a recording. It&apos;s processed on this computer.
           </p>
           <Composer
             className="mt-8"
             onFile={choose}
-            placeholder="Paste a stream link or drop a recording"
+            onUrl={addLink}
+            placeholder="Paste a stream link or choose a recording"
             onText={() =>
               toast(
                 "Start with a stream",
-                "Paste a stream link or drop a recording. Chat opens once a stream is in.",
+                "Paste a stream link or choose a recording. Chat opens once a stream is in.",
               )
             }
           />

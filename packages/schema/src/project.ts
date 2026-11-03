@@ -78,6 +78,8 @@ export const Settings = z.object({
   theme: z.enum(["dark", "light"]),
   /** Where new stream folders go. Null means Movies (macOS) or Videos (Windows)/Alcyo Shorts. Added in spec 4. */
   streamsDir: z.string().min(1).nullable().default(null),
+  /** The "only download what you may use" note was posted once. Added in spec 6. */
+  urlNoteShown: z.boolean().default(false),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -94,5 +96,6 @@ export function defaultSettings(platform: "darwin" | "win32" | "linux"): Setting
     ytDlp: { version: null, path: null },
     theme: "dark",
     streamsDir: null,
+    urlNoteShown: false,
   };
 }

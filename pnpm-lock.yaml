@@ -202,6 +202,9 @@ importers:
 
   apps/desktop:
     devDependencies:
+      '@alcyo/import':
+        specifier: workspace:*
+        version: link:../../packages/import
       '@alcyo/ipc':
         specifier: workspace:*
         version: link:../../packages/ipc
@@ -262,6 +265,24 @@ importers:
       zustand:
         specifier: ^5.0.16
         version: 5.0.16(@types/react@19.3.0)(react@19.3.1)(use-sync-external-store@1.7.0(react@19.3.1))
+
+  packages/import:
+    dependencies:
+      '@alcyo/ipc':
+        specifier: workspace:*
+        version: link:../ipc
+      '@alcyo/media':
+        specifier: workspace:*
+        version: link:../media
+      '@alcyo/schema':
+        specifier: workspace:*
+        version: link:../schema
+      '@alcyo/store':
+        specifier: workspace:*
+        version: link:../store
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
 
   packages/ipc:
     dependencies:

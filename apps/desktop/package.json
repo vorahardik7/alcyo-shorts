@@ -22,6 +22,7 @@
     "icon": "electron scripts/render-icon.mjs"
   },
   "devDependencies": {
+    "@alcyo/import": "workspace:*",
     "@alcyo/ipc": "workspace:*",
     "@alcyo/media": "workspace:*",
     "@alcyo/planner": "workspace:*",

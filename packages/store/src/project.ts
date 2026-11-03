@@ -3,6 +3,11 @@
 import { copyFile, mkdir, readdir, stat } from "node:fs/promises";
 import { extname, join } from "node:path";
 import {
+  type Clip,
+  type ClipFile,
+  type ClipMatch,
+  type YtDlpInfo,
+  ClipFile as ClipFileSchema,
   type Draft,
   type Fingerprint,
   type Message,
@@ -201,6 +206,82 @@ export class ProjectStore {
         return { source, missing: !(await exists(source.origin.path)) };
       }),
     );
+  }
+
+  /**
+   * Registers a finished download already inside sources/<sourceId>/. A URL
+   * import is always a copy in the project.
+   */
+  async addDownloadedSource(opts: {
+    sourceId: string;
+    url: string;
+    path: string;
+    info: YtDlpInfo;
+  }): Promise<Source> {
+    const content = await hashFile(opts.path);
+    const source: Source = SourceSchema.parse({
+      schemaVersion: 1,
+      sourceId: opts.sourceId,
+      addedAt: this.now().toISOString(),
+      origin: { kind: "url", url: opts.url, path: opts.path },
+      fingerprint: { ...content, durationMs: opts.info.durationMs ?? 0, layout: "" },
+      probe: null,
+      info: opts.info,
+    });
+    await mkdir(this.paths.analysisDir(opts.sourceId), { recursive: true });
+    await writeJsonAtomic(this.paths.source(opts.sourceId), source);
+    await this.updateProject((p) => {
+      p.sources.push({ sourceId: opts.sourceId });
+    });
+    return source;
+  }
+
+  // Clips
+
+  /** Adds a clip with no match yet. A file clip is referenced in place. */
+  async addClip(clip: Omit<Clip, "match">): Promise<ClipFile> {
+    const file: ClipFile = ClipFileSchema.parse({ schemaVersion: 1, ...clip, match: null });
+    await mkdir(this.paths.clipAnalysisDir(clip.clipId), { recursive: true });
+    await writeJsonAtomic(this.paths.clip(clip.clipId), file);
+    await this.updateProject((p) => {
+      if (!p.clips.includes(clip.clipId)) p.clips.push(clip.clipId);
+    });
+    return file;
+  }
+
+  clip(clipId: string): Promise<ClipFile> {
+    return readProjectFile<ClipFile>(this.paths.clip(clipId), "clip", `clips/${clipId}/clip.json`);
+  }
+
+  /** Every clip in project order. A clip whose file is unreadable is left out. */
+  async clips(): Promise<ClipFile[]> {
+    const project = await this.project();
+    const out: ClipFile[] = [];
+    for (const clipId of project.clips) {
+      try {
+        out.push(await this.clip(clipId));
+      } catch {
+        // readProjectFile already set the bad file aside.
+      }
+    }
+    return out;
+  }
+
+  /** The clip's media: the file itself, or the download inside the project. */
+  static clipMedia(clip: Clip): string | null {
+    return clip.origin.path ?? null;
+  }
+
+  updateClip(
+    clipId: string,
+    patch: { match?: ClipMatch | null; durationMs?: number },
+  ): Promise<ClipFile> {
+    return this.serial(async () => {
+      const clip = await this.clip(clipId);
+      const next = ClipFileSchema.parse({ ...clip, ...patch });
+      await writeJsonAtomic(this.paths.clip(clipId), next);
+      return next;
+    });
   }
 
   /** Points a file source at a new path, if it's the same file. */

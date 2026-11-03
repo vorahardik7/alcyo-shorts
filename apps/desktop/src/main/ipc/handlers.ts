@@ -7,6 +7,7 @@ import type {
   SetupReport,
   WhisperModelName,
 } from "@alcyo/ipc";
+import type { Downloader } from "../downloader";
 import type { StreamService } from "../streams";
 import type { HandlerFn } from "./core";
 
@@ -24,6 +25,7 @@ export interface HandlerDeps {
   pingWorker(text: string): Promise<string>;
   now(): number;
   streams: StreamService;
+  downloader: Pick<Downloader, "info" | "update" | "useBundled">;
 }
 
 type Handlers = { [C in Channel]: HandlerFn<C> };
@@ -62,6 +64,16 @@ export function createHandlers(deps: HandlerDeps): Handlers {
     "source:chooseFile": ({ streamId }) => deps.streams.chooseFile(streamId),
     "source:relink": ({ streamId, sourceId }) => deps.streams.relink(streamId, sourceId),
     "analysis:start": ({ streamId, sourceId }) => deps.streams.startAnalysis(streamId, sourceId),
+    "link:add": ({ streamId, url }) => deps.streams.addLink(streamId, url),
+    "link:answer": async ({ streamId, messageId, choice }) => {
+      await deps.streams.answer(streamId, messageId, choice);
+      return {};
+    },
+    "clip:chooseFile": ({ streamId }) => deps.streams.chooseClipFile(streamId),
+    "clip:place": ({ streamId, clipId, srcIn }) => deps.streams.placeClip(streamId, clipId, srcIn),
+    "downloader:info": () => deps.downloader.info(),
+    "downloader:update": () => deps.downloader.update(),
+    "downloader:useBundled": () => deps.downloader.useBundled(),
     "job:cancel": async ({ jobId }) => {
       await deps.streams.cancel(jobId);
       return {};

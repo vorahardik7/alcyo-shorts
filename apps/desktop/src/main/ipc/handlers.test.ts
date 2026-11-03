@@ -50,6 +50,7 @@ function deps(overrides: Partial<HandlerDeps> = {}): HandlerDeps {
     pingWorker: (text) => Promise.resolve(text),
     now: () => (t += 5),
     streams: {} as never,
+    downloader: {} as never,
     ...overrides,
   };
 }
@@ -187,7 +188,11 @@ describe("stream channels", () => {
           }),
           cancel: () => undefined,
         }),
+        linkInfo: () => Promise.resolve({ kind: "unsupported" as const }),
+        download: () => ({ done: Promise.reject(new Error("no")), cancel: () => undefined }),
+        matchClip: () => ({ done: Promise.resolve({ match: null }), cancel: () => undefined }),
       }),
+      importBase: () => Promise.resolve({ ytDlp: "/b/yt-dlp", ffmpegDir: "/b" }),
       analysisBase: () =>
         Promise.resolve({
           tools: { ffmpeg: "f", ffprobe: "p", whisper: "w" },
@@ -219,6 +224,20 @@ describe("stream channels", () => {
     });
     return { call, streamId, sourceId, store, F };
   }
+
+  it("takes only http(s) links, so an option can't reach yt-dlp", async () => {
+    const { call, streamId } = await setup();
+    for (const url of [
+      "--exec=rm -rf ~",
+      "-https://x.test",
+      "file:///etc/passwd",
+      "javascript:x",
+    ]) {
+      await expect(call("link:add", { url })).rejects.toThrow("bad input");
+    }
+    expect(await call("link:add", { streamId, url: "https://x.test/v" })).toEqual({ streamId });
+    expect(await call("link:add", { url: "https://x.test/v" })).toMatchObject({ failed: true });
+  });
 
   it("list, open, messages, mark read and transcript reads are checked end to end", async () => {
     const { call, streamId, sourceId } = await setup();

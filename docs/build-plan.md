@@ -402,7 +402,7 @@ spawn(ytDlpPath, [
   "--no-config",                    // ignore the user's yt-dlp config
   "--no-cache-dir",
   "--ffmpeg-location", ffmpegDir,   // the bundled ffmpeg
-  "-f", "bv*[height<=1080]+ba/b[height<=1080]",
+  "-f", "bv*[height<=?1080]+ba/b[height<=?1080]", // <=? keeps unknown heights
   "--merge-output-format", "mp4",
   "--write-info-json",
   "--newline", "--progress-template", "%(progress._percent_str)s",
@@ -1685,7 +1685,7 @@ These are checks the build itself answers, plus two decisions only you can make.
 
 ## 36. Current status
 
-As of Nov 2, local `main` only (no GitHub repo yet). Spec 5 is in the working tree and is not committed.
+As of Nov 2, local `main` only (no GitHub repo yet).
 
 | Spec | State | Notes |
 |---|---|---|
@@ -1694,8 +1694,9 @@ As of Nov 2, local `main` only (no GitHub repo yet). Spec 5 is in the working tr
 | 2 `schema` | Done | Section 22 schemas plus files, checks, time math, id mapping and snapping with property tests, Claude JSON Schemas, migrations, `plan:validate`. |
 | 3 `media-engine` | Done | `@alcyo/media`: probe, audio, silences, chunked transcript with resume, loudness, scenes, encoder test, proxy, peaks, thumbnails; cache keys; cancel; worker job. Real-tools test passes on this Mac. Not wired to a stream yet (needs spec 4). |
 | 4 `project-store` | Done | `@alcyo/store` (stream folders, streams.json, settings, thread, sources with Locate file, versions that never overwrite, drafts, transcript reads), the stream service and job queue in main, IPC for streams, analysis, thread, transcript and shorts. Choose a file makes a stream and analyzes it; the sidebar lists streams; the thread shows status with Cancel. Ran end to end on Soul's 5-minute edit. |
-| 5 `setup-and-claude` | Done, uncommitted | Lookup for Claude Code, Grok and Codex. Providers, `--safe-mode` retry, pinned whisper download, Locate, OS-encrypted API key. Setup and Settings show the three agents. Live logins were not probed. See `.kiro/specs/setup-and-claude/`. |
-| 6–13 | Not started | Dropping files waits for spec 6 (a dropped file's path needs the preload). |
+| 5 `setup-and-claude` | Done | Lookup for Claude Code, Grok and Codex, with the agent's folder first on PATH so npm-installed Codex is found from Finder. Providers, `--safe-mode` retry, API backup through structured output (Sonnet 5.5 rejects forced tool use), pinned whisper download, Locate, OS-encrypted API key. No billed call was made. See `.kiro/specs/setup-and-claude/`. |
+| 6 `import-and-clips` | Done, except the demo clips test | `@alcyo/import`: yt-dlp info then download into the project, cancel removes the folder, Update downloader with SHA-256 check, viewer clips from links or files, quick analysis, transcript then audio matching (within 100 ms on generated audio), Place by hand. The format uses `<=?1080` so plain file links work. Dropped files still show a note: the preload doesn't expose file paths. See `.kiro/specs/import-and-clips/`. |
+| 7–13 | Not started | |
 
 Answers recorded so far:
 
@@ -1714,7 +1715,7 @@ On this Mac (Nov 2): Node 24.18, pnpm 12.14, the pinned tools fetched,
 `c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d`).
 `claude` 2.1.317 at `~/.local/bin/claude`, `grok` 1.0.70 at
 `~/.local/bin/grok`, `codex-cli` 0.166.0 at `/opt/homebrew/bin/codex`.
-Auth was not re-checked this session. Gemini, cursor-agent, opencode and
+All three agents' auth commands exit 0 (checked Nov 2, output discarded). Gemini, cursor-agent, opencode and
 amp are installed and are not used.
 
 No Windows PC is available (Hardik, Nov 1). Windows is checked only by CI on

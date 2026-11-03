@@ -2,6 +2,14 @@
 import { z } from "zod";
 import { HttpUrl, Id, Ms, SchemaVersion } from "./primitives.ts";
 
+/** A match below this confidence shows as "Couldn't place this clip". */
+export const CLIP_PLACED_MIN = 0.6;
+
+/** True when a clip has a match good enough to show where it sits. */
+export function isPlaced(match: { confidence: number } | null): boolean {
+  return match !== null && match.confidence >= CLIP_PLACED_MIN;
+}
+
 export const ClipMatch = z
   .object({
     srcIn: Ms,
@@ -13,7 +21,8 @@ export const ClipMatch = z
 export type ClipMatch = z.infer<typeof ClipMatch>;
 
 export const ClipOrigin = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("url"), url: HttpUrl }),
+  /** path: the downloaded copy inside the project. Missing on files from before spec 6. */
+  z.object({ kind: z.literal("url"), url: HttpUrl, path: z.string().min(1).optional() }),
   z.object({ kind: z.literal("file"), path: z.string() }),
 ]);
 

@@ -24,7 +24,7 @@ test("opens to the chat shell with an empty sidebar", async () => {
   await expect(page.getByTestId("sidebar")).toBeVisible();
   await expect(page.getByTestId("empty-streams")).toContainText("No streams yet");
   await expect(page.getByTestId("empty-thread")).toBeVisible();
-  await expect(page.getByPlaceholder("Paste a stream link or drop a recording")).toBeVisible();
+  await expect(page.getByPlaceholder("Paste a stream link or choose a recording")).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("shell.png") });
 });
 
