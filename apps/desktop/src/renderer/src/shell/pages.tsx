@@ -12,7 +12,15 @@ import { useBack, usePageTitle, useUi } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
 import { AppMark } from "../ui/AppMark";
 import { Button, ButtonLink, IconButton } from "../ui/Button";
-import { AlertIcon, ArrowUpIcon, FileIcon, LinkIcon, PlusIcon, SparkIcon } from "../ui/icons";
+import {
+  AlertIcon,
+  ArrowUpIcon,
+  CloseIcon,
+  FileIcon,
+  LinkIcon,
+  PlusIcon,
+  SparkIcon,
+} from "../ui/icons";
 import { useProfile } from "../profile/store";
 import { chooseFile, plainError } from "../streams/store";
 import { toast, useToasts } from "../ui/toast";
@@ -104,11 +112,14 @@ export function Composer({
   onText,
   onUrl,
   onFile,
+  quote,
   className = "mx-auto mb-6 max-w-3xl",
 }: {
   placeholder: string;
   /** What sending plain text does on this screen. */
-  onText: () => void;
+  onText: (text: string) => void;
+  /** A card being replied to, shown above the box. Escape clears it. */
+  quote?: { text: string; onClear: () => void } | undefined;
   /** A sent or pasted http(s) link. */
   onUrl: (url: string) => void;
   /** What + > Choose a file does on this screen. */
@@ -128,7 +139,7 @@ export function Composer({
   const send = () => {
     if (text.trim().length === 0) return;
     if (looksLikeUrl(text)) onUrl(text.trim());
-    else onText();
+    else onText(text.trim());
     setText("");
   };
   // A link pasted into an empty composer goes straight in, like + > Paste a link.
@@ -151,6 +162,24 @@ export function Composer({
         send();
       }}
     >
+      {quote !== undefined && (
+        <div
+          data-testid="reply-quote"
+          className="absolute bottom-full left-4 mb-2 flex max-w-[80%] items-center gap-2 rounded-full bg-bubble-claude py-1 pr-1 pl-3 text-[13px] text-secondary ring-1 ring-hairline"
+        >
+          <span className="truncate">{quote.text}</span>
+          <button
+            type="button"
+            data-testid="clear-reply"
+            aria-label="Stop replying"
+            title="Stop replying (Esc)"
+            onClick={quote.onClear}
+            className="grid size-6 place-items-center rounded-full outline-none hover:bg-bubble-user hover:text-text focus-visible:ring-2 focus-visible:ring-unread"
+          >
+            <CloseIcon size={14} />
+          </button>
+        </div>
+      )}
       <IconButton
         label="Attach a file or paste a link"
         data-testid="attach"
@@ -174,6 +203,12 @@ export function Composer({
         value={text}
         onChange={(e) => setText(e.target.value)}
         onPaste={onPaste}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && quote !== undefined) {
+            e.stopPropagation();
+            quote.onClear();
+          }
+        }}
         className="min-w-0 flex-1 bg-transparent px-1 text-body outline-none placeholder:text-tertiary"
       />
       <button

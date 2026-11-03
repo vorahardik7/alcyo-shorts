@@ -11,6 +11,7 @@ import {
   Ms,
   Project,
   Short,
+  ShortRef,
   ShortVersion,
   Source,
   TranscriptWindow,
@@ -56,6 +57,10 @@ export const StreamSummary = z.object({
 });
 export type StreamSummary = z.infer<typeof StreamSummary>;
 
+/** The agent working on a stream: Find shorts, or a chat message. */
+export const AgentWork = z.object({ jobId: Id, label: z.string().max(120) });
+export type AgentWork = z.infer<typeof AgentWork>;
+
 export const StreamDetail = z.object({
   stream: StreamSummary,
   project: Project,
@@ -64,6 +69,11 @@ export const StreamDetail = z.object({
   clips: z.array(ClipFile),
   /** Jobs running or queued for this stream. sourceId is the source or clip. */
   jobs: z.array(z.object({ jobId: Id, sourceId: Id })),
+  planner: z.object({
+    /** The transcript is in, so Find shorts and chat can run. */
+    ready: z.boolean(),
+    working: AgentWork.nullable(),
+  }),
 });
 export type StreamDetail = z.infer<typeof StreamDetail>;
 
@@ -216,6 +226,13 @@ export const contract = {
     input: z.object({}),
     output: z.union([z.object({ path: z.string() }), z.object({ cancelled: z.literal(true) })]),
   },
+  /** Asks the agent for shorts. Runs in the background; the result is a shorts message. */
+  "shorts:find": { input: StreamRef, output: JobRef },
+  /** A chat message: posted, then one checked action from the agent. Runs in turn. */
+  "chat:send": {
+    input: StreamRef.extend({ text: z.string().min(1).max(4000), replyTo: ShortRef.optional() }),
+    output: z.object({ messageId: Id }),
+  },
   "job:cancel": { input: JobRef, output: z.object({}) },
   "thread:messages": {
     input: StreamRef.extend({ before: Id.optional(), limit: z.number().int().min(1).max(200) }),
@@ -261,6 +278,8 @@ export const events = {
     stage: z.string(),
     pct: z.number().min(0).max(100),
   }),
+  /** The agent started or stopped working on a stream. */
+  "thread:working": z.object({ streamId: Id, working: AgentWork.nullable() }),
   /** Past shorts moved along, or the profile changed. Reload profile:get. */
   "profile:changed": z.object({}),
   "model:progress": z.object({

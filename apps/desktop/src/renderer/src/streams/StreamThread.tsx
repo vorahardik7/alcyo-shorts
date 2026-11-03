@@ -1,17 +1,18 @@
 // A stream's thread (plan section 4): the header pill, messages, composer.
-// This spec shows text and status messages; spec 10 adds cards, replies and
-// the rest.
-import type { StreamDetail } from "@alcyo/ipc";
+// Shorts and version messages show as simple cards; spec 10 adds inline
+// playback and the rest.
+import type { AgentWork, StreamDetail } from "@alcyo/ipc";
 import type { ClipFile, Message } from "@alcyo/schema";
 import { useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePageTitle } from "../nav/navigation";
+import { usePageTitle, useUi } from "../nav/navigation";
 import { Composer, HeaderPill } from "../shell/pages";
 import { Button, ButtonLink } from "../ui/Button";
-import { AlertIcon, CheckIcon } from "../ui/icons";
+import { AlertIcon, CheckIcon, SparkIcon } from "../ui/icons";
 import { Spinner } from "../ui/parts";
 import { toast } from "../ui/toast";
 import { ClipsBubble, QuestionBubble } from "./clips";
+import { type ReplyTarget, ReplyQuote, ShortsBubble, VersionBubble, WorkingBubble } from "./shorts";
 import { mergeMessage, plainError } from "./store";
 
 const PAGE = 200;
@@ -78,15 +79,28 @@ function MessageView({
   clips,
   answered,
   onChange,
+  onReply,
 }: {
   message: Message;
   streamId: string;
   clips: readonly ClipFile[];
   answered: boolean;
   onChange: () => void;
+  onReply: (target: ReplyTarget) => void;
 }) {
   const mine = message.author === "user";
   const body = message.body;
+  if (body.kind === "shorts" || body.kind === "version") {
+    return (
+      <div id={`m-${message.id}`} data-testid="message" className="flex justify-start">
+        {body.kind === "shorts" ? (
+          <ShortsBubble streamId={streamId} body={body} clips={clips} onReply={onReply} />
+        ) : (
+          <VersionBubble streamId={streamId} body={body} clips={clips} onReply={onReply} />
+        )}
+      </div>
+    );
+  }
   if (body.kind === "question" || body.kind === "clips") {
     return (
       <div id={`m-${message.id}`} data-testid="message" className="flex justify-start">
@@ -112,16 +126,22 @@ function MessageView({
       {body.kind === "status" ? (
         <StatusBubble body={body} />
       ) : body.kind === "text" ? (
-        <p
-          className={`max-w-[75%] rounded-bubble px-5 py-3 text-[15px] leading-relaxed whitespace-pre-wrap select-text ${
-            mine ? "bg-bubble-user" : "bg-bubble-claude"
-          }`}
-        >
-          {body.text}
-        </p>
+        <div className="max-w-[75%]">
+          {message.replyTo !== undefined && (
+            <ReplyQuote streamId={streamId} shortRef={message.replyTo} />
+          )}
+          <p
+            data-testid={mine ? "user-text" : "agent-text"}
+            className={`rounded-bubble px-5 py-3 text-[15px] leading-relaxed whitespace-pre-wrap select-text ${
+              mine ? "bg-bubble-user" : "bg-bubble-claude"
+            }`}
+          >
+            {body.text}
+          </p>
+        </div>
       ) : (
         <p className="rounded-bubble bg-bubble-claude px-5 py-3 text-[14px] text-tertiary">
-          This message shows once shorts are built.
+          This message shows once renders are built.
         </p>
       )}
     </div>
@@ -169,6 +189,9 @@ function Thread({ streamId }: { streamId: string }) {
   const [detail, setDetail] = useState<StreamDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [working, setWorking] = useState<AgentWork | null>(null);
+  const [reply, setReply] = useState<ReplyTarget | null>(null);
+  const focusComposer = useUi((s) => s.focusComposer);
   const end = useRef<HTMLDivElement>(null);
   usePageTitle(detail?.stream.name ?? "Stream");
 
@@ -176,6 +199,7 @@ function Thread({ streamId }: { streamId: string }) {
     window.alcyo.invoke("stream:open", { streamId }).then(
       (d) => {
         setDetail(d);
+        setWorking(d.planner.working);
         setError(null);
       },
       (e: unknown) => setError(plainError(e)),
@@ -195,13 +219,30 @@ function Thread({ streamId }: { streamId: string }) {
       const body = e.message.body;
       if ((body.kind === "status" && body.state !== "running") || body.kind === "clips") reload();
     });
+    const offWorking = window.alcyo.on("thread:working", (e) => {
+      if (e.streamId !== streamId) return;
+      setWorking(e.working);
+      // The transcript may have just come in, which unlocks Find shorts.
+      reload();
+    });
     void window.alcyo.invoke("stream:markRead", { streamId }).catch(() => undefined);
-    return offMessage;
+    return () => {
+      offMessage();
+      offWorking();
+    };
   }, [streamId, reload]);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
-  }, [messages.length]);
+  }, [messages.length, working]);
+
+  const onReply = useCallback(
+    (target: ReplyTarget) => {
+      setReply(target);
+      focusComposer();
+    },
+    [focusComposer],
+  );
 
   if (error !== null) {
     return (
@@ -238,17 +279,51 @@ function Thread({ streamId }: { streamId: string }) {
                 m.body.kind === "question" && messages.slice(i + 1).some((n) => n.author === "user")
               }
               onChange={reload}
+              onReply={onReply}
             />
           ))}
+          {working !== null && <WorkingBubble jobId={working.jobId} label={working.label} />}
           <div ref={end} />
         </div>
       </div>
       <div className="px-6">
+        {detail?.planner.ready === true && working === null && (
+          <div className="mx-auto mb-3 flex max-w-3xl justify-center">
+            <Button
+              size="sm"
+              data-testid="find-shorts"
+              onClick={() => {
+                window.alcyo
+                  .invoke("shorts:find", { streamId })
+                  .catch((e: unknown) => toast("Couldn't find shorts", plainError(e)));
+              }}
+            >
+              <SparkIcon size={14} />
+              {detail.project.shorts.length > 0 ? "Find more shorts" : "Find shorts"}
+            </Button>
+          </div>
+        )}
         <Composer
           placeholder={name.length > 0 ? `Message ${name}` : "Message"}
-          onText={() =>
-            toast("Chat comes in spec 10", "Messages to a stream go to Claude once it's built.")
+          quote={
+            reply === null
+              ? undefined
+              : {
+                  text: `Replying to “${reply.title}” v${reply.ref.version}`,
+                  onClear: () => setReply(null),
+                }
           }
+          onText={(text) => {
+            const to = reply;
+            setReply(null);
+            window.alcyo
+              .invoke("chat:send", {
+                streamId,
+                text,
+                ...(to === null ? {} : { replyTo: to.ref }),
+              })
+              .catch((e: unknown) => toast("Couldn't send that", plainError(e)));
+          }}
           onUrl={(url) => {
             window.alcyo
               .invoke("link:add", { streamId, url })

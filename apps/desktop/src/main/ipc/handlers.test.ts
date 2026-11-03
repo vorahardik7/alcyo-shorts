@@ -52,6 +52,12 @@ function deps(overrides: Partial<HandlerDeps> = {}): HandlerDeps {
     streams: {} as never,
     downloader: {} as never,
     profile: {} as never,
+    planner: {
+      state: () => Promise.resolve({ ready: false, working: null }),
+      find: () => Promise.reject(new Error("not used")),
+      send: () => Promise.reject(new Error("not used")),
+      cancel: () => false,
+    },
     ...overrides,
   };
 }

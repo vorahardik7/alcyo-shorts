@@ -63,6 +63,11 @@ export interface StreamServiceDeps {
   importBase: () => Promise<{ ytDlp: string; ffmpegDir: string }>;
   chooseVideo: () => Promise<string | null>;
   emit: <E extends EventName>(event: E, payload: EventPayload<E>) => void;
+  /**
+   * The transcript is in ("transcript"), or analysis and the clip checks after
+   * it are done ("clips"). The planner's one automatic Find shorts listens.
+   */
+  onReady?: (streamId: string, phase: "transcript" | "clips") => void;
   now?: () => Date;
   log?: (line: string) => void;
 }
@@ -165,7 +170,7 @@ export class StreamService {
     return Promise.all((await this.deps.index.list()).map((e) => this.summary(e)));
   }
 
-  async open(streamId: string): Promise<StreamDetail> {
+  async open(streamId: string): Promise<Omit<StreamDetail, "planner">> {
     const entry = await this.entry(streamId);
     const store = await this.store(streamId);
     return {
@@ -190,16 +195,22 @@ export class StreamService {
     return (await this.deps.settings.read()).streamsDir ?? this.deps.defaultStreamsDir;
   }
 
-  private async post(
+  async post(
     streamId: string,
     body: MessageBody,
-    opts: { id?: string; rev?: number; author?: Message["author"] } = {},
+    opts: {
+      id?: string;
+      rev?: number;
+      author?: Message["author"];
+      replyTo?: Message["replyTo"];
+    } = {},
   ): Promise<Message> {
     const message: Message = {
       id: opts.id ?? newId("m"),
       rev: opts.rev ?? 0,
       at: this.now().toISOString(),
       author: opts.author ?? "app",
+      ...(opts.replyTo === undefined ? {} : { replyTo: opts.replyTo }),
       body,
     };
     await (await this.store(streamId)).appendMessage(message);
@@ -362,6 +373,9 @@ export class StreamService {
           cacheDir: store.paths.cacheDir(sourceId),
         };
         const handle = this.deps.worker().analyze(request, (event) => {
+          if (event.kind === "step-done" && event.step === "transcript") {
+            this.deps.onReady?.(streamId, "transcript");
+          }
           if (event.kind !== "progress") return;
           this.deps.emit("job:progress", {
             jobId: job.jobId,
@@ -397,6 +411,8 @@ export class StreamService {
         for (const clip of await store.clips()) {
           if (clip.match === null) await this.checkClip(streamId, clip.clipId);
         }
+        // After those checks, which are queued behind this job.
+        void this.runExclusive(() => Promise.resolve(this.deps.onReady?.(streamId, "clips")));
       },
     );
     await this.touch(streamId, "Analyzing");
@@ -732,7 +748,7 @@ export class StreamService {
   }
 
   /** Last activity, preview, and optionally unread and thumbnail, then a sidebar refresh. */
-  private async touch(
+  async touch(
     streamId: string,
     preview: string,
     extra: { unread?: boolean; thumbnail?: string | undefined } = {},

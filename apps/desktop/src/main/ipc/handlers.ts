@@ -8,6 +8,7 @@ import type {
   WhisperModelName,
 } from "@alcyo/ipc";
 import type { Downloader } from "../downloader";
+import type { PlannerService } from "../planner";
 import type { ProfileService } from "../profile";
 import type { StreamService } from "../streams";
 import type { HandlerFn } from "./core";
@@ -28,6 +29,7 @@ export interface HandlerDeps {
   streams: StreamService;
   downloader: Pick<Downloader, "info" | "update" | "useBundled">;
   profile: ProfileService;
+  planner: Pick<PlannerService, "state" | "find" | "send" | "cancel">;
 }
 
 type Handlers = { [C in Channel]: HandlerFn<C> };
@@ -58,7 +60,10 @@ export function createHandlers(deps: HandlerDeps): Handlers {
     },
 
     "streams:list": () => deps.streams.list(),
-    "stream:open": ({ streamId }) => deps.streams.open(streamId),
+    "stream:open": async ({ streamId }) => ({
+      ...(await deps.streams.open(streamId)),
+      planner: await deps.planner.state(streamId),
+    }),
     "stream:markRead": async ({ streamId }) => {
       await deps.streams.markRead(streamId);
       return {};
@@ -87,8 +92,11 @@ export function createHandlers(deps: HandlerDeps): Handlers {
     "style:write": () => deps.profile.writeStyle(),
     "template:import": () => deps.profile.importTemplate(),
     "template:export": () => deps.profile.exportTemplate(),
+    "shorts:find": ({ streamId }) => deps.planner.find(streamId),
+    "chat:send": ({ streamId, text, replyTo }) => deps.planner.send(streamId, text, replyTo),
     "job:cancel": async ({ jobId }) => {
-      await deps.streams.cancel(jobId);
+      // Agent jobs and queue jobs share one Cancel; each ignores ids it doesn't know.
+      if (!deps.planner.cancel(jobId)) await deps.streams.cancel(jobId);
       return {};
     },
     "thread:messages": ({ streamId, limit, before }) =>

@@ -154,6 +154,7 @@ export const project: Project = {
   shorts: [{ shortId: "sh1", head: 1 }],
   clips: ["c1"],
   settings: { copyIntoProject: false },
+  autoFindAt: null,
 };
 
 export const clipFile: ClipFile = {

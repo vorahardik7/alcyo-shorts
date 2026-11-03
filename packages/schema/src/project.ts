@@ -12,6 +12,8 @@ export const Project = z.object({
   shorts: z.array(z.object({ shortId: Id, head: z.number().int().positive() })),
   clips: z.array(Id),
   settings: z.object({ copyIntoProject: z.boolean() }),
+  /** When Find shorts ran by itself (plan section 14: once). Added in spec 8. */
+  autoFindAt: IsoDateTime.nullable().default(null),
 });
 export type Project = z.infer<typeof Project>;
 

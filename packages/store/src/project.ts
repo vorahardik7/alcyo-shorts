@@ -134,6 +134,17 @@ export class ProjectStore {
     });
   }
 
+  /** Marks the one automatic Find shorts. False when it already ran. */
+  async claimAutoFind(): Promise<boolean> {
+    let claimed = false;
+    await this.updateProject((p) => {
+      if (p.autoFindAt !== null) return;
+      p.autoFindAt = this.now().toISOString();
+      claimed = true;
+    });
+    return claimed;
+  }
+
   rename(name: string): Promise<Project> {
     return this.updateProject((p) => {
       p.name = name.trim().slice(0, 120) || p.name;

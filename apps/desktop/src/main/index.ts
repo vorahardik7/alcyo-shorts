@@ -17,6 +17,7 @@ import { findLinkInArgv, LinkQueue, linkEvent } from "./links";
 import { ApiKeyFile } from "./api-key";
 import { Downloader } from "./downloader";
 import { AgentService } from "./agent";
+import { PlannerService } from "./planner";
 import { ProfileService } from "./profile";
 import { scriptedAgent } from "./test-agent";
 import { fixtureKind, fixtureReport } from "./setup-fixture";
@@ -181,6 +182,8 @@ function run(): void {
         threads: Math.max(1, Math.min(8, availableParallelism() - 1)),
       };
     };
+    // Made after the stream service, which tells it when a transcript is in.
+    const late: { planner?: PlannerService } = {};
     const streams = new StreamService({
       index: new StreamsIndex(userData),
       settings,
@@ -208,6 +211,7 @@ function run(): void {
       },
       importBase: async () => ({ ytDlp: await downloader.path(), ffmpegDir: paths.bin }),
       emit: (event, payload) => sendEvent(win, event, payload),
+      onReady: (streamId, phase) => void late.planner?.ready(streamId, phase),
     });
 
     const openDialog = async (options: Electron.OpenDialogOptions): Promise<string[]> => {
@@ -225,8 +229,9 @@ function run(): void {
       override:
         isHeadless() && process.env["ALCYO_TEST_AGENT"] === "script" ? scriptedAgent() : null,
     });
+    const profileStore = new ProfileStore(userData);
     const profile = new ProfileService({
-      store: new ProfileStore(userData),
+      store: profileStore,
       interviewPath: join(userData, "interview.json"),
       agent,
       worker: () => worker.get(),
@@ -266,6 +271,13 @@ function run(): void {
       },
       emit: () => sendEvent(win, "profile:changed", {}),
     });
+    const planner = new PlannerService({
+      streams,
+      agent,
+      profiles: profileStore,
+      emit: (event, payload) => sendEvent(win, event, payload),
+    });
+    late.planner = planner;
 
     const handlers = createHandlers({
       appInfo: () => ({
@@ -347,6 +359,7 @@ function run(): void {
       pingWorker: (text) => worker.get().ping(text),
       downloader,
       profile,
+      planner,
       now: () => performance.now(),
       streams,
     });

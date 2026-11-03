@@ -11,3 +11,6 @@ export * from "./llm/ask";
 export * from "./interview";
 export * from "./id-mapping";
 export * from "./snapping";
+export * from "./lines";
+export * from "./find-shorts";
+export * from "./chat-actions";
