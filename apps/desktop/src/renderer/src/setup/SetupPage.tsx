@@ -9,10 +9,14 @@ import { AppMark } from "../ui/AppMark";
 import { Button } from "../ui/Button";
 import { RefreshIcon, ShieldIcon } from "../ui/icons";
 import { CopyButton, Spinner, StateIcon } from "../ui/parts";
+import { DownloadButton } from "./download";
 import { openIssues, useSetup } from "./store";
 
 const GROUPS: Array<{ title: string; ids: CheckId[] }> = [
-  { title: "Claude", ids: ["claude", "claude-auth"] },
+  {
+    title: "Coding agent",
+    ids: ["agent", "claude", "agent-grok", "agent-codex", "api-key"],
+  },
   {
     title: "Bundled tools",
     ids: ["ffmpeg", "ffprobe", "whisper-cli", "yt-dlp", "vad", "ffmpeg-features"],
@@ -53,6 +57,7 @@ function CheckRow({ check }: { check: SetupCheck }) {
                 <CopyButton text={check.command} label="Copy command" />
               </span>
             )}
+            {check.id === "whisper-model" && check.state !== "pass" && <DownloadButton />}
           </div>
         )}
       </div>
@@ -64,7 +69,7 @@ function LoadingRows() {
   return (
     <div className="flex items-center gap-3 px-5 py-6 text-small text-secondary">
       <Spinner />
-      Checking Claude Code and the bundled tools. The first check can take a few seconds.
+      Checking for a coding agent and the bundled tools. The first check can take a few seconds.
     </div>
   );
 }
@@ -110,7 +115,8 @@ export function SetupPage() {
             <div>
               <h1 className="text-[24px] font-semibold tracking-tight">Set up Alcyo Shorts</h1>
               <p className="mt-1 text-small text-secondary">
-                Alcyo needs Claude Code, signed in, and the tools that ship with the app.
+                Alcyo needs one signed-in agent, Claude Code, Grok or Codex, and the tools that ship
+                with the app.
               </p>
             </div>
           </div>
@@ -165,8 +171,8 @@ export function SetupPage() {
 
           <p className="mt-6 flex items-start gap-2 px-1 text-[13px] text-secondary">
             <ShieldIcon size={16} className="mt-0.5 shrink-0" />
-            Alcyo never asks for your Claude login and never reads it. Sign-in stays in Claude Code,
-            and only transcript text goes to Claude.
+            Alcyo never asks for an agent login and never reads one. Sign-in stays in that agent,
+            and only transcript text is sent.
           </p>
         </div>
       </div>

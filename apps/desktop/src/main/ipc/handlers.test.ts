@@ -42,6 +42,11 @@ function deps(overrides: Partial<HandlerDeps> = {}): HandlerDeps {
     appPaths: () => paths,
     openDataFolder: () => Promise.resolve(),
     setupCheck: (fresh) => Promise.resolve(fixtureReport(fresh ? "fail" : "pass", request, at)),
+    locateAgent: () => Promise.resolve({ cancelled: true }),
+    downloadModel: () =>
+      Promise.resolve({ path: "/data/models/ggml-small.en.bin", name: "small.en" }),
+    setApiKey: () => Promise.resolve(),
+    clearApiKey: () => Promise.resolve(),
     pingWorker: (text) => Promise.resolve(text),
     now: () => (t += 5),
     streams: {} as never,

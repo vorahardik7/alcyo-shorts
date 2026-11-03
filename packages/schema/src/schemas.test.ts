@@ -164,8 +164,11 @@ describe("section 22 rules", () => {
 
 describe("fields added after the first release", () => {
   it("parse old settings and streams files without them", () => {
-    const { streamsDir: _s, ...oldSettings } = F.settings;
-    expect(S.Settings.parse(oldSettings).streamsDir).toBeNull();
+    const { streamsDir: _s, grokPath: _g, codexPath: _c, ...oldSettings } = F.settings;
+    const parsed = S.Settings.parse(oldSettings);
+    expect(parsed.streamsDir).toBeNull();
+    expect(parsed.grokPath).toBeNull();
+    expect(parsed.codexPath).toBeNull();
     const { preview: _p, ...oldEntry } = F.streamsIndex.streams[0]!;
     expect(
       S.StreamsIndex.parse({ schemaVersion: 1, streams: [oldEntry] }).streams[0]!.preview,

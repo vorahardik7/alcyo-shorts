@@ -54,11 +54,22 @@ export const RenderIndex = z.object({
 });
 export type RenderIndex = z.infer<typeof RenderIndex>;
 
+/** A local coding agent the app can call for structured JSON. */
+export const LocalAgentId = z.enum(["claude", "grok", "codex"]);
+export type LocalAgentId = z.infer<typeof LocalAgentId>;
+
+/** Who answers a planner request. `*-cli` is that agent on this computer. */
+export const ProviderId = z.enum(["claude-cli", "grok-cli", "codex-cli", "anthropic-api"]);
+export type ProviderId = z.infer<typeof ProviderId>;
+
 export const Settings = z.object({
   schemaVersion: SchemaVersion,
-  provider: z.enum(["claude-cli", "anthropic-api"]),
+  provider: ProviderId,
   /** Saved after a working lookup; tried first next time (section 16). */
   claudePath: z.string().nullable(),
+  /** Saved Grok and Codex paths. Missing on files written before spec 5. */
+  grokPath: z.string().nullable().default(null),
+  codexPath: z.string().nullable().default(null),
   model: z.string().min(1).max(100),
   whisperModel: z.enum(["small.en", "base.en"]),
   /** The proxy encoder picked by the test encode (section 14). */
@@ -75,6 +86,8 @@ export function defaultSettings(platform: "darwin" | "win32" | "linux"): Setting
     schemaVersion: 1,
     provider: "claude-cli",
     claudePath: null,
+    grokPath: null,
+    codexPath: null,
     model: "sonnet",
     whisperModel: platform === "win32" ? "base.en" : "small.en",
     encoder: null,

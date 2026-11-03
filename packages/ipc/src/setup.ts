@@ -1,10 +1,16 @@
 // The setup report (plan section 3 step 1, spec 5's checks that run today).
 // Built in the worker, cached in main, shown on the Setup and Settings screens.
+import { LocalAgentId } from "@alcyo/schema";
 import { z } from "zod";
 
+export { LocalAgentId };
+
 export const CHECK_IDS = [
+  "agent",
   "claude",
-  "claude-auth",
+  "agent-grok",
+  "agent-codex",
+  "api-key",
   "ffmpeg",
   "ffprobe",
   "whisper-cli",
@@ -37,13 +43,34 @@ export type SetupCheck = z.infer<typeof SetupCheck>;
 export const WhisperModelName = z.enum(["small.en", "base.en"]);
 export type WhisperModelName = z.infer<typeof WhisperModelName>;
 
+const AgentVia = z.enum(["saved", "known-folder", "login-shell", "where", "none"]);
+
+export const AgentStatus = z.object({
+  id: LocalAgentId,
+  path: z.string().nullable(),
+  via: AgentVia,
+  version: z.string().nullable(),
+  /** null when the binary wasn't found, so sign-in couldn't be checked. */
+  signedIn: z.boolean().nullable(),
+  problem: z.enum(["missing", "cmd-shim"]).nullable(),
+});
+export type AgentStatus = z.infer<typeof AgentStatus>;
+
 export const SetupReport = z.object({
   checkedAt: z.iso.datetime(),
   complete: z.boolean(),
   checks: z.array(SetupCheck),
+  /** Every agent that was looked up, in catalog order. */
+  agents: z.array(AgentStatus).max(6),
+  /** The signed-in agent Alcyo will call. Null when none is ready. */
+  chosen: z
+    .object({ id: LocalAgentId, path: z.string(), version: z.string().nullable() })
+    .nullable(),
+  /** Whether an API key is saved. The key itself never leaves the main process. */
+  apiKey: z.object({ present: z.boolean() }),
   claude: z.object({
     path: z.string().nullable(),
-    via: z.enum(["saved", "known-folder", "login-shell", "where", "none"]),
+    via: AgentVia,
     version: z.string().nullable(),
     /** null when claude wasn't found, so sign-in couldn't be checked. */
     signedIn: z.boolean().nullable(),
@@ -69,5 +96,55 @@ export const SetupRequest = z.object({
   modelsDir: z.string().min(1),
   platform: z.enum(["darwin", "win32", "linux"]),
   arch: z.string(),
+  /** Saved paths and the provider to prefer. Omitted by older callers. */
+  saved: z
+    .object({
+      provider: z.enum(["claude-cli", "grok-cli", "codex-cli", "anthropic-api"]),
+      claudePath: z.string().nullable(),
+      grokPath: z.string().nullable(),
+      codexPath: z.string().nullable(),
+    })
+    .optional(),
 });
 export type SetupRequest = z.infer<typeof SetupRequest>;
+
+/** Fills in the API-key row. Main does this; the worker never sees the key. */
+export function applyApiKey(report: SetupReport, present: boolean): SetupReport {
+  const without = report.checks.filter((c) => c.id !== "api-key");
+  const apiKey: SetupCheck = present
+    ? {
+        id: "api-key",
+        label: "API key backup",
+        state: "pass",
+        required: false,
+        detail: "Saved on this computer. Used only when no coding agent is signed in.",
+        fix: null,
+        command: null,
+      }
+    : {
+        id: "api-key",
+        label: "API key backup",
+        state: "pending",
+        required: false,
+        detail: "No key saved.",
+        fix: "Optional. Add one in Settings if you don't have a coding agent signed in.",
+        command: null,
+      };
+  const checks = without.map((c) => {
+    if (c.id !== "agent" || !present || report.chosen !== null || c.state === "pass") return c;
+    return {
+      ...c,
+      state: "pass" as const,
+      detail: "No coding agent is signed in. Alcyo will use the saved API key.",
+      fix: null,
+      command: null,
+    };
+  });
+  checks.push(apiKey);
+  return {
+    ...report,
+    checks,
+    apiKey: { present },
+    complete: checks.every((c) => !c.required || c.state === "pass"),
+  };
+}

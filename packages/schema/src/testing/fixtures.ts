@@ -213,6 +213,8 @@ export const settings: Settings = {
   schemaVersion: 1,
   provider: "claude-cli",
   claudePath: "/Users/me/.local/bin/claude",
+  grokPath: null,
+  codexPath: null,
   model: "sonnet",
   whisperModel: "small.en",
   encoder: "h264_videotoolbox",

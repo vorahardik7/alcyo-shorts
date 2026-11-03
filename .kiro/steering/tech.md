@@ -26,9 +26,10 @@ inclusion: always
 - spawn/execFile with an args array. Never a shell string.
 - yt-dlp: --no-config, and "--" before the URL.
 - Build ffmpeg args in pure functions.
-- Windows: spawn claude.exe; never shell: true.
+- Windows: spawn claude.exe, grok.exe, codex.exe; never shell: true.
 - The one allowed shell use: on macOS, execFile($SHELL, ["-ilc",
-  "command -v claude"]) to find claude. Fixed args, 5 s timeout.
+  "command -v <bin>"]) to find an agent, where <bin> is the fixed name
+  claude, grok or codex. Fixed args, 5 s timeout.
 
 ## Checks
 pnpm lint && pnpm typecheck && pnpm test && pnpm build

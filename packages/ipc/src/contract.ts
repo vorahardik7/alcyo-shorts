@@ -16,7 +16,7 @@ import {
 } from "@alcyo/schema";
 import { z } from "zod";
 import type { Channel, EventName } from "./names";
-import { SetupReport } from "./setup";
+import { LocalAgentId, WhisperModelName, SetupReport } from "./setup";
 
 export const AppInfo = z.object({
   name: z.string(),
@@ -80,6 +80,26 @@ export const contract = {
     input: z.object({ fresh: z.boolean().optional() }),
     output: SetupReport,
   },
+  /** Opens a file dialog in main and keeps the path only if that agent runs. */
+  "setup:locateAgent": {
+    input: z.object({ id: LocalAgentId }),
+    output: z.union([
+      z.object({ path: z.string() }),
+      z.object({ cancelled: z.literal(true) }),
+      z.object({ rejected: z.literal(true), message: z.string().max(300) }),
+    ]),
+  },
+  /** Downloads the whisper model for this platform into the models folder. */
+  "setup:downloadModel": {
+    input: z.object({}),
+    output: z.object({ path: z.string(), name: WhisperModelName }),
+  },
+  /** Stores the backup key with the OS. The renderer never reads it back. */
+  "settings:setApiKey": {
+    input: z.object({ key: z.string().min(1).max(500) }),
+    output: z.object({}),
+  },
+  "settings:clearApiKey": { input: z.object({}), output: z.object({}) },
   "worker:ping": {
     input: z.object({ text: z.string().max(1000) }),
     output: z.object({ text: z.string(), ms: z.number().nonnegative() }),
@@ -152,6 +172,10 @@ export const events = {
     step: AnalysisStepName,
     stage: z.string(),
     pct: z.number().min(0).max(100),
+  }),
+  "model:progress": z.object({
+    received: z.number().int().nonnegative(),
+    total: z.number().int().positive().nullable(),
   }),
 } as const satisfies Record<EventName, z.ZodType>;
 

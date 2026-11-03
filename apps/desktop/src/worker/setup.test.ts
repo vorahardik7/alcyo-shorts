@@ -54,10 +54,17 @@ function deps(world: World): SetupDeps & { calls: Array<{ file: string; args: st
       const fail = () => Promise.resolve({ code: 1, stdout: "" });
       if (world.broken?.includes(file)) return fail();
       if (args[0] === "-ilc") return ok("");
-      if (file.endsWith("claude")) {
-        if (world.claudeWorks === false) return fail();
-        if (args[0] === "-v") return ok("2.1.30 (Claude Code)");
-        return world.signedIn === false ? fail() : ok("");
+      if (file.endsWith("claude") || file.endsWith("grok") || file.endsWith("codex")) {
+        if (
+          world.broken?.includes(file) ||
+          (file.endsWith("claude") && world.claudeWorks === false)
+        ) {
+          return fail();
+        }
+        if (args[0] === "-v" || args[0] === "--version") {
+          return ok(file.endsWith("claude") ? "2.1.30 (Claude Code)" : "1.2.3\n");
+        }
+        return world.signedIn === false && file.endsWith("claude") ? fail() : ok("");
       }
       if (args.includes("-filters")) return ok(world.filters ?? FILTERS);
       if (args.includes("-encoders")) return ok(world.encoders ?? ENCODERS);
@@ -96,8 +103,15 @@ describe("runSetupCheck", () => {
     expect(SetupReport.parse(report)).toEqual(report);
     expect(report.complete).toBe(true);
     expect(report.checks.filter((c) => c.state !== "pass").map((c) => c.id)).toEqual([
+      "agent-grok",
+      "agent-codex",
       "whisper-model",
     ]);
+    expect(report.chosen).toEqual({
+      id: "claude",
+      path: "/Users/me/.local/bin/claude",
+      version: "2.1.30",
+    });
     expect(report.claude).toEqual({
       path: "/Users/me/.local/bin/claude",
       via: "known-folder",
@@ -113,28 +127,41 @@ describe("runSetupCheck", () => {
     // The model download isn't built yet, and it doesn't block setup.
     const model = report.checks.find((c) => c.id === "whisper-model")!;
     expect(model).toMatchObject({ required: false, state: "pending" });
-    expect(model.fix).toContain("spec 5");
+    expect(model.fix).toContain("Download");
   });
 
-  it("says how to install Claude Code when it's missing, and leaves sign-in pending", async () => {
+  it("is complete with Grok signed in when Claude Code is missing", async () => {
+    const report = await runSetupCheck(
+      req,
+      deps({ files: ["/Users/me/.local/bin/grok", ...allTools] }),
+      now,
+    );
+    expect(report.complete).toBe(true);
+    expect(report.chosen?.id).toBe("grok");
+    expect(report.checks.find((c) => c.id === "claude")?.state).toBe("pending");
+    expect(report.checks.find((c) => c.id === "agent")?.state).toBe("pass");
+  });
+
+  it("says how to install Claude Code when nothing is installed", async () => {
     const report = await runSetupCheck(req, deps({ files: allTools }), now);
     expect(report.complete).toBe(false);
     const claude = report.checks.find((c) => c.id === "claude")!;
     expect(claude.state).toBe("fail");
     expect(claude.fix).toContain("Install Claude Code");
-    expect(report.checks.find((c) => c.id === "claude-auth")?.state).toBe("pending");
     expect(report.claude.signedIn).toBeNull();
   });
 
-  it("says how to sign in when claude auth status fails", async () => {
+  it("says how to sign in when claude auth status fails, in one row", async () => {
     const report = await runSetupCheck(
       req,
       deps({ files: ["/opt/homebrew/bin/claude", ...allTools], signedIn: false }),
       now,
     );
-    const auth = report.checks.find((c) => c.id === "claude-auth")!;
-    expect(auth).toMatchObject({ state: "fail", command: "claude" });
-    expect(auth.fix).toContain("sign in");
+    const claude = report.checks.find((c) => c.id === "claude")!;
+    expect(claude).toMatchObject({ state: "fail", command: "claude" });
+    expect(claude.fix).toContain("sign in");
+    // One row per agent: sign-in is part of the Claude Code row.
+    expect(report.checks.filter((c) => c.label.includes("Claude"))).toHaveLength(1);
     expect(report.complete).toBe(false);
   });
 

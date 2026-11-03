@@ -3,20 +3,24 @@ import { existsSync, readdirSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { availableParallelism } from "node:os";
 import { join } from "node:path";
-import { CHANNELS, type SetupRequest } from "@alcyo/ipc";
-import { LINK_SCHEME } from "@alcyo/schema";
+import { applyApiKey, CHANNELS, type SetupRequest, type WhisperModelName } from "@alcyo/ipc";
+import { probeAgent, providerForAgent } from "@alcyo/planner";
+import { LINK_SCHEME, type LocalAgentId } from "@alcyo/schema";
 import { SettingsFile, StreamsIndex } from "@alcyo/store";
-import { app, BrowserWindow, dialog, shell } from "electron";
+import { app, BrowserWindow, dialog, safeStorage, shell } from "electron";
 import pkg from "../../package.json";
 import { resolveBinDir } from "./bin";
 import { handle, sendEvent } from "./ipc";
 import { createHandlers } from "./ipc/handlers";
 import { findLinkInArgv, LinkQueue, linkEvent } from "./links";
+import { ApiKeyFile } from "./api-key";
 import { fixtureKind, fixtureReport } from "./setup-fixture";
 import { SetupService } from "./setup-service";
 import { StreamService } from "./streams";
 import { createMainWindow, isHeadless, rendererUrl } from "./window";
+import { downloadWhisperModel } from "./whisper-download";
 import { WorkerHost } from "./worker-host";
+import { realSetupDeps } from "../worker/exec";
 
 const mainDir = import.meta.dirname;
 
@@ -117,13 +121,26 @@ function run(): void {
       arch: process.arch,
     };
     const fixture = fixtureKind(process.env, isHeadless());
-    const setup = new SetupService(() =>
-      fixture === null
-        ? worker.get().setupCheck(setupRequest)
-        : Promise.resolve(fixtureReport(fixture, setupRequest, new Date())),
-    );
-
     const settings = new SettingsFile(userData, platform);
+    const apiKey = new ApiKeyFile(join(userData, "anthropic-key.bin"), {
+      encrypt: (plain) => safeStorage.encryptString(plain),
+      decrypt: (blob) => safeStorage.decryptString(blob),
+    });
+    const setup = new SetupService(async () => {
+      if (fixture !== null) return fixtureReport(fixture, setupRequest, new Date());
+      const current = await settings.read();
+      const report = await worker.get().setupCheck({
+        ...setupRequest,
+        saved: {
+          provider: current.provider,
+          claudePath: current.claudePath,
+          grokPath: current.grokPath,
+          codexPath: current.codexPath,
+        },
+      });
+      return applyApiKey(report, await apiKey.has());
+    });
+    let download: Promise<{ path: string; name: WhisperModelName }> | undefined;
     const exe = (name: string) => join(paths.bin, platform === "win32" ? `${name}.exe` : name);
     const streams = new StreamService({
       index: new StreamsIndex(userData),
@@ -193,6 +210,61 @@ function run(): void {
         if (error.length > 0) throw new Error(`Couldn't open the data folder: ${error}`);
       },
       setupCheck: (fresh) => setup.get(fresh),
+      locateAgent: async (id: LocalAgentId) => {
+        const options: Electron.OpenDialogOptions = {
+          title: "Locate the agent",
+          properties: ["openFile"],
+        };
+        const picked =
+          win === undefined || win.isDestroyed()
+            ? await dialog.showOpenDialog(options)
+            : await dialog.showOpenDialog(win, options);
+        const path = picked.canceled ? null : (picked.filePaths[0] ?? null);
+        if (path === null) return { cancelled: true };
+        const hit = await probeAgent(id, path, realSetupDeps());
+        if (hit.path === null) {
+          return {
+            rejected: true,
+            message: "That file didn't run. Pick the agent program itself.",
+          };
+        }
+        const saved =
+          id === "claude"
+            ? { claudePath: hit.path, provider: providerForAgent(id) }
+            : id === "grok"
+              ? { grokPath: hit.path, provider: providerForAgent(id) }
+              : { codexPath: hit.path, provider: providerForAgent(id) };
+        await settings.patch(saved);
+        return { path: hit.path };
+      },
+      downloadModel: () => {
+        if (download !== undefined) return download;
+        const run = settings.read().then((current) =>
+          downloadWhisperModel({
+            name: current.whisperModel,
+            modelsDir: paths.models,
+            onProgress: (received, total) => sendEvent(win, "model:progress", { received, total }),
+          }).then((path) => ({ path, name: current.whisperModel })),
+        );
+        download = run;
+        run.then(
+          () => {
+            if (download === run) download = undefined;
+          },
+          () => {
+            if (download === run) download = undefined;
+          },
+        );
+        return run;
+      },
+      setApiKey: async (key) => {
+        if (!safeStorage.isEncryptionAvailable()) {
+          throw new Error("This computer can't store a key safely.");
+        }
+        await mkdir(userData, { recursive: true });
+        await apiKey.write(key);
+      },
+      clearApiKey: () => apiKey.clear(),
       pingWorker: (text) => worker.get().ping(text),
       now: () => performance.now(),
       streams,

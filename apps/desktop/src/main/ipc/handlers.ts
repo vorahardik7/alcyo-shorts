@@ -1,5 +1,12 @@
 // Handlers for every channel in @alcyo/ipc's contract.
-import type { AppInfo, AppPaths, Channel, SetupReport } from "@alcyo/ipc";
+import type {
+  AppInfo,
+  AppPaths,
+  Channel,
+  LocalAgentId,
+  SetupReport,
+  WhisperModelName,
+} from "@alcyo/ipc";
 import type { StreamService } from "../streams";
 import type { HandlerFn } from "./core";
 
@@ -8,6 +15,12 @@ export interface HandlerDeps {
   appPaths(): AppPaths | Promise<AppPaths>;
   openDataFolder(): Promise<void>;
   setupCheck(fresh: boolean): Promise<SetupReport>;
+  locateAgent(
+    id: LocalAgentId,
+  ): Promise<{ path: string } | { cancelled: true } | { rejected: true; message: string }>;
+  downloadModel(): Promise<{ path: string; name: WhisperModelName }>;
+  setApiKey(key: string): Promise<void>;
+  clearApiKey(): Promise<void>;
   pingWorker(text: string): Promise<string>;
   now(): number;
   streams: StreamService;
@@ -24,6 +37,16 @@ export function createHandlers(deps: HandlerDeps): Handlers {
       return {};
     },
     "setup:check": ({ fresh }) => deps.setupCheck(fresh === true),
+    "setup:locateAgent": ({ id }) => deps.locateAgent(id),
+    "setup:downloadModel": () => deps.downloadModel(),
+    "settings:setApiKey": async ({ key }) => {
+      await deps.setApiKey(key);
+      return {};
+    },
+    "settings:clearApiKey": async () => {
+      await deps.clearApiKey();
+      return {};
+    },
     "worker:ping": async ({ text }) => {
       const started = deps.now();
       const reply = await deps.pingWorker(text);

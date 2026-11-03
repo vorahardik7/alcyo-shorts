@@ -55,9 +55,9 @@ test.describe("with setup complete", () => {
         await page.getByTestId(`section-${section}`).click();
         await expect.poll(hash).toBe(`#/settings/${section}`);
         await expect(page.getByTestId(`settings-${section}`)).toBeVisible();
-        await expect
-          .poll(title)
-          .toBe(`Settings · ${section[0]!.toUpperCase()}${section.slice(1)} · Alcyo Shorts`);
+        const label =
+          section === "claude" ? "Agent" : `${section[0]!.toUpperCase()}${section.slice(1)}`;
+        await expect.poll(title).toBe(`Settings · ${label} · Alcyo Shorts`);
         await goBack(way);
         await expect.poll(hash).toBe("#/");
         await expect(page.getByTestId("empty-thread")).toBeVisible();
@@ -91,7 +91,7 @@ test.describe("with setup complete", () => {
     await expect.poll(hash).toBe("#/s/abc");
   });
 
-  test("Setup opens from Settings > Claude and Back returns there", async () => {
+  test("Setup opens from Settings > Agent and Back returns there", async () => {
     await goHome();
     await page.getByTestId("settings-row").click();
     await page.getByTestId("section-claude").click();
@@ -188,6 +188,14 @@ test.describe("with setup complete", () => {
       window.location.hash = "#/settings/claude";
     });
     await expect(page.getByTestId("claude-path")).toHaveText("/Users/creator/.local/bin/claude");
+    await expect(page.getByTestId("agent-grok")).toContainText("Not found");
+    await expect(page.getByTestId("agent-grok")).not.toContainText("Install Grok");
+    await expect(page.getByTestId("locate-claude")).toBeVisible();
+    await expect(page.getByTestId("locate-grok")).toBeVisible();
+    await expect(page.getByTestId("locate-codex")).toBeVisible();
+    await expect(page.getByTestId("api-key-input")).toBeVisible();
+    await page.getByTestId("section-models").click();
+    await expect(page.getByTestId("download-model")).toBeVisible();
     await page.getByTestId("section-storage").click();
     const userData = run.env["ALCYO_USER_DATA"] ?? "";
     await expect(page.getByTestId("data-folder")).toHaveText(userData);
@@ -292,7 +300,7 @@ test.describe("with setup incomplete", () => {
     await expect(page.getByTestId("check-yt-dlp").getByTestId("fix")).toContainText(
       "pnpm fetch-binaries",
     );
-    await expect(page.getByTestId("check-whisper-model")).toContainText("spec 5");
+    await expect(page.getByTestId("check-whisper-model")).toContainText("Download");
     await expect(page.getByTestId("continue")).toBeDisabled();
     await expect(page.getByTestId("back")).toHaveText("Skip for now");
 

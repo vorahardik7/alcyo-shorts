@@ -1,8 +1,10 @@
 # Kiroween 2026 build plan: Alcyo Shorts (v3)
 
-A Frankenstein entry: a desktop app for Mac and Windows. You paste a stream URL or drop in a file. The app transcribes it on your computer, finds the moments your viewers clipped, and Claude proposes shorts in a chat thread that already knows your style. You make follow-up edits by chatting, or open the editor for fine control. Everything is processed on your computer.
+A Frankenstein entry: a desktop app for Mac and Windows. You paste a stream URL or drop in a file. The app transcribes it on your computer, finds the moments your viewers clipped, and a signed-in coding agent proposes shorts in a chat thread that already knows your style. You make follow-up edits by chatting, or open the editor for fine control. Everything is processed on your computer.
 
 v3, Nov 1, 2026. This is the complete plan with every decision confirmed. It replaces v1 and v2. Agents read this file and nothing older.
+
+Nov 2, 2026: section 16 now uses whichever of Claude Code, Grok or Codex is signed in. Spec 5 status is in section 36.
 
 ---
 
@@ -23,7 +25,7 @@ v3, Nov 1, 2026. This is the complete plan with every decision confirmed. It rep
 13. Creator profile: onboarding, past videos and templates
 14. Analysis pipeline
 15. Local storage
-16. Claude through Claude Code
+16. Local coding agents
 17. Chat actions
 18. Preview and render parity
 19. Mac and Windows builds
@@ -56,12 +58,12 @@ v3, Nov 1, 2026. This is the complete plan with every decision confirmed. It rep
 | Getting footage | Paste a URL (a YouTube or Twitch VOD, a clip, or a channel's clips page) or drop in a local file. URLs are fetched with a bundled, pinned yt-dlp. |
 | Stream clips | Clips that viewers or the creator made during the stream are fetched by URL, matched to their place in the VOD, and used as strong signals when Claude picks shorts. |
 | Past videos and templates | Local files: shorts the creator already posted, and template files (an Alcyo template, or an `.ass` caption style). The app learns the creator's style from them. |
-| First run | After Claude Code is found and signed in, Claude asks the creator a short set of questions. The answers and the past-video analysis become a creator profile that goes into every prompt. |
+| First run | After one coding agent is found and signed in, that agent asks the creator a short set of questions. The answers and the past-video analysis become a creator profile that goes into every prompt. |
 | Follow-up edits | Core (P0). You type in the thread ("make the second one punchier", "find two more about the boss fight") and a new version comes back in the thread. |
 | Links | Every stream, short and version has an in-app route and an `alcyo://` link. Copy link on any card; clicking an `alcyo://` link anywhere opens the app on that version. No local web server. |
-| Claude | The user's own `claude -p`, billed to their Claude plan. Anthropic API key as a backup. |
+| Coding agent | Whichever of Claude Code, Grok or Codex is signed in. The saved choice wins when that one is signed in. Otherwise Claude, then Grok, then Codex. Anthropic API key when none is signed in. |
 | Storage | A project folder of JSON files on disk, one project per stream. No database, no cloud. |
-| Privacy | Video and audio are never uploaded. Only transcript text goes to Claude. The only network traffic is downloading footage you asked for, the whisper model download, and Claude. |
+| Privacy | Video and audio are never uploaded. Only transcript text goes to the signed-in agent. The only network traffic is downloading footage you asked for, the whisper model download, and that agent. |
 | Built with | Kiro CLI V3 for most specs, the Kiro IDE for the schema spec. |
 | Deadline | Dec 4, 2026, 2:00 PM PT. No extensions. |
 
@@ -69,7 +71,7 @@ v3, Nov 1, 2026. This is the complete plan with every decision confirmed. It rep
 
 ## 2. What it is
 
-Alcyo Shorts (working name) turns a long stream into posted-ready vertical shorts. You paste the stream's URL or drop in the recording. The app downloads it if needed, transcribes it on your computer, and finds the clips your viewers made while you were live. Claude, through the Claude Code you already have, reads the transcript with those clips marked and your creator profile attached, and proposes three shorts in a chat thread. Each short is a card you can play right in the thread. You ask for changes in plain words, or open the editor to cut by deleting words, fix captions, move the 9:16 frame and set the hook. Then you render 1080x1920 MP4s.
+Alcyo Shorts (working name) turns a long stream into posted-ready vertical shorts. You paste the stream's URL or drop in the recording. The app downloads it if needed, transcribes it on your computer, and finds the clips your viewers made while you were live. Claude Code, Grok or Codex, whichever is already signed in, reads the transcript with those clips marked and your creator profile attached, and proposes three shorts in a chat thread. Each short is a card you can play right in the thread. You ask for changes in plain words, or open the editor to cut by deleting words, fix captions, move the 9:16 frame and set the hook. Then you render 1080x1920 MP4s.
 
 It is the single-user, local slice of the full Alcyo plan. Teams, sync, review and the cloud parts come later.
 
@@ -82,7 +84,7 @@ It is the single-user, local slice of the full Alcyo plan. Teams, sync, review a
 3. **New stream.** Press + in the sidebar, or paste a URL into any message box. A stream conversation is created as a project folder, like `My Stream.alcyo`.
 4. **Import.** A URL is downloaded into the project with progress. A local file is referenced in place unless you tick Copy into project. Clip URLs and a channel's clips page can be added to the same conversation.
 5. **Analyze.** Progress shows in the thread as a status message: audio, silences, transcript in chunks, clip matching. Find shorts unlocks as soon as the transcript is in. Proxies, waveform and thumbnails keep building in the background.
-6. **Claude proposes three shorts.** Claude's message has three short cards: a playable 9:16 preview, the hook title, the reason, the length, and whether viewers clipped that moment. Each is version 1 of its short.
+6. **The agent proposes three shorts.** The message has three short cards: a playable 9:16 preview, the hook title, the reason, the length, and whether viewers clipped that moment. Each is version 1 of its short.
 7. **Follow-up edits in the thread.** Reply to a card, or type into the thread. Claude returns a new version, shown as a new card with what changed. One click goes back to any earlier version.
 8. **Fine edits in the editor.** Open a card in the editor for timeline, transcript, caption, crop and hook edits. Saving makes a new version, and a short message in the thread links to it.
 9. **Render.** Press Render on a card or in the editor. Progress shows on the card and in the render queue, a notification fires when it's done, and Show in Finder or Explorer opens the file.
@@ -239,7 +241,7 @@ Filler finder, scene-cut keyframes, source view, `[loud]` and `[scene]` hints, B
 - Auto-posting: app reviews and platform terms. You post by hand.
 - Stream Deck marks and the phone app: full Alcyo.
 - A local LLM: doubles the prompt work.
-- A Claude login inside Alcyo: not allowed for third-party apps. Sign-in stays in Claude Code.
+- An agent login inside Alcyo: not allowed. Sign-in stays in Claude Code, Grok or Codex.
 - Reordering segments inside a short: cuts stay in source order.
 - A localhost web server: see section 5.
 
@@ -253,7 +255,7 @@ Parts from different worlds, stitched into one app:
 - whisper.cpp, a C++ port of a speech model, on the Mac's GPU or a Windows CPU, with Silero VAD skipping the silence.
 - ffmpeg, a command-line tool first released in 2000, doing every cut, crop and caption.
 - libass, compiled to WASM in the preview and native inside ffmpeg in the render, drawing the same caption file in both.
-- Claude, reached through the user's own Claude Code CLI, seeing only numbered lines of text, answering with ids.
+- Claude Code, Grok or Codex, whichever CLI is already signed in, seeing only numbered lines of text and answering with ids.
 - A chat app's interface on top of a video editor, so editing a video feels like texting.
 
 The idea that holds it together: the LLM writes a plan, not commands. You change the plan by chatting or by hand. Code checks it, and a deterministic renderer carries it out.
@@ -264,7 +266,7 @@ Draft for the "what are you building" form:
 Frankenstein. A desktop app for Mac and Windows that turns a long stream into
 captioned vertical shorts. Paste the stream's URL: yt-dlp fetches it and the
 clips your viewers made, whisper.cpp transcribes it on your computer, and
-Claude (through your own Claude Code) picks shorts in a chat thread that knows
+A signed-in coding agent (Claude Code, Grok or Codex) picks shorts in a chat thread that knows
 your style. Ask for changes like you'd text an editor, or fine-tune in a
 transcript-linked editor. ffmpeg renders it. Your footage never leaves your
 computer.
@@ -578,42 +580,47 @@ userData/
 
 ---
 
-## 16. Claude through Claude Code
+## 16. Local coding agents
 
-Users have Claude Code installed and signed in. The worker runs their `claude` command, so their Claude plan pays. Alcyo never sees their login.
+The worker runs a coding agent the user already has. Their own login pays. Alcyo never sees that login. Supported agents are Claude Code, Grok and Codex, because each one has a known headless call that returns structured JSON. Other CLIs on a machine are reported nowhere and are not spawned.
+
+The saved `settings.provider` wins when that agent is signed in. Otherwise the first signed-in agent in the order Claude, Grok, Codex. An Anthropic API key is used only when none of them is signed in.
 
 | Provider | When | Who pays |
 |---|---|---|
-| `claude-cli` | Default | The user's Claude plan |
-| `anthropic-api` | Chosen in Settings, or automatically when `claude` is missing and a key is set | The user's API key |
+| `claude-cli` | Claude Code is the saved choice, or the first signed-in agent | The user's Claude plan |
+| `grok-cli` | Grok is the saved choice, or the first signed-in agent | The user's Grok login |
+| `codex-cli` | Codex is the saved choice, or the first signed-in agent | The user's Codex login |
+| `anthropic-api` | No agent is signed in, and a key is saved | The user's API key |
 | `fake` | Tests only | Nobody |
 
 ```ts
 // packages/planner/src/llm/provider.ts
 export interface LlmProvider {
-  readonly name: "claude-cli" | "anthropic-api" | "fake";
+  readonly name: "claude-cli" | "grok-cli" | "codex-cli" | "anthropic-api" | "fake";
   // Returns the structured output, or throws PlannerError. The planner checks it with Zod.
   complete(req: {
     instruction: string;
     input: string;        // profile, numbered transcript lines, thread context
     jsonSchema: object;
+    model: string;        // sent to Claude only
     signal: AbortSignal;
   }): Promise<unknown>;
 }
 ```
 
-### Finding `claude`
+### Finding an agent
 
-A Mac app opened from Finder or the Dock doesn't get the terminal's PATH. On this machine `claude` is at `~/.local/bin/claude`, which a Finder-launched app won't see. The resolver tries, in order, and saves the first that works:
+A Mac app opened from Finder or the Dock doesn't get the terminal's PATH. The resolver tries, in order, for `claude`, `grok` and `codex`:
 
 1. The saved path, if it still runs.
-2. Known folders. macOS: `~/.local/bin/claude`, `~/.claude/local/claude`, `/opt/homebrew/bin/claude`, `/usr/local/bin/claude`. Windows: `%USERPROFILE%\.local\bin\claude.exe`, the WinGet links folder, and `where.exe claude` through `execFile`.
-3. macOS only: `execFile(process.env.SHELL ?? "/bin/zsh", ["-ilc", "command -v claude"])`, 5 s timeout.
-4. A Locate claude button.
+2. Known folders. macOS: `~/.local/bin/<bin>`, plus `~/.claude/local/claude` for Claude, `/opt/homebrew/bin/<bin>`, `/usr/local/bin/<bin>`. Windows: `%USERPROFILE%\.local\bin\<bin>.exe`, the WinGet links folder, then `where.exe <bin>` through `execFile`.
+3. macOS only: `execFile(process.env.SHELL ?? "/bin/zsh", ["-ilc", "command -v <bin>"])`, 5 s timeout.
+4. A Locate button per agent. The dialog stays in main. The file is saved only when its version command exits 0.
 
-"Works" means `claude -v` exits 0 with at least the minimum version set in spec 5.
+"Runs" means the version command exits 0. Sign-in is a separate command, and only the exit code is kept. Auth timeouts are 15 s. Version timeouts are 10 s. A Windows `.cmd`, `.bat` or `.ps1` shim is `cmd-shim` and is not spawned.
 
-### The call
+### The Claude call
 
 ```ts
 const env = { ...process.env };
@@ -644,10 +651,17 @@ child.stdin.end(input);
 - These flags are documented in the [CLI reference](https://code.claude.com/docs/en/cli-reference) and [headless docs](https://code.claude.com/docs/en/headless). Zod checks every answer; a bad answer gets one retry with the errors.
 - The empty temp cwd keeps a project's `.claude/settings.json`, `.mcp.json` and CLAUDE.md from loading. `-p` runs those without a trust prompt.
 - Setup runs `claude auth status` with the API key removed. Exit 0 means signed in.
-- On Windows, only `claude.exe` is spawned. An npm `.cmd` shim gets "Install the native Claude Code" instead of a shell fallback.
-- Alcyo never offers a Claude login, never reads Claude's Keychain entry or `~/.claude`, never stores or passes Claude tokens. The backup key is encrypted with Electron safeStorage.
+- On Windows, only a `.exe` is spawned. A command shim gets "Install the native program" instead of a shell fallback.
+- Alcyo never offers an agent login, never reads an agent's Keychain entry or config directory (`~/.claude`, `~/.grok`, `~/.codex`), and never stores or passes agent tokens. The backup key is encrypted with Electron safeStorage.
+- Cancel goes through `spawnCommand`: SIGINT, then SIGTERM after 5 s. No shell.
 
-### What Claude sees for Find shorts
+Grok (`grok` 1.0.70 on this machine) writes the instruction and the input to a prompt file and runs `--prompt-file`, `--output-format json`, `--json-schema`, `--tools ""`, `--max-turns 3`, `--no-subagents`, `--disable-web-search`, `--verbatim`, `--no-auto-update`. The child env has no `XAI_API_KEY`. Sign-in is `grok models` exiting 0. There is no `auth status` command. The settings model name is not passed.
+
+Codex (`codex` 0.166.0 on this machine) runs `codex exec --ephemeral --skip-git-repo-check --ignore-user-config --ignore-rules --sandbox read-only --json --output-schema <file> --output-last-message <file> -C <empty cwd> -`, with the prompt on stdin. The child env has no `OPENAI_API_KEY`. Sign-in is `codex login status` exiting 0. The last-message file is parsed, not the JSONL stream. The settings model name is not passed.
+
+The parser takes `structured_output` when present, a fenced JSON value, or the object itself. `is_error: true` fails the attempt.
+
+### What the agent sees for Find shorts
 
 ```
 # Creator profile
@@ -674,9 +688,11 @@ L0413 01:23:48 [clipped x3] that's the third time this run
 5. Save version 1 of each, with captions from kept words and the profile's caption preset.
 6. Post a Claude message with the three cards.
 
-### Why Claude Code and not an in-app login
+### Why the agent's own CLI, and not an in-app login
 
-The Agent SDK overview says third-party developers can't offer claude.ai login unless Anthropic approved it. The legal page lets users sign in to the unmodified Claude Code binary with their own subscription. Anthropic's help article says `claude -p` draws from subscription limits. No page says word for word that a local tool may call the user's `claude`; it leans allowed, and T3 Code works the same way. If Anthropic publishes guidance against it, switch the default to the API key provider.
+Claude's Agent SDK overview says third-party developers can't offer claude.ai login unless Anthropic approved it. The legal page lets users sign in to the unmodified Claude Code binary with their own subscription. Anthropic's help article says `claude -p` draws from subscription limits. No page says word for word that a local tool may call the user's `claude`; it leans allowed, and T3 Code works the same way. If Anthropic publishes guidance against it, switch that provider off and use Grok, Codex, or the API key.
+
+Grok and Codex stay in their own CLIs for the same reason. Alcyo does not collect those logins. The API key remains the backup when no agent is signed in.
 
 ---
 
@@ -1027,13 +1043,13 @@ Build in the Kiro IDE for its spec Correctness feature (IDE-only today).
 
 ### 5. setup-and-claude
 
-- THE resolver SHALL find `claude` as in section 16 and work with `PATH=/usr/bin:/bin` (test).
-- THE setup screen SHALL check binaries, `subtitles` and libx264, yt-dlp's version, the VAD and whisper models, `claude`, its version, `claude auth status`, and an optional API key, with one fix line per failure.
-- THE `claude-cli` provider SHALL spawn with the args in section 16, without `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`, in an empty temp cwd (test).
+- THE resolver SHALL find Claude Code, Grok and Codex as in section 16 and work with `PATH=/usr/bin:/bin` (test).
+- THE setup screen SHALL check binaries, `subtitles` and libx264, yt-dlp's version, the VAD and whisper models, each agent, and an optional API key, with one fix line per failure. One signed-in agent, or a saved API key, is enough.
+- EACH CLI provider SHALL spawn with the args in section 16, without that agent's billing key, in an empty temp cwd (test).
 - THE design SHALL record whether `--safe-mode` works with `-p`; the provider SHALL use the fallback if not.
 - THE provider SHALL read `structured_output`, treat a missing field or `is_error` as a failure, and cancel with SIGINT then SIGTERM.
 - THE API provider SHALL call the Messages API with the same JSON Schema as the tool input.
-- THE code SHALL NOT read Claude's Keychain entry or `~/.claude`, offer a Claude login, or store or pass Claude tokens.
+- THE code SHALL NOT read an agent's Keychain entry or config directory, offer an agent login, or store or pass agent tokens.
 
 ### 6. import-and-clips
 
@@ -1145,21 +1161,22 @@ inclusion: always
 # Product: Alcyo Shorts (working name)
 
 A desktop app for Mac and Windows that turns a long stream into captioned
-9:16 shorts. Chat-first: each stream is a conversation. Claude proposes
-shorts as cards in the thread; the creator asks for changes by chatting or
-opens the editor. Everything is processed on the creator's computer.
+9:16 shorts. Chat-first: each stream is a conversation. A signed-in coding
+agent proposes shorts as cards in the thread; the creator asks for changes
+by chatting or opens the editor. Everything is processed on the creator's
+computer.
 
 ## Who it's for
 Streamers and small editing teams who post shorts from long streams.
 
 ## The flow
-1. First run: setup checks, then a Claude interview plus past shorts and
-   templates become a creator profile.
+1. First run: setup checks for Claude Code, Grok or Codex, then an interview
+   plus past shorts and templates become a creator profile.
 2. New stream: paste a URL (yt-dlp) or drop a file. Add viewer clips by URL.
 3. Analyze locally: transcript with VAD and word times, clip matching.
    Find shorts unlocks; proxies and thumbnails build in the background.
-4. Claude, through the user's own Claude Code, proposes shorts as line ids,
-   with the profile and [clipped] markers as context. Text only.
+4. The signed-in agent proposes shorts as line ids, with the profile and
+   [clipped] markers as context. Text only. Claude Code, Grok or Codex.
 5. Follow-up edits in the thread become one checked ChatAction each.
 6. The editor: timeline, transcript editing, captions, reframe, hook.
 7. Render queue: ffmpeg renders 1080x1920 MP4s.
@@ -1173,7 +1190,7 @@ Streamers and small editing teams who post shorts from long streams.
   share the crop function and the .ass file.
 - Every Claude proposal, chat edit and editor save is a version.
 - Everything has a route and an alcyo:// link. No local web server.
-- Alcyo never offers a Claude login and never touches Claude credentials.
+- Alcyo never offers an agent login and never reads agent credentials.
 - Plain copy. Say what happened and what to do next.
 
 ## Priorities
@@ -1350,26 +1367,36 @@ fileMatchPattern: ["packages/media/**/*.ts", "packages/render/**/*.ts", "package
 inclusion: fileMatch
 fileMatchPattern: ["packages/planner/**/*.ts", "packages/profile/**/*.ts"]
 ---
-# Claude notes
+# Coding agents
 
-- Find claude: saved path, known folders, macOS login shell once, Locate
-  claude. A Finder-launched app has no terminal PATH.
-- Spawn: -p --output-format json --json-schema <schema> --safe-mode
+- Supported: Claude Code, Grok, Codex. Saved provider if that agent is
+  signed in, else the first signed-in one in that order.
+- Find each: saved path, known folders, macOS login shell once, Locate.
+  A Finder-launched app has no terminal PATH. A Windows .cmd/.bat/.ps1
+  shim is not spawned.
+- Claude: -p --output-format json --json-schema <schema> --safe-mode
   --tools "" --disallowedTools "mcp__*" --max-turns 3
   --no-session-persistence --model <setting>. Instruction as an arg,
-  input on stdin, empty temp cwd.
-- If --safe-mode is rejected with -p: --strict-mcp-config and
-  --setting-sources project. Never --bare.
-- Remove ANTHROPIC_API_KEY and ANTHROPIC_AUTH_TOKEN from the child env.
-- Read structured_output. Missing or is_error = failed attempt. One retry
-  with the Zod errors, then a plain failure message.
-- Cancel: SIGINT, then SIGTERM after 5 s.
+  input on stdin, empty temp cwd. If --safe-mode is rejected with -p:
+  --strict-mcp-config and --setting-sources project. Never --bare.
+  Drop ANTHROPIC_API_KEY and ANTHROPIC_AUTH_TOKEN. Auth: `claude auth status`.
+- Grok: --prompt-file, --output-format json, --json-schema, --tools "",
+  --max-turns 3, --no-subagents, --disable-web-search, --verbatim.
+  Drop XAI_API_KEY. Do not pass the Claude model name. Auth: `grok models`.
+- Codex: exec --ephemeral --sandbox read-only --ignore-user-config
+  --ignore-rules --output-schema <file> --output-last-message <file>.
+  Drop OPENAI_API_KEY. Do not pass the Claude model name.
+  Auth: `codex login status`.
+- Read structured_output, or the raw JSON. is_error or non-JSON fails.
+  One retry with the Zod errors, then a plain failure message.
+- Cancel: SIGINT, then SIGTERM after 5 s. No shell.
 - Schemas: ClaudeProposal (line ids), ChatAction (one of six actions),
   InterviewStep. Never times, never commands.
 - Input is text only: profile, numbered lines with markers, last 20
   messages, the shorts list.
-- Never offer a Claude login, read Claude's Keychain entry or ~/.claude,
-  or store, log or pass Claude tokens.
+- Never offer an agent login, read an agent's config directory or Keychain
+  entry, or store, log or pass agent tokens. The API key is the backup and
+  stays in the OS key store.
 ```
 
 ---
@@ -1564,7 +1591,7 @@ One overall or one category prize, plus any number of bonus prizes.
 2. **Open it once.** Mac: Privacy & Security, Open Anyway. Windows: More info, Run anyway.
 3. **Open the demo stream.** From the welcome state. It has a profile, a thread with three shorts, a chat revision, and two matched clips. No Claude, key, network or model needed.
 4. **Click around.** Play a card, copy its link and open it, open the editor, delete a word, move the crop, render. The MP4 lands in the project's `renders/` folder.
-5. **Full path, optional.** Their own Claude Code login or API key, then paste a stream URL they own and chat with it.
+5. **Full path, optional.** Their own Claude Code, Grok or Codex login, or an API key, then paste a stream URL they own and chat with it.
 
 ---
 
@@ -1576,7 +1603,7 @@ One overall or one category prize, plus any number of bonus prizes.
 - [ ] `.kiro/` at the root with specs, hooks, steering, settings and agents, not gitignored
 - [ ] Mac and Windows builds on a GitHub Release by CI, plus build-from-source steps
 - [ ] README with the judge path, Gatekeeper and SmartScreen steps, and the download-rights note
-- [ ] README says the full pipeline uses the judge's own Claude Code login or API key
+- [ ] README says the full pipeline uses the judge's own Claude Code, Grok or Codex login, or an API key
 - [ ] Text description of features
 - [ ] `KIRO.md` answering the rules' Kiro questions
 - [ ] Public YouTube demo under 3 minutes
@@ -1612,7 +1639,7 @@ Use your own footage or Soul's with written permission. Mute or cut music you do
 ## 33. Things only you do
 
 - Request the Kiro credits by Dec 1, 12:00 PM PT.
-- Keep Claude Code installed and signed in; an API key is optional.
+- Keep Claude Code, Grok or Codex installed and signed in. An API key is the backup.
 - Record the 1 to 2 minute demo clip for `examples/demo/`, and hand-mark the start times of 20 words in it.
 - Cut two short clips from it to stand in for viewer clips, and note their true offsets.
 - Have a real 1 to 3 hour stream of your own, with a URL and a few clips, by Nov 9.
@@ -1648,7 +1675,7 @@ These are checks the build itself answers, plus two decisions only you can make.
 - Your decision: signing (unsigned with instructions, or pay for signing).
 - Windows PC: not available. CI on `windows-latest` is the only Windows check.
 - Answered in spec 1: does `PostFileSave` fire on agent edits in CLI V3, and is `shell` the matcher name?
-- Answered in spec 5: does `--safe-mode` work with `-p` on your Claude Code version?
+- Answered in spec 5: `--safe-mode` is listed by `claude --help` on 2.1.317. No billed `claude -p` probe was run. The provider tries the flag and retries once without it when the process rejects the flag.
 - Answered in spec 6: how often does yt-dlp's clip info include a VOD offset for Twitch and YouTube clips?
 - Best Kiro Crew App: ask in the Kiro Discord what "your Kiro Crew app" means before spending time on it.
 - Name: check Alcyo Shorts is free before using it publicly.
@@ -1658,7 +1685,7 @@ These are checks the build itself answers, plus two decisions only you can make.
 
 ## 36. Current status
 
-As of Nov 1, local `main` only (no GitHub repo yet).
+As of Nov 2, local `main` only (no GitHub repo yet). Spec 5 is in the working tree and is not committed.
 
 | Spec | State | Notes |
 |---|---|---|
@@ -1667,7 +1694,7 @@ As of Nov 1, local `main` only (no GitHub repo yet).
 | 2 `schema` | Done | Section 22 schemas plus files, checks, time math, id mapping and snapping with property tests, Claude JSON Schemas, migrations, `plan:validate`. |
 | 3 `media-engine` | Done | `@alcyo/media`: probe, audio, silences, chunked transcript with resume, loudness, scenes, encoder test, proxy, peaks, thumbnails; cache keys; cancel; worker job. Real-tools test passes on this Mac. Not wired to a stream yet (needs spec 4). |
 | 4 `project-store` | Done | `@alcyo/store` (stream folders, streams.json, settings, thread, sources with Locate file, versions that never overwrite, drafts, transcript reads), the stream service and job queue in main, IPC for streams, analysis, thread, transcript and shorts. Choose a file makes a stream and analyzes it; the sidebar lists streams; the thread shows status with Cancel. Ran end to end on Soul's 5-minute edit. |
-| 5 `setup-and-claude` | Partly done | The claude resolver and setup checks exist. Still to do: provider, `--safe-mode` check, model download, Locate claude, API key. |
+| 5 `setup-and-claude` | Done, uncommitted | Lookup for Claude Code, Grok and Codex. Providers, `--safe-mode` retry, pinned whisper download, Locate, OS-encrypted API key. Setup and Settings show the three agents. Live logins were not probed. See `.kiro/specs/setup-and-claude/`. |
 | 6–13 | Not started | Dropping files waits for spec 6 (a dropped file's path needs the preload). |
 
 Answers recorded so far:
@@ -1681,9 +1708,14 @@ Answers recorded so far:
 - ffprobe names MKV `matroska,webm`; H.264 MKV gets a proxy.
 - Hook self-test answers are in `.kiro/specs/project-setup/hook-self-test.md`.
 
-On this Mac: Node 24.18, pnpm 12.14, the pinned tools fetched, `small.en`
-downloaded to userData (SHA-1 `db8a495a91d927739e50b3fc1cc4c6b8f6c2d022`),
-`claude` 2.1.301 at `~/.local/bin/claude`, signed in.
+On this Mac (Nov 2): Node 24.18, pnpm 12.14, the pinned tools fetched,
+`small.en` downloaded to userData (SHA-1
+`db8a495a91d927739e50b3fc1cc4c6b8f6c2d022`, SHA-256
+`c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d`).
+`claude` 2.1.317 at `~/.local/bin/claude`, `grok` 1.0.70 at
+`~/.local/bin/grok`, `codex-cli` 0.166.0 at `/opt/homebrew/bin/codex`.
+Auth was not re-checked this session. Gemini, cursor-agent, opencode and
+amp are installed and are not used.
 
 No Windows PC is available (Hardik, Nov 1). Windows is checked only by CI on
 `windows-latest`, which needs the GitHub repo; until then Windows builds are

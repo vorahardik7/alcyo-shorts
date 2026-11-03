@@ -6,6 +6,10 @@ export const CHANNELS = [
   "app:paths",
   "shell:openDataFolder",
   "setup:check",
+  "setup:locateAgent",
+  "setup:downloadModel",
+  "settings:setApiKey",
+  "settings:clearApiKey",
   "worker:ping",
   "streams:list",
   "stream:open",
@@ -31,6 +35,7 @@ export const EVENTS = [
   "streams:changed",
   "thread:message",
   "job:progress",
+  "model:progress",
 ] as const;
 export type EventName = (typeof EVENTS)[number];
 

@@ -1,14 +1,15 @@
 // Settings (plan section 4): Profile, Claude, Models, Encoder, Storage, About.
 // Full window: the settings nav takes the sidebar's place, and Back returns to
 // the chat. Every value comes from main; unbuilt parts carry a quiet "Soon".
-import type { SetupCheck, SetupReport } from "@alcyo/ipc";
+import type { LocalAgentId, SetupCheck, SetupReport } from "@alcyo/ipc";
 import { Link } from "@tanstack/react-router";
-import { type ComponentType, type ReactNode, useEffect } from "react";
+import { type ComponentType, type ReactNode, useEffect, useState } from "react";
 import license from "../../../../../../LICENSE?raw";
 import notices from "../../../../../../THIRD_PARTY_NOTICES.md?raw";
 import { BackButton } from "../nav/BackButton";
 import { isMac, useBack, usePageTitle } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
+import { DownloadButton } from "../setup/download";
 import { openIssues, useAppFacts, useSetup } from "../setup/store";
 import { useStreams } from "../streams/store";
 import { AppMark } from "../ui/AppMark";
@@ -30,7 +31,7 @@ export type SectionId = "profile" | "claude" | "models" | "encoder" | "storage" 
 type IconC = ComponentType<{ size?: number }>;
 const SECTIONS: Array<{ id: SectionId; label: string; icon: IconC }> = [
   { id: "profile", label: "Profile", icon: UserIcon },
-  { id: "claude", label: "Claude", icon: ChatIcon },
+  { id: "claude", label: "Agent", icon: ChatIcon },
   { id: "models", label: "Models", icon: WaveIcon },
   { id: "encoder", label: "Encoder", icon: CpuIcon },
   { id: "storage", label: "Storage", icon: FolderIcon },
@@ -84,6 +85,177 @@ function Note({ children }: { children: ReactNode }) {
   return <p className="px-1 text-[13px] leading-relaxed text-tertiary">{children}</p>;
 }
 
+const AGENT_LABEL: Record<LocalAgentId, string> = {
+  claude: "Claude Code",
+  grok: "Grok",
+  codex: "Codex",
+};
+
+function messageOf(error: unknown): string {
+  if (error instanceof Error && error.message.length > 0) return error.message;
+  return "Try again.";
+}
+
+function agentLine(report: SetupReport | null, id: LocalAgentId): string {
+  if (report === null) return "…";
+  const hit = report.agents.find((agent) => agent.id === id);
+  const version = hit?.version == null ? "" : `, version ${hit.version}`;
+  if (report.chosen?.id === id) return `Signed in${version}. Alcyo will use this one.`;
+  if (hit === undefined || hit.path === null) {
+    return hit?.problem === "cmd-shim" ? "Only a command shim is installed." : "Not found";
+  }
+  return hit.signedIn === true ? `Signed in${version}` : `Found${version}, not signed in`;
+}
+
+const AGENT_CHECK: Record<LocalAgentId, SetupCheck["id"]> = {
+  claude: "claude",
+  grok: "agent-grok",
+  codex: "agent-codex",
+};
+
+function AgentTools() {
+  const report = useSetup((s) => s.report);
+  const load = useSetup((s) => s.load);
+  const [busy, setBusy] = useState<LocalAgentId | null>(null);
+  const ids: LocalAgentId[] = ["claude", "grok", "codex"];
+
+  return (
+    <>
+      {ids.map((id) => {
+        const path = report?.agents.find((agent) => agent.id === id)?.path ?? null;
+        const row = check(report, AGENT_CHECK[id]);
+        return (
+          <div key={id} data-testid={`agent-${id}`}>
+            <Row
+              label={AGENT_LABEL[id]}
+              aside={
+                <>
+                  {path !== null && <CopyButton text={path} />}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy !== null}
+                    data-testid={`locate-${id}`}
+                    onClick={() => {
+                      setBusy(id);
+                      void window.alcyo
+                        .invoke("setup:locateAgent", { id })
+                        .then(
+                          (out) => {
+                            if ("rejected" in out) {
+                              toast("That file didn't run", out.message);
+                              return;
+                            }
+                            if ("path" in out) void load(true);
+                          },
+                          (error: unknown) =>
+                            toast("Couldn't open the file dialog", messageOf(error)),
+                        )
+                        .finally(() => setBusy(null));
+                    }}
+                  >
+                    {busy === id && <Spinner size={12} />}
+                    Locate
+                  </Button>
+                </>
+              }
+            >
+              <span className="block text-secondary">{agentLine(report, id)}</span>
+              {path !== null && (
+                <span
+                  data-testid={`${id}-path`}
+                  className="mt-0.5 block font-mono text-[13px] text-tertiary"
+                >
+                  {path}
+                </span>
+              )}
+            </Row>
+            {row?.state === "fail" && <FixLine c={row} />}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function ApiKeyCard() {
+  const report = useSetup((s) => s.report);
+  const load = useSetup((s) => s.load);
+  const present = report?.apiKey.present === true;
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const trimmed = key.trim();
+
+  return (
+    <Card
+      testId="api-key-card"
+      title="API key backup"
+      description="Used only when no coding agent is signed in. The key stays on this computer."
+    >
+      <div className="flex items-center gap-2 px-5 py-3">
+        <input
+          type="password"
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={500}
+          value={key}
+          placeholder={present ? "Paste a new key to replace the saved one" : "Anthropic API key"}
+          data-testid="api-key-input"
+          onChange={(event) => setKey(event.target.value)}
+          className="h-9 min-w-0 flex-1 rounded-full bg-bubble-claude px-4 text-small outline-none placeholder:text-tertiary focus-visible:ring-2 focus-visible:ring-unread"
+        />
+        <Button
+          size="sm"
+          disabled={busy || trimmed.length === 0}
+          data-testid="api-key-save"
+          onClick={() => {
+            setBusy(true);
+            void window.alcyo
+              .invoke("settings:setApiKey", { key: trimmed })
+              .then(
+                () => {
+                  setKey("");
+                  return load(true);
+                },
+                (error: unknown) => toast("The key wasn't saved", messageOf(error)),
+              )
+              .finally(() => setBusy(false));
+          }}
+        >
+          Save
+        </Button>
+        {present && (
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            data-testid="api-key-clear"
+            onClick={() => {
+              setBusy(true);
+              void window.alcyo
+                .invoke("settings:clearApiKey", {})
+                .then(
+                  () => load(true),
+                  (error: unknown) => toast("The key wasn't removed", messageOf(error)),
+                )
+                .finally(() => setBusy(false));
+            }}
+          >
+            Remove
+          </Button>
+        )}
+      </div>
+      <p className="border-t border-hairline px-5 py-3 text-[13px] text-tertiary">
+        {report === null
+          ? "…"
+          : present
+            ? "A key is saved. Alcyo never shows it again."
+            : "No key saved."}
+      </p>
+    </Card>
+  );
+}
+
 function SetupBanner() {
   const report = useSetup((s) => s.report);
   if (report === null || report.complete) return null;
@@ -124,56 +296,26 @@ function ProfileSection() {
 
 function ClaudeSection() {
   const report = useSetup((s) => s.report);
-  const found = check(report, "claude");
-  const auth = check(report, "claude-auth");
-  const via = {
-    saved: "saved path",
-    "known-folder": "standard folder",
-    "login-shell": "login shell",
-    where: "PATH",
-    none: "",
-  } as const;
+  const summary = check(report, "agent");
   return (
     <>
       <Card
         testId="claude-card"
-        title="Claude Code"
-        description="Alcyo runs your own claude command, so your Claude plan pays for it."
+        title="Coding agent"
+        description="Alcyo runs Claude Code, Grok or Codex on this computer. Whichever is signed in answers."
         actions={<CheckAgain />}
       >
-        <Row label="Status">
-          {report === null ? (
-            <Waiting />
-          ) : (
-            <span className="flex items-center gap-2">
-              <YesNo value={report.claude.path !== null} yes="Found" no="Not found" />
-              {report.claude.path !== null && (
-                <span className="text-[13px] text-tertiary">in a {via[report.claude.via]}</span>
-              )}
-            </span>
-          )}
+        <Row label="Will use">
+          {report === null
+            ? "…"
+            : report.chosen !== null
+              ? AGENT_LABEL[report.chosen.id]
+              : report.apiKey.present
+                ? "Saved API key"
+                : "None yet"}
         </Row>
-        <Row
-          label="Path"
-          mono
-          aside={report?.claude.path != null ? <CopyButton text={report.claude.path} /> : undefined}
-        >
-          <span data-testid="claude-path">
-            {report === null ? "…" : (report.claude.path ?? "—")}
-          </span>
-        </Row>
-        <Row label="Version">{report === null ? "…" : (report.claude.version ?? "—")}</Row>
-        <Row label="Signed in">
-          {report === null ? (
-            <Waiting />
-          ) : report.claude.signedIn === null ? (
-            <span className="text-secondary">Checked once Claude Code is found</span>
-          ) : (
-            <YesNo value={report.claude.signedIn} />
-          )}
-        </Row>
-        <FixLine c={found} />
-        <FixLine c={auth} />
+        <FixLine c={summary} />
+        <AgentTools />
       </Card>
       <Card title="More">
         <Row
@@ -186,16 +328,12 @@ function ClaudeSection() {
         >
           <span className="text-secondary">Every tool and model, with fixes</span>
         </Row>
-        <Row label="Locate claude" aside={<ComesIn spec={5} />}>
-          <span className="text-secondary">For installs in an unusual folder</span>
-        </Row>
-        <Row label="API key backup" aside={<ComesIn spec={5} />}>
-          <span className="text-secondary">Used only if Claude Code is missing</span>
-        </Row>
       </Card>
+      <ApiKeyCard />
       <Note>
-        Claude sees transcript text and your profile, never video or audio. Alcyo never offers a
-        Claude login and never reads or stores your Claude credentials.
+        The agent sees transcript text and your profile, never video or audio. Alcyo never offers a
+        login and never reads or stores an agent's credentials. A backup API key is encrypted by the
+        operating system.
       </Note>
     </>
   );
@@ -213,7 +351,10 @@ function ModelsSection() {
         description="whisper.cpp turns speech into timed words on this computer."
         actions={<CheckAgain />}
       >
-        <Row label="Model">
+        <Row
+          label="Model"
+          aside={report !== null && !report.whisperModel.present ? <DownloadButton /> : undefined}
+        >
           {report === null ? (
             <Waiting />
           ) : (
@@ -249,7 +390,8 @@ function ModelsSection() {
         </Row>
       </Card>
       <Note>
-        The model downloads once, on first run. Silero skips silence so transcripts are faster.
+        Press Download to fetch the model. It stays on this computer. Silero skips silence so
+        transcripts are faster.
       </Note>
     </>
   );

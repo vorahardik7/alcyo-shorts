@@ -1,9 +1,9 @@
-// Setup checks (plan section 3 step 1; spec 5's checks that can run today).
-// Runs in the worker because it spawns processes. Every spawn is execFile with
-// an args array; the only shell use is claude-locate's login-shell lookup.
+// Setup checks (plan section 3 step 1, spec 5). Runs in the worker because it
+// spawns processes. Every spawn is execFile with an args array; the only shell
+// use is each agent's `command -v` lookup.
 import { join } from "node:path";
-import type { SetupCheck, SetupReport, SetupRequest, WhisperModelName } from "@alcyo/ipc";
-import { claudeSignedIn, type LocateDeps, locateClaude } from "@alcyo/planner";
+import type { CheckId, SetupCheck, SetupReport, SetupRequest, WhisperModelName } from "@alcyo/ipc";
+import { type AgentHit, type LocateDeps, chooseAgent, locateAgents } from "@alcyo/planner";
 
 export interface SetupDeps extends LocateDeps {
   listDir: (path: string) => Promise<string[]>;
@@ -85,6 +85,72 @@ const VIA_LABEL = {
   none: "",
 } as const;
 
+const AGENT_LABEL = { claude: "Claude Code", grok: "Grok", codex: "Codex" } as const;
+const AGENT_CHECK: Record<AgentHit["id"], CheckId> = {
+  claude: "claude",
+  grok: "agent-grok",
+  codex: "agent-codex",
+};
+const INSTALL = {
+  claude: "Install Claude Code from claude.com/product/claude-code, then press Check again.",
+  grok: "Install Grok (the grok command), then press Check again.",
+  codex: "Install Codex (the codex command), then press Check again.",
+} as const;
+const SIGN_IN = {
+  claude: {
+    fix: "Run claude in a terminal and sign in, then press Check again.",
+    command: "claude",
+  },
+  grok: {
+    fix: "Run grok login in a terminal and sign in, then press Check again.",
+    command: "grok login",
+  },
+  codex: {
+    fix: "Run codex login in a terminal and sign in, then press Check again.",
+    command: "codex login",
+  },
+} as const;
+
+function agentRow(hit: AgentHit, claudeMissingMatters: boolean): SetupCheck {
+  const label = AGENT_LABEL[hit.id];
+  const id = AGENT_CHECK[hit.id];
+  if (hit.path !== null && hit.signedIn === true) {
+    const version = hit.version === null ? "Found" : `Version ${hit.version}`;
+    return {
+      id,
+      label,
+      state: "pass",
+      required: false,
+      detail: `${version}, signed in, ${VIA_LABEL[hit.via]}: ${hit.path}`,
+      fix: null,
+      command: null,
+    };
+  }
+  if (hit.path !== null) {
+    const sign = SIGN_IN[hit.id];
+    return {
+      id,
+      label,
+      state: "fail",
+      required: false,
+      detail: `Found, but not signed in: ${hit.path}`,
+      fix: sign.fix,
+      command: sign.command,
+    };
+  }
+  const shim = hit.problem === "cmd-shim";
+  const failed = hit.id === "claude" && claudeMissingMatters;
+  return {
+    id,
+    label,
+    state: failed ? "fail" : "pending",
+    required: false,
+    detail: shim ? "Only a command shim is installed." : "Not installed.",
+    fix: shim ? "Install the native program, then press Check again." : INSTALL[hit.id],
+    command: null,
+  };
+}
+
 export async function runSetupCheck(
   req: SetupRequest,
   deps: SetupDeps,
@@ -95,11 +161,12 @@ export async function runSetupCheck(
   const modelPath = join(req.modelsDir, `ggml-${modelName}.bin`);
   const vadDir = join(req.binDir, "models");
 
-  const claudeTask = (async () => {
-    const location = await locateClaude(deps);
-    const signedIn = location.path === null ? null : await claudeSignedIn(location.path, deps);
-    return { location, signedIn };
-  })();
+  const saved = req.saved;
+  const agentTask = locateAgents(deps, {
+    claudePath: saved?.claudePath ?? null,
+    grokPath: saved?.grokPath ?? null,
+    codexPath: saved?.codexPath ?? null,
+  });
   const toolsTask = Promise.all(TOOLS.map((t) => checkTool(t, req, deps)));
   const vadTask = deps
     .listDir(vadDir)
@@ -107,12 +174,14 @@ export async function runSetupCheck(
     .catch(() => null);
   const modelTask = deps.isFile(modelPath);
 
-  const [{ location, signedIn }, tools, vadFile, modelPresent] = await Promise.all([
-    claudeTask,
+  const [hits, tools, vadFile, modelPresent] = await Promise.all([
+    agentTask,
     toolsTask,
     vadTask,
     modelTask,
   ]);
+  const chosen = chooseAgent(hits, saved?.provider ?? null);
+  const claudeHit = hits.find((hit) => hit.id === "claude");
 
   const ffmpeg = tools.find((t) => t.id === "ffmpeg");
   let subtitles = false;
@@ -130,65 +199,37 @@ export async function runSetupCheck(
   }
 
   const checks: SetupCheck[] = [];
-
-  if (location.path !== null) {
-    checks.push({
-      id: "claude",
-      label: "Claude Code",
-      state: "pass",
-      required: true,
-      detail: `${location.version === null ? "Found" : `Version ${location.version}`}, ${VIA_LABEL[location.via]}: ${location.path}`,
-      fix: null,
-      command: null,
-    });
-  } else {
-    const shim = location.problem === "cmd-shim";
-    checks.push({
-      id: "claude",
-      label: "Claude Code",
-      state: "fail",
-      required: true,
-      detail: shim
-        ? "Only the npm version (claude.cmd) is installed."
-        : "Not found in the usual folders or your login shell.",
-      fix: shim
-        ? "Install the native Claude Code (claude.exe), then press Check again."
-        : "Install Claude Code from claude.com/product/claude-code, then press Check again.",
-      command: null,
-    });
-  }
-
+  const ready = chosen !== null;
   checks.push(
-    signedIn === null
+    ready
       ? {
-          id: "claude-auth",
-          label: "Signed in to Claude",
-          state: "pending",
+          id: "agent",
+          label: "Coding agent",
+          state: "pass",
           required: true,
-          detail: "Checked once Claude Code is found.",
+          detail: `${AGENT_LABEL[chosen.id]} is signed in and will answer.`,
           fix: null,
           command: null,
         }
-      : signedIn
-        ? {
-            id: "claude-auth",
-            label: "Signed in to Claude",
-            state: "pass",
-            required: true,
-            detail: "Signed in. Alcyo uses your Claude plan through Claude Code.",
-            fix: null,
-            command: null,
-          }
-        : {
-            id: "claude-auth",
-            label: "Signed in to Claude",
-            state: "fail",
-            required: true,
-            detail: "Claude Code isn't signed in.",
-            fix: "Run claude in a terminal and sign in, then press Check again.",
-            command: "claude",
-          },
+      : {
+          id: "agent",
+          label: "Coding agent",
+          state: "fail",
+          required: true,
+          detail: "None of Claude Code, Grok or Codex is signed in.",
+          fix: "Install one of them and sign in, or save an API key in Settings.",
+          command: null,
+        },
   );
+  for (const hit of hits) checks.push(agentRow(hit, !ready));
+  const claude = claudeHit ?? {
+    id: "claude" as const,
+    path: null,
+    via: "none" as const,
+    version: null,
+    signedIn: null,
+    problem: "missing" as const,
+  };
 
   for (const tool of tools) {
     const label = TOOLS.find((t) => t.id === tool.id)!.label;
@@ -280,7 +321,7 @@ export async function runSetupCheck(
     state: modelPresent ? "pass" : "pending",
     required: false,
     detail: modelPresent ? `Downloaded: ${modelPath}` : "Not downloaded yet.",
-    fix: modelPresent ? null : "Downloads on first run. The download comes in spec 5.",
+    fix: modelPresent ? null : "Press Download. The model stays on this computer.",
     command: null,
   });
 
@@ -288,11 +329,14 @@ export async function runSetupCheck(
     checkedAt: now().toISOString(),
     complete: checks.every((c) => !c.required || c.state === "pass"),
     checks,
+    agents: hits,
+    chosen: chosen === null ? null : { id: chosen.id, path: chosen.path, version: chosen.version },
+    apiKey: { present: false },
     claude: {
-      path: location.path,
-      via: location.via,
-      version: location.version,
-      signedIn,
+      path: claude.path,
+      via: claude.via,
+      version: claude.version,
+      signedIn: claude.signedIn,
     },
     tools: tools.map((t) => ({
       name: t.id,

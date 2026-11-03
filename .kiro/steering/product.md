@@ -4,21 +4,22 @@ inclusion: always
 # Product: Alcyo Shorts (working name)
 
 A desktop app for Mac and Windows that turns a long stream into captioned
-9:16 shorts. Chat-first: each stream is a conversation. Claude proposes
-shorts as cards in the thread; the creator asks for changes by chatting or
-opens the editor. Everything is processed on the creator's computer.
+9:16 shorts. Chat-first: each stream is a conversation. A signed-in coding
+agent proposes shorts as cards in the thread; the creator asks for changes
+by chatting or opens the editor. Everything is processed on the creator's
+computer.
 
 ## Who it's for
 Streamers and small editing teams who post shorts from long streams.
 
 ## The flow
-1. First run: setup checks, then a Claude interview plus past shorts and
-   templates become a creator profile.
+1. First run: setup checks for Claude Code, Grok or Codex, then an interview
+   plus past shorts and templates become a creator profile.
 2. New stream: paste a URL (yt-dlp) or drop a file. Add viewer clips by URL.
 3. Analyze locally: transcript with VAD and word times, clip matching.
    Find shorts unlocks; proxies and thumbnails build in the background.
-4. Claude, through the user's own Claude Code, proposes shorts as line ids,
-   with the profile and [clipped] markers as context. Text only.
+4. The signed-in agent proposes shorts as line ids, with the profile and
+   [clipped] markers as context. Text only. Claude Code, Grok or Codex.
 5. Follow-up edits in the thread become one checked ChatAction each.
 6. The editor: timeline, transcript editing, captions, reframe, hook.
 7. Render queue: ffmpeg renders 1080x1920 MP4s.
@@ -32,7 +33,7 @@ Streamers and small editing teams who post shorts from long streams.
   share the crop function and the .ass file.
 - Every Claude proposal, chat edit and editor save is a version.
 - Everything has a route and an alcyo:// link. No local web server.
-- Alcyo never offers a Claude login and never touches Claude credentials.
+- Alcyo never offers an agent login and never reads agent credentials.
 - Plain copy. Say what happened and what to do next.
 
 ## Priorities
