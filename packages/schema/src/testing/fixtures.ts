@@ -296,8 +296,6 @@ export const interviewSteps: InterviewStep[] = [
       exampleTitles: profile.exampleTitles,
       avoid: profile.avoid,
       platforms: profile.platforms,
-      captionPresetId: profile.captionPresetId,
-      hookPresetId: profile.hookPresetId,
     },
   },
 ];

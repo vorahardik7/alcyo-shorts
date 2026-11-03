@@ -8,6 +8,7 @@ import type {
   WhisperModelName,
 } from "@alcyo/ipc";
 import type { Downloader } from "../downloader";
+import type { ProfileService } from "../profile";
 import type { StreamService } from "../streams";
 import type { HandlerFn } from "./core";
 
@@ -26,6 +27,7 @@ export interface HandlerDeps {
   now(): number;
   streams: StreamService;
   downloader: Pick<Downloader, "info" | "update" | "useBundled">;
+  profile: ProfileService;
 }
 
 type Handlers = { [C in Channel]: HandlerFn<C> };
@@ -74,6 +76,17 @@ export function createHandlers(deps: HandlerDeps): Handlers {
     "downloader:info": () => deps.downloader.info(),
     "downloader:update": () => deps.downloader.update(),
     "downloader:useBundled": () => deps.downloader.useBundled(),
+    "profile:get": () => deps.profile.view(),
+    "profile:save": ({ profile }) => deps.profile.save(profile),
+    "interview:get": () => deps.profile.interview(),
+    "interview:start": () => deps.profile.start(),
+    "interview:answer": ({ answer, finishNow }) => deps.profile.answer(answer, finishNow === true),
+    "interview:finish": ({ captionPresetId }) => deps.profile.finish(captionPresetId),
+    "samples:add": () => deps.profile.addSamples(),
+    "samples:remove": ({ sampleId }) => deps.profile.removeSample(sampleId),
+    "style:write": () => deps.profile.writeStyle(),
+    "template:import": () => deps.profile.importTemplate(),
+    "template:export": () => deps.profile.exportTemplate(),
     "job:cancel": async ({ jobId }) => {
       await deps.streams.cancel(jobId);
       return {};

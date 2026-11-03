@@ -9,6 +9,7 @@ import notices from "../../../../../../THIRD_PARTY_NOTICES.md?raw";
 import { BackButton } from "../nav/BackButton";
 import { isMac, useBack, usePageTitle } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
+import { ProfileSettings } from "../profile/ProfileSettings";
 import { DownloadButton } from "../setup/download";
 import { openIssues, useAppFacts, useSetup } from "../setup/store";
 import { plainError, useStreams } from "../streams/store";
@@ -279,17 +280,7 @@ function ProfileSection() {
   return (
     <>
       <SetupBanner />
-      <Card
-        testId="profile-empty"
-        title="No creator profile yet"
-        description="Claude asks a few questions about your streams and your shorts. The answers become your profile, which goes into every prompt as text."
-        actions={<ComesIn spec={7} />}
-      />
-      <Card
-        title="Past shorts and templates"
-        description="Add shorts you've posted and caption templates. Only their measurements are kept."
-        actions={<ComesIn spec={7} />}
-      />
+      <ProfileSettings />
     </>
   );
 }

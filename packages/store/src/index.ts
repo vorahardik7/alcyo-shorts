@@ -8,3 +8,4 @@ export * from "./names.ts";
 export * from "./project.ts";
 export * from "./settings.ts";
 export * from "./streams-index.ts";
+export * from "./profile-store.ts";

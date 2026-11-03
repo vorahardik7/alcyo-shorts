@@ -8,6 +8,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { SettingsPage } from "./settings/SettingsPage";
+import { Onboarding } from "./profile/Onboarding";
 import { SetupPage } from "./setup/SetupPage";
 import { Layout } from "./shell/Layout";
 import { Home, NotFound } from "./shell/pages";
@@ -44,6 +45,12 @@ const setupRoute = createRoute({
   component: SetupPage,
 });
 
+const onboardingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/onboarding",
+  component: Onboarding,
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
@@ -75,6 +82,7 @@ const routeTree = rootRoute.addChildren([
   streamChildRoute,
   rendersRoute,
   setupRoute,
+  onboardingRoute,
   settingsRoute,
   profileRoute,
   sectionRoute,

@@ -7,5 +7,7 @@ export * from "./llm/codex-cli";
 export * from "./llm/anthropic-api";
 export * from "./llm/fake";
 export * from "./llm/spawn";
+export * from "./llm/ask";
+export * from "./interview";
 export * from "./id-mapping";
 export * from "./snapping";

@@ -4,6 +4,7 @@ import {
   AnalysisStepName,
   AppLink,
   ClipFile,
+  CreatorProfile,
   Draft,
   Id,
   Message,
@@ -17,6 +18,7 @@ import {
 } from "@alcyo/schema";
 import { z } from "zod";
 import type { Channel, EventName } from "./names";
+import { InterviewState, ProfileView } from "./profile";
 import { LocalAgentId, WhisperModelName, SetupReport } from "./setup";
 
 export const AppInfo = z.object({
@@ -174,6 +176,46 @@ export const contract = {
   "downloader:update": { input: z.object({}), output: DownloaderInfo },
   /** Goes back to the yt-dlp bundled with the app. */
   "downloader:useBundled": { input: z.object({}), output: DownloaderInfo },
+  "profile:get": { input: z.object({}), output: ProfileView },
+  /** Saves edits from Settings, after the schema and range checks. */
+  "profile:save": { input: z.object({ profile: CreatorProfile }), output: ProfileView },
+  "interview:get": { input: z.object({}), output: InterviewState },
+  /** Starts (or restarts) the interview and asks the agent for the first question. */
+  "interview:start": { input: z.object({}), output: InterviewState },
+  /** An answer, a skip (null), or finish now; the agent asks the next question or finishes. */
+  "interview:answer": {
+    input: z.object({
+      answer: z.string().max(1000).nullable(),
+      finishNow: z.boolean().optional(),
+    }),
+    output: InterviewState,
+  },
+  /** The caption look; saves the profile from the draft. */
+  "interview:finish": { input: z.object({ captionPresetId: Id }), output: ProfileView },
+  /** A file dialog in main for past shorts. They are analyzed, never copied. */
+  "samples:add": {
+    input: z.object({}),
+    output: z.union([
+      z.object({ added: z.number().int().nonnegative(), skipped: z.number().int().nonnegative() }),
+      z.object({ cancelled: z.literal(true) }),
+    ]),
+  },
+  "samples:remove": { input: z.object({ sampleId: Id }), output: ProfileView },
+  /** The agent writes the style summary from the past shorts. */
+  "style:write": { input: z.object({}), output: ProfileView },
+  /** A file dialog in main for an .alcyo-template.json or .ass file. */
+  "template:import": {
+    input: z.object({}),
+    output: z.union([
+      z.object({ added: z.number().int().nonnegative(), notes: z.array(z.string().max(300)) }),
+      z.object({ cancelled: z.literal(true) }),
+    ]),
+  },
+  /** A save dialog in main; writes the current looks as an Alcyo template. */
+  "template:export": {
+    input: z.object({}),
+    output: z.union([z.object({ path: z.string() }), z.object({ cancelled: z.literal(true) })]),
+  },
   "job:cancel": { input: JobRef, output: z.object({}) },
   "thread:messages": {
     input: StreamRef.extend({ before: Id.optional(), limit: z.number().int().min(1).max(200) }),
@@ -219,6 +261,8 @@ export const events = {
     stage: z.string(),
     pct: z.number().min(0).max(100),
   }),
+  /** Past shorts moved along, or the profile changed. Reload profile:get. */
+  "profile:changed": z.object({}),
   "model:progress": z.object({
     received: z.number().int().nonnegative(),
     total: z.number().int().positive().nullable(),

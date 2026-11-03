@@ -5,9 +5,9 @@ import { mkdir } from "node:fs/promises";
 import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import { applyApiKey, CHANNELS, type SetupRequest, type WhisperModelName } from "@alcyo/ipc";
-import { probeAgent, providerForAgent } from "@alcyo/planner";
+import { probeAgent, providerForAgent, realSpawnDeps } from "@alcyo/planner";
 import { LINK_SCHEME, type LocalAgentId } from "@alcyo/schema";
-import { SettingsFile, StreamsIndex } from "@alcyo/store";
+import { ProfileStore, SettingsFile, StreamsIndex } from "@alcyo/store";
 import { app, BrowserWindow, dialog, safeStorage, shell } from "electron";
 import pkg from "../../package.json";
 import { resolveBinDir } from "./bin";
@@ -16,6 +16,9 @@ import { createHandlers } from "./ipc/handlers";
 import { findLinkInArgv, LinkQueue, linkEvent } from "./links";
 import { ApiKeyFile } from "./api-key";
 import { Downloader } from "./downloader";
+import { AgentService } from "./agent";
+import { ProfileService } from "./profile";
+import { scriptedAgent } from "./test-agent";
 import { fixtureKind, fixtureReport } from "./setup-fixture";
 import { SetupService } from "./setup-service";
 import { StreamService } from "./streams";
@@ -159,31 +162,32 @@ function run(): void {
     });
     // The bundled yt-dlp takes a few seconds to start once; ask early so Settings doesn't wait.
     void downloader.info().catch(() => undefined);
+    const analysisBase = async () => {
+      const [current, report] = await Promise.all([settings.read(), setup.get()]);
+      const version = (name: string) =>
+        report.tools.find((t) => t.name === name)?.version ?? "unknown";
+      const modelPath = join(paths.models, `ggml-${current.whisperModel}.bin`);
+      const vadDir = join(paths.bin, "models");
+      const vad = existsSync(vadDir)
+        ? readdirSync(vadDir).find((f) => f.startsWith("ggml-silero"))
+        : undefined;
+      return {
+        tools: { ffmpeg: exe("ffmpeg"), ffprobe: exe("ffprobe"), whisper: exe("whisper-cli") },
+        toolVersions: { ffmpeg: version("ffmpeg"), whisper: version("whisper-cli") },
+        model: existsSync(modelPath) ? { path: modelPath, name: current.whisperModel } : null,
+        vadModel: join(vadDir, vad ?? "ggml-silero-v6.2.0.bin"),
+        mode: "full" as const,
+        encoder: current.encoder,
+        threads: Math.max(1, Math.min(8, availableParallelism() - 1)),
+      };
+    };
     const streams = new StreamService({
       index: new StreamsIndex(userData),
       settings,
       defaultStreamsDir:
         envPath("ALCYO_STREAMS_DIR") ?? join(app.getPath("videos"), "Alcyo Shorts"),
       worker: () => worker.get(),
-      analysisBase: async () => {
-        const [current, report] = await Promise.all([settings.read(), setup.get()]);
-        const version = (name: string) =>
-          report.tools.find((t) => t.name === name)?.version ?? "unknown";
-        const modelPath = join(paths.models, `ggml-${current.whisperModel}.bin`);
-        const vadDir = join(paths.bin, "models");
-        const vad = existsSync(vadDir)
-          ? readdirSync(vadDir).find((f) => f.startsWith("ggml-silero"))
-          : undefined;
-        return {
-          tools: { ffmpeg: exe("ffmpeg"), ffprobe: exe("ffprobe"), whisper: exe("whisper-cli") },
-          toolVersions: { ffmpeg: version("ffmpeg"), whisper: version("whisper-cli") },
-          model: existsSync(modelPath) ? { path: modelPath, name: current.whisperModel } : null,
-          vadModel: join(vadDir, vad ?? "ggml-silero-v6.2.0.bin"),
-          mode: "full",
-          encoder: current.encoder,
-          threads: Math.max(1, Math.min(8, availableParallelism() - 1)),
-        };
-      },
+      analysisBase,
       chooseVideo: async () => {
         const options: Electron.OpenDialogOptions = {
           title: "Choose a recording",
@@ -204,6 +208,63 @@ function run(): void {
       },
       importBase: async () => ({ ytDlp: await downloader.path(), ffmpegDir: paths.bin }),
       emit: (event, payload) => sendEvent(win, event, payload),
+    });
+
+    const openDialog = async (options: Electron.OpenDialogOptions): Promise<string[]> => {
+      const result =
+        win === undefined || win.isDestroyed()
+          ? await dialog.showOpenDialog(options)
+          : await dialog.showOpenDialog(win, options);
+      return result.canceled ? [] : result.filePaths;
+    };
+    const agent = new AgentService({
+      setup: () => setup.get(),
+      apiKey: () => apiKey.read(),
+      model: async () => (await settings.read()).model,
+      spawn: realSpawnDeps(),
+      override:
+        isHeadless() && process.env["ALCYO_TEST_AGENT"] === "script" ? scriptedAgent() : null,
+    });
+    const profile = new ProfileService({
+      store: new ProfileStore(userData),
+      interviewPath: join(userData, "interview.json"),
+      agent,
+      worker: () => worker.get(),
+      analysisBase,
+      runExclusive: (fn) => streams.runExclusive(fn),
+      chooseShorts: () =>
+        openDialog({
+          title: "Add past shorts",
+          properties: ["openFile", "multiSelections"],
+          filters: [
+            { name: "Videos", extensions: ["mp4", "mov", "m4v", "webm", "mkv"] },
+            { name: "All files", extensions: ["*"] },
+          ],
+        }),
+      chooseTemplate: async () =>
+        (
+          await openDialog({
+            title: "Import a template",
+            properties: ["openFile"],
+            filters: [
+              { name: "Templates", extensions: ["json", "ass"] },
+              { name: "All files", extensions: ["*"] },
+            ],
+          })
+        )[0] ?? null,
+      chooseExport: async (suggested) => {
+        const options: Electron.SaveDialogOptions = {
+          title: "Export a template",
+          defaultPath: join(app.getPath("documents"), suggested),
+          filters: [{ name: "Alcyo template", extensions: ["json"] }],
+        };
+        const result =
+          win === undefined || win.isDestroyed()
+            ? await dialog.showSaveDialog(options)
+            : await dialog.showSaveDialog(win, options);
+        return result.canceled || result.filePath === undefined ? null : result.filePath;
+      },
+      emit: () => sendEvent(win, "profile:changed", {}),
     });
 
     const handlers = createHandlers({
@@ -285,6 +346,7 @@ function run(): void {
       clearApiKey: () => apiKey.clear(),
       pingWorker: (text) => worker.get().ping(text),
       downloader,
+      profile,
       now: () => performance.now(),
       streams,
     });

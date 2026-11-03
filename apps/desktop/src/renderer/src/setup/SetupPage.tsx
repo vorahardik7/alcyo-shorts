@@ -10,6 +10,7 @@ import { Button } from "../ui/Button";
 import { RefreshIcon, ShieldIcon } from "../ui/icons";
 import { CopyButton, Spinner, StateIcon } from "../ui/parts";
 import { DownloadButton } from "./download";
+import { useProfile } from "../profile/store";
 import { openIssues, useSetup } from "./store";
 
 const GROUPS: Array<{ title: string; ids: CheckId[] }> = [
@@ -202,7 +203,12 @@ export function SetupPage() {
           data-testid="continue"
           variant="primary"
           disabled={report?.complete !== true}
-          onClick={() => void router.navigate({ to: "/", replace: true })}
+          onClick={() =>
+            void router.navigate({
+              to: useProfile.getState().view?.profile === null ? "/onboarding" : "/",
+              replace: true,
+            })
+          }
         >
           Continue
         </Button>

@@ -10,6 +10,7 @@ import { newId } from "./ids.ts";
 import { pageMessages, parseMessages } from "./messages.ts";
 import { safeFolderName } from "./names.ts";
 import { MISMATCH_MESSAGE, ProjectStore, createStream } from "./project.ts";
+import { ProfileStore } from "./profile-store.ts";
 import { SettingsFile } from "./settings.ts";
 import { StreamsIndex } from "./streams-index.ts";
 
@@ -388,6 +389,66 @@ describe("a stream folder", () => {
       });
       expect(await store.draft(v1.shortId)).toBeNull();
     });
+  });
+});
+
+describe("profile store", () => {
+  it("saves a checked profile and falls back to a built-in preset id", async () => {
+    const store = new ProfileStore(root);
+    expect(await store.profile()).toBeNull();
+    const saved = await store.saveProfile({ ...F.profile, captionPresetId: "gone" });
+    expect(saved.captionPresetId).toBe("bold-pop");
+    expect(await store.profile()).toEqual(saved);
+    await expect(
+      store.saveProfile({ ...F.profile, lengthMs: { min: 50_000, max: 10_000 } }),
+    ).rejects.toThrow("shortest length is longer");
+  });
+
+  it("adds imported presets after the built-in ones, replacing by id", async () => {
+    const store = new ProfileStore(root);
+    const imported = { ...F.presets.captionPresets[0]!, id: "t-x-a", origin: "template" as const };
+    await store.addPresets({ captionPresets: [imported], hookPresets: [] });
+    const all = await store.addPresets({
+      captionPresets: [{ ...imported, name: "Renamed" }],
+      hookPresets: [],
+    });
+    expect(all.captionPresets.map((p) => p.id)).toEqual([
+      "bold-pop",
+      "clean",
+      "punch",
+      "steady",
+      "t-x-a",
+    ]);
+    expect(all.captionPresets.at(-1)!.name).toBe("Renamed");
+    expect(await readdir(root)).toContain("preset.json");
+  });
+
+  it("keeps samples as measurements only, and removes one", async () => {
+    const store = new ProfileStore(root);
+    const sample = {
+      schemaVersion: 1 as const,
+      sampleId: "smp_abc",
+      fileName: "short.mp4",
+      addedAt: F.AT,
+      measures: {
+        lengthMs: 30_000,
+        firstWordMs: 500,
+        firstSentence: "No way.",
+        wordsPerSecond: 3,
+        cutEveryMs: 2500,
+        pausesPer10s: 0.5,
+        loudnessLufs: -14,
+      },
+      opening: "No way.",
+    };
+    await store.saveSample(sample);
+    await mkdir(join(store.sampleDir("smp_abc"), "cache"), { recursive: true });
+    await store.dropSampleCache("smp_abc");
+    expect(await readdir(store.sampleDir("smp_abc"))).toEqual(["sample.json"]);
+    expect(await store.samples()).toEqual([sample]);
+    await store.removeSample("smp_abc");
+    expect(await store.samples()).toEqual([]);
+    await expect(store.removeSample("../etc")).rejects.toThrow();
   });
 });
 

@@ -51,6 +51,7 @@ function deps(overrides: Partial<HandlerDeps> = {}): HandlerDeps {
     now: () => (t += 5),
     streams: {} as never,
     downloader: {} as never,
+    profile: {} as never,
     ...overrides,
   };
 }

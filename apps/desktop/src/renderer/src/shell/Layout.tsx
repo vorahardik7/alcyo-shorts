@@ -6,6 +6,7 @@ import { AppMark } from "../ui/AppMark";
 import { UploadIcon } from "../ui/icons";
 import { Spinner } from "../ui/parts";
 import { Toaster } from "../ui/toast";
+import { watchProfile } from "../profile/store";
 import { importFileToast } from "./pages";
 import { Sidebar } from "./Sidebar";
 import { watchStreams } from "../streams/store";
@@ -108,6 +109,7 @@ export function Layout() {
   const ready = useStartupGate();
   const dropping = useFileDrop();
   useEffect(() => watchStreams(), []);
+  useEffect(() => watchProfile(), []);
   const pathname = useLocation({ select: (l) => l.pathname });
   // Setup and Settings take the whole window; Settings brings its own nav.
   const fullWindow = pathname === "/setup" || inSettings(pathname);

@@ -1696,7 +1696,8 @@ As of Nov 2, local `main` only (no GitHub repo yet).
 | 4 `project-store` | Done | `@alcyo/store` (stream folders, streams.json, settings, thread, sources with Locate file, versions that never overwrite, drafts, transcript reads), the stream service and job queue in main, IPC for streams, analysis, thread, transcript and shorts. Choose a file makes a stream and analyzes it; the sidebar lists streams; the thread shows status with Cancel. Ran end to end on Soul's 5-minute edit. |
 | 5 `setup-and-claude` | Done | Lookup for Claude Code, Grok and Codex, with the agent's folder first on PATH so npm-installed Codex is found from Finder. Providers, `--safe-mode` retry, API backup through structured output (Sonnet 5.5 rejects forced tool use), pinned whisper download, Locate, OS-encrypted API key. No billed call was made. See `.kiro/specs/setup-and-claude/`. |
 | 6 `import-and-clips` | Done | `@alcyo/import`: yt-dlp info then download into the project, cancel removes the folder, Update downloader with SHA-256 check, viewer clips from links or files, quick analysis, transcript then audio matching (within 100 ms on generated audio), Place by hand. The format uses `<=?1080` so plain file links work. Dropped files still show a note: the preload doesn't expose file paths. See `.kiro/specs/import-and-clips/`. |
-| 7–13 | Not started | |
+| 7 `creator-profile` | Done | `@alcyo/profile`: interview through the signed-in agent (up to 8 questions, skips use defaults, checked with one retry), four built-in caption looks, past shorts measured in place (not copied), style summary written by the agent with measured targets, `.ass` and Alcyo template import, export. Checked live with Grok in the app. Jump cuts aren't counted; scene cuts only. See `.kiro/specs/creator-profile/`. |
+| 8–13 | Not started | |
 
 Answers recorded so far:
 

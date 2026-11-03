@@ -13,6 +13,7 @@ import { useEscape } from "../nav/overlays";
 import { AppMark } from "../ui/AppMark";
 import { Button, ButtonLink, IconButton } from "../ui/Button";
 import { AlertIcon, ArrowUpIcon, FileIcon, LinkIcon, PlusIcon, SparkIcon } from "../ui/icons";
+import { useProfile } from "../profile/store";
 import { chooseFile, plainError } from "../streams/store";
 import { toast, useToasts } from "../ui/toast";
 
@@ -243,6 +244,8 @@ export function Home() {
   usePageTitle("New stream");
   const choose = useChooseFile();
   const addLink = useAddLink();
+  const router = useRouter();
+  const noProfile = useProfile((s) => s.view !== null && s.view.profile === null);
   return (
     <section className="relative flex h-full flex-col">
       <div className="drag absolute inset-x-0 top-0 h-12" aria-hidden />
@@ -273,6 +276,15 @@ export function Home() {
             <Suggestion data-testid="open-demo" icon={<SparkIcon size={15} />} onClick={demoToast}>
               Open the demo stream
             </Suggestion>
+            {noProfile && (
+              <Suggestion
+                data-testid="home-profile"
+                icon={<SparkIcon size={15} />}
+                onClick={() => void router.navigate({ to: "/onboarding" })}
+              >
+                Set up your profile
+              </Suggestion>
+            )}
           </div>
         </div>
       </div>

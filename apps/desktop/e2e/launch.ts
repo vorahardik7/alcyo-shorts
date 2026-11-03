@@ -76,3 +76,17 @@ export async function stubFileDialog(app: ElectronApplication, path: string | nu
     dialog.showOpenDialog = answer;
   }, path);
 }
+
+/** Makes main's open dialogs answer with several paths, for multi-select. */
+export async function stubFileDialogMany(app: ElectronApplication, paths: string[]): Promise<void> {
+  await app.evaluate(({ dialog }, chosen) => {
+    dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: chosen });
+  }, paths);
+}
+
+/** Makes main's next save dialog answer with this path. */
+export async function stubSaveDialog(app: ElectronApplication, path: string): Promise<void> {
+  await app.evaluate(({ dialog }, chosen) => {
+    dialog.showSaveDialog = () => Promise.resolve({ canceled: false, filePath: chosen });
+  }, path);
+}

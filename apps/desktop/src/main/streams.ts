@@ -756,6 +756,16 @@ export class StreamService {
     return this.store(streamId);
   }
 
+  /** Runs fn on the job queue, so other work (past shorts) waits its turn too. */
+  runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.chain.then(fn, fn);
+    this.chain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
   /** Waits for every queued job, including ones queued while waiting. For tests. */
   async idle(): Promise<void> {
     let seen: Promise<void> | undefined;

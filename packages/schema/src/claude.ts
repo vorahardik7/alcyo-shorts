@@ -68,10 +68,21 @@ export const InterviewStep = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("done"),
-    profile: CreatorProfile.omit({ schemaVersion: true, style: true }),
+    // Preset ids come from the caption-look step, not from the agent.
+    profile: CreatorProfile.omit({
+      schemaVersion: true,
+      style: true,
+      captionPresetId: true,
+      hookPresetId: true,
+    }),
   }),
 ]);
 export type InterviewStep = z.infer<typeof InterviewStep>;
+export type InterviewDraft = Extract<InterviewStep, { kind: "done" }>["profile"];
+
+/** The style summary written from past shorts. */
+export const StyleSummary = z.object({ summary: z.string().min(1).max(800) });
+export type StyleSummary = z.infer<typeof StyleSummary>;
 
 const toJson = (schema: z.ZodType) =>
   z.toJSONSchema(schema, { target: "draft-2020-12", io: "output" });
@@ -84,4 +95,5 @@ export const claudeJsonSchemas = {
   proposal: toJson(ClaudeProposal),
   chatAction: toJson(ChatAction),
   interviewStep: toJson(InterviewStep),
+  styleSummary: toJson(StyleSummary),
 } as const;
