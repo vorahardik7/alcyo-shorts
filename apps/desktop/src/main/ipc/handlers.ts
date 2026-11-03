@@ -7,9 +7,11 @@ import type {
   SetupReport,
   WhisperModelName,
 } from "@alcyo/ipc";
+import type { ProviderId } from "@alcyo/schema";
 import type { Downloader } from "../downloader";
 import type { PlannerService } from "../planner";
 import type { ProfileService } from "../profile";
+import type { RenderService } from "../renders";
 import type { StreamService } from "../streams";
 import type { HandlerFn } from "./core";
 
@@ -22,6 +24,7 @@ export interface HandlerDeps {
     id: LocalAgentId,
   ): Promise<{ path: string } | { cancelled: true } | { rejected: true; message: string }>;
   downloadModel(): Promise<{ path: string; name: WhisperModelName }>;
+  useAgent(provider: ProviderId): Promise<void>;
   setApiKey(key: string): Promise<void>;
   clearApiKey(): Promise<void>;
   pingWorker(text: string): Promise<string>;
@@ -30,6 +33,9 @@ export interface HandlerDeps {
   downloader: Pick<Downloader, "info" | "update" | "useBundled">;
   profile: ProfileService;
   planner: Pick<PlannerService, "state" | "find" | "send" | "cancel">;
+  renders: Pick<RenderService, "enqueue" | "list" | "get" | "cancel" | "retry" | "file">;
+  /** Shows a file in Finder or Explorer. */
+  reveal(path: string): void;
 }
 
 type Handlers = { [C in Channel]: HandlerFn<C> };
@@ -45,6 +51,10 @@ export function createHandlers(deps: HandlerDeps): Handlers {
     "setup:check": ({ fresh }) => deps.setupCheck(fresh === true),
     "setup:locateAgent": ({ id }) => deps.locateAgent(id),
     "setup:downloadModel": () => deps.downloadModel(),
+    "agent:use": async ({ provider }) => {
+      await deps.useAgent(provider);
+      return {};
+    },
     "settings:setApiKey": async ({ key }) => {
       await deps.setApiKey(key);
       return {};
@@ -94,6 +104,25 @@ export function createHandlers(deps: HandlerDeps): Handlers {
     "template:export": () => deps.profile.exportTemplate(),
     "shorts:find": ({ streamId }) => deps.planner.find(streamId),
     "chat:send": ({ streamId, text, replyTo }) => deps.planner.send(streamId, text, replyTo),
+    "render:enqueue": ({ streamId, shortId, version, presetId }) =>
+      deps.renders.enqueue(streamId, shortId, {
+        ...(version === undefined ? {} : { version }),
+        ...(presetId === undefined ? {} : { presetId }),
+      }),
+    "render:list": () => deps.renders.list(),
+    "render:get": ({ streamId, renderId }) => deps.renders.get(streamId, renderId),
+    "render:cancel": ({ renderId }) => {
+      deps.renders.cancel(renderId);
+      return {};
+    },
+    "render:retry": ({ renderId }) => {
+      deps.renders.retry(renderId);
+      return {};
+    },
+    "render:reveal": async ({ streamId, renderId }) => {
+      deps.reveal(await deps.renders.file(streamId, renderId));
+      return {};
+    },
     "job:cancel": async ({ jobId }) => {
       // Agent jobs and queue jobs share one Cancel; each ignores ids it doesn't know.
       if (!deps.planner.cancel(jobId)) await deps.streams.cancel(jobId);

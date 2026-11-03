@@ -50,3 +50,11 @@ separate processes. Alcyo doesn't link to them.
 
 Fonts, JASSUB and libass (WASM) are added in later builds and listed here
 when they are.
+
+## Caption fonts (SIL Open Font License 1.1)
+
+Bundled in `resources/fonts/` for burned-in captions. Each license file ships next to its fonts.
+
+- Inter 4.1 (Regular, SemiBold, Black), Copyright (c) 2016 The Inter Project Authors. https://github.com/rsms/inter. `Inter-OFL.txt`.
+- Anton (Regular), Copyright 2020 The Anton Project Authors. https://github.com/googlefonts/AntonFont. `Anton-OFL.txt`.
+- Montserrat (ExtraBold), Copyright 2011 The Montserrat Project Authors. https://github.com/JulietaUla/Montserrat. `Montserrat-OFL.txt`.

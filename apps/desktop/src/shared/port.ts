@@ -13,6 +13,9 @@ import {
   type LinkInfoRequest,
   type LinkInfoResult,
   MainToWorker,
+  type RenderEvent,
+  type RenderRequest,
+  type RenderResult,
   type SetupReport,
   type SetupRequest,
   WorkerToMain,
@@ -58,6 +61,11 @@ export interface WorkerJobs {
     signal: AbortSignal,
   ) => Promise<DownloadResult>;
   matchClip: (request: ClipMatchRequest, signal: AbortSignal) => Promise<ClipMatchResult>;
+  render: (
+    request: RenderRequest,
+    onEvent: (event: RenderEvent) => void,
+    signal: AbortSignal,
+  ) => Promise<RenderResult>;
 }
 
 const noJobs: WorkerJobs = {
@@ -66,6 +74,7 @@ const noJobs: WorkerJobs = {
   linkInfo: () => Promise.reject(new Error("This worker can't read links.")),
   download: () => Promise.reject(new Error("This worker can't download.")),
   matchClip: () => Promise.reject(new Error("This worker can't match clips.")),
+  render: () => Promise.reject(new Error("This worker can't render.")),
 };
 
 /** An error's plain message and code, when it carries them (MediaError does). */
@@ -167,6 +176,15 @@ export function serveWorker(
         );
         return;
       }
+      case "render-run": {
+        const { request } = message;
+        runJob(message.id, message.jobId, "Render", (emit, signal) =>
+          jobs
+            .render(request, emit, signal)
+            .then((result) => ({ type: "render-result", id: message.id, result }) as const),
+        );
+        return;
+      }
       case "link-info": {
         const { id } = message;
         jobs.linkInfo(message.request).then(
@@ -211,6 +229,10 @@ export interface WorkerClient {
     done: Promise<ClipMatchResult>;
     cancel: () => void;
   };
+  render(
+    request: RenderRequest,
+    onEvent: (event: RenderEvent) => void,
+  ): { jobId: string; done: Promise<RenderResult>; cancel: () => void };
   /** Rejects every pending call, for when the worker exits. */
   close(reason: string): void;
 }
@@ -321,7 +343,7 @@ export function createWorkerClient(
     analyze(req, onEvent) {
       return job<AnalysisResult>(
         (event) => {
-          if (event.kind !== "import-progress") onEvent(event);
+          if (event.kind !== "import-progress" && event.kind !== "render-progress") onEvent(event);
         },
         (id, jobId) => ({ type: "analysis-run", id, jobId, request: req }),
       );
@@ -340,6 +362,14 @@ export function createWorkerClient(
       return job<ClipMatchResult>(
         () => undefined,
         (id, jobId) => ({ type: "clip-match-run", id, jobId, request: req }),
+      );
+    },
+    render(req, onEvent) {
+      return job<RenderResult>(
+        (event) => {
+          if (event.kind === "render-progress") onEvent(event);
+        },
+        (id, jobId) => ({ type: "render-run", id, jobId, request: req }),
       );
     },
     close(reason) {

@@ -20,6 +20,7 @@ import {
   LinkIcon,
   PlusIcon,
   SparkIcon,
+  UserIcon,
 } from "../ui/icons";
 import { useProfile } from "../profile/store";
 import { chooseFile, plainError } from "../streams/store";
@@ -232,7 +233,7 @@ function Suggestion({
   return (
     <button
       type="button"
-      className="inline-flex h-9 items-center gap-2 rounded-full px-4 text-[14px] text-secondary ring-1 ring-hairline outline-none transition-colors hover:bg-bubble-claude hover:text-text focus-visible:ring-2 focus-visible:ring-unread active:scale-[0.97]"
+      className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[13px] text-secondary ring-1 ring-hairline outline-none transition-colors hover:bg-white/[0.04] hover:text-text focus-visible:ring-2 focus-visible:ring-unread active:scale-[0.97]"
       {...rest}
     >
       {icon}
@@ -284,16 +285,20 @@ export function Home() {
   return (
     <section className="relative flex h-full flex-col">
       <div className="drag absolute inset-x-0 top-0 h-12" aria-hidden />
+      {/* Like T3 Code's new thread: the composer sits at the center, the
+          headline above it, and the quiet actions below. */}
       <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto px-8">
-        <div data-testid="empty-thread" className="w-full max-w-2xl pb-16">
-          <h1 className="text-center text-[28px] font-semibold tracking-tight">
-            Turn a stream into shorts
-          </h1>
-          <p className="mt-2 text-center text-body text-secondary">
-            Paste a link or choose a recording. It&apos;s processed on this computer.
-          </p>
+        <div data-testid="empty-thread" className="relative w-full max-w-[46rem]">
+          <div className="absolute inset-x-0 bottom-full pb-7 text-center">
+            <h1 className="text-[30px] leading-tight font-normal tracking-[-0.02em]">
+              Which stream should we cut?
+            </h1>
+            <p className="mt-2 text-[14px] text-tertiary">
+              Paste a link or choose a recording. Everything runs on this computer.
+            </p>
+          </div>
           <Composer
-            className="mt-8"
+            className=""
             onFile={choose}
             onUrl={addLink}
             placeholder="Paste a stream link or choose a recording"
@@ -304,17 +309,17 @@ export function Home() {
               )
             }
           />
-          <div className="mt-4 flex justify-center gap-2">
-            <Suggestion data-testid="choose-file" icon={<FileIcon size={15} />} onClick={choose}>
+          <div className="absolute inset-x-0 top-full flex flex-wrap justify-center gap-2 pt-4">
+            <Suggestion data-testid="choose-file" icon={<FileIcon size={14} />} onClick={choose}>
               Choose a file
             </Suggestion>
-            <Suggestion data-testid="open-demo" icon={<SparkIcon size={15} />} onClick={demoToast}>
+            <Suggestion data-testid="open-demo" icon={<SparkIcon size={14} />} onClick={demoToast}>
               Open the demo stream
             </Suggestion>
             {noProfile && (
               <Suggestion
                 data-testid="home-profile"
-                icon={<SparkIcon size={15} />}
+                icon={<UserIcon size={14} />}
                 onClick={() => void router.navigate({ to: "/onboarding" })}
               >
                 Set up your profile

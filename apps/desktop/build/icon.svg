@@ -1,21 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <!-- Alcyo Shorts app icon. Same drawing as src/renderer/src/ui/AppMark.tsx.
-       The macOS grid keeps an 80 px margin around the rounded square. -->
+  <!-- Alcyo Shorts. A wide stream frame with a tall 9:16 short cut out of it
+       and breaking past its edges, and Alcyone's four-point star in the cut.
+       The tile follows the macOS icon grid: 824 px on a 1024 canvas. -->
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8B8CFF"/>
-      <stop offset="0.55" stop-color="#4F6BF5"/>
-      <stop offset="1" stop-color="#2448C9"/>
+    <linearGradient id="cut" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#9DB8FF"/>
+      <stop offset="0.5" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1E4FD8"/>
     </linearGradient>
-    <radialGradient id="glow" cx="0.3" cy="0.2" r="0.9">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.28"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
-    </radialGradient>
+    <filter id="blur" x="-60%" y="-40%" width="220%" height="180%">
+      <feGaussianBlur stdDeviation="46"/>
+    </filter>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+    <clipPath id="clip"><rect x="100" y="100" width="824" height="824" rx="186"/></clipPath>
   </defs>
-  <g transform="translate(100 100) scale(0.8046875)">
-    <rect width="1024" height="1024" rx="232" fill="url(#bg)"/>
-    <rect width="1024" height="1024" rx="232" fill="url(#glow)"/>
-    <rect x="347" y="214" width="330" height="596" rx="64" fill="none" stroke="#FFFFFF" stroke-opacity="0.92" stroke-width="44"/>
-    <path d="M512 402c10 68 42 100 110 110-68 10-100 42-110 110-10-68-42-100-110-110 68-10 100-42 110-110Z" fill="#FFFFFF"/>
+  <g filter="url(#shadow)">
+    <rect x="100" y="100" width="824" height="824" rx="186" fill="#141519"/>
   </g>
+  <g clip-path="url(#clip)">
+    <rect x="452" y="236" width="286" height="508" rx="48" fill="#3B82F6" opacity="0.42" filter="url(#blur)"/>
+    <!-- The stream: 16:9 -->
+    <rect x="196" y="352" width="632" height="356" rx="44" fill="none" stroke="#FFFFFF" stroke-opacity="0.34" stroke-width="22"/>
+    <!-- The short: 9:16, taller than the stream -->
+    <rect x="452" y="236" width="286" height="508" rx="48" fill="url(#cut)"/>
+    <rect x="453.5" y="237.5" width="283" height="505" rx="46.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="3"/>
+    <path d="M595 362c9 62 38 91 100 100-62 9-91 38-100 100-9-62-38-91-100-100 62-9 91-38 100-100Z" fill="#FFFFFF"/>
+  </g>
+  <rect x="101" y="101" width="822" height="822" rx="185" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="2"/>
 </svg>

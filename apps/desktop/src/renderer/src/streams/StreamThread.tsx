@@ -13,6 +13,7 @@ import { Spinner } from "../ui/parts";
 import { toast } from "../ui/toast";
 import { ClipsBubble, QuestionBubble } from "./clips";
 import { type ReplyTarget, ReplyQuote, ShortsBubble, VersionBubble, WorkingBubble } from "./shorts";
+import { RenderBubble } from "./renders";
 import { mergeMessage, plainError } from "./store";
 
 const PAGE = 200;
@@ -90,6 +91,13 @@ function MessageView({
 }) {
   const mine = message.author === "user";
   const body = message.body;
+  if (body.kind === "render") {
+    return (
+      <div id={`m-${message.id}`} data-testid="message" className="flex justify-start">
+        <RenderBubble streamId={streamId} renderId={body.renderId} />
+      </div>
+    );
+  }
   if (body.kind === "shorts" || body.kind === "version") {
     return (
       <div id={`m-${message.id}`} data-testid="message" className="flex justify-start">
@@ -139,11 +147,7 @@ function MessageView({
             {body.text}
           </p>
         </div>
-      ) : (
-        <p className="rounded-bubble bg-bubble-claude px-5 py-3 text-[14px] text-tertiary">
-          This message shows once renders are built.
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }

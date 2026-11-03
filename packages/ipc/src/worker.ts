@@ -11,6 +11,7 @@ import {
   LinkInfoRequest,
   LinkInfoResult,
 } from "./import";
+import { RenderEvent, RenderRequest, RenderResult } from "./render";
 import { SetupReport, SetupRequest } from "./setup";
 
 const RequestId = z.string().min(1).max(64);
@@ -40,11 +41,17 @@ export const MainToWorker = z.discriminatedUnion("type", [
     jobId: JobId,
     request: ClipMatchRequest,
   }),
+  z.object({
+    type: z.literal("render-run"),
+    id: RequestId,
+    jobId: JobId,
+    request: RenderRequest,
+  }),
   /** Cancels a running job. Its request then fails with code "cancelled". */
   z.object({ type: z.literal("job-cancel"), jobId: JobId }),
 ]);
 
-export const JobEvent = z.union([AnalysisEvent, ImportEvent]);
+export const JobEvent = z.union([AnalysisEvent, ImportEvent, RenderEvent]);
 export type JobEvent = z.infer<typeof JobEvent>;
 export type MainToWorker = z.infer<typeof MainToWorker>;
 
@@ -61,6 +68,7 @@ export const WorkerToMain = z.discriminatedUnion("type", [
   z.object({ type: z.literal("link-info-result"), id: RequestId, result: LinkInfoResult }),
   z.object({ type: z.literal("download-result"), id: RequestId, result: DownloadResult }),
   z.object({ type: z.literal("clip-match-result"), id: RequestId, result: ClipMatchResult }),
+  z.object({ type: z.literal("render-result"), id: RequestId, result: RenderResult }),
   z.object({
     type: z.literal("error"),
     id: RequestId.optional(),

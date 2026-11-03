@@ -22,6 +22,9 @@ extraResources:
   - from: resources/bin/${os}-${arch}
     to: bin
     filter: ["**/*", "!manifest.json"]
+  # OFL fonts for captions; the licenses ship next to them.
+  - from: resources/fonts
+    to: fonts
   - from: ../../LICENSE
     to: LICENSE
   - from: ../../THIRD_PARTY_NOTICES.md

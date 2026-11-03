@@ -1,0 +1,21 @@
+{
+  "name": "@alcyo/render",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./runner": "./src/runner.ts"
+  },
+  "scripts": {
+    "lint": "eslint . && prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@alcyo/media": "workspace:*",
+    "@alcyo/schema": "workspace:*",
+    "zod": "^4.6.7"
+  }
+}

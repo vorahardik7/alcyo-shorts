@@ -1,6 +1,7 @@
 // Find shorts and chat edits in the real app, with the scripted test agent
 // (ALCYO_TEST_AGENT=script). The stream is seeded on disk with a transcript,
 // so no whisper model is needed.
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -18,8 +19,16 @@ function seed(userData: string): string {
   const analysis = join(folder, "sources", sourceId, "analysis");
   mkdirSync(analysis, { recursive: true });
   mkdirSync(join(folder, "thread"), { recursive: true });
+  // A real 5-minute recording, so Render runs the bundled ffmpeg for real.
   const media = join(userData, "recording.mp4");
-  writeFileSync(media, "seeded");
+  const bin = process.env["ALCYO_BIN_DIR"] ?? join(import.meta.dirname, "..", "resources", "bin", `${process.platform === "win32" ? "win" : "mac"}-${process.arch}`);
+  execFileSync(join(bin, process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg"), [
+    "-v", "error", "-y",
+    "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=30:d=300",
+    "-f", "lavfi", "-i", "sine=frequency=330:duration=300",
+    "-c:v", "libx264", "-preset", "ultrafast", "-g", "30", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest",
+    media,
+  ]);
   const json = (path: string, value: unknown) => writeFileSync(path, JSON.stringify(value));
 
   const words: { id: string; text: string; startMs: number; endMs: number; p: number }[] = [];
@@ -48,7 +57,7 @@ function seed(userData: string): string {
     probe: {
       durationMs: 300_000,
       container: "mov,mp4",
-      video: { codec: "h264", width: 1920, height: 1080, fpsNum: 30, fpsDen: 1 },
+      video: { codec: "h264", width: 1280, height: 720, fpsNum: 30, fpsDen: 1 },
       audio: { codec: "aac", sampleRate: 48000, channels: 2 },
       playsDirectly: true,
     },
@@ -155,5 +164,43 @@ test.describe("planner", () => {
       timeout: 15_000,
     });
     await expect(page.getByTestId("version-message")).toHaveCount(1);
+  });
+
+  test("Render makes a checked 1080 × 1920 MP4 and records it", async () => {
+    test.setTimeout(240_000);
+    const card = page.getByTestId("version-message").getByTestId("short-card");
+    await card.getByTestId("render-short").click();
+    const bubble = page.getByTestId("render-message").last();
+    await expect(bubble).toBeVisible();
+    await expect(bubble.getByTestId("render-status")).toHaveAttribute("data-state", "done", {
+      timeout: 200_000,
+    });
+    await expect(bubble.getByTestId("render-file")).toContainText("straight-to-it-v2-1080p30.mp4");
+    const index = JSON.parse(readFileSync(join(folder, "renders", "index.json"), "utf8")) as {
+      renders: {
+        file: string;
+        version: number;
+        probe: { width: number; height: number; videoCodec: string; audioCodec: string };
+      }[];
+    };
+    expect(index.renders).toHaveLength(1);
+    expect(index.renders[0]).toMatchObject({
+      file: "straight-to-it-v2-1080p30.mp4",
+      version: 2,
+      probe: { width: 1080, height: 1920, videoCodec: "h264", audioCodec: "aac" },
+    });
+    expect(readdirSync(join(folder, "renders")).sort()).toEqual([
+      "index.json",
+      "straight-to-it-v2-1080p30.mp4",
+    ]);
+    // Nothing next to the recording.
+    expect(readdirSync(userData).filter((f) => f.startsWith("recording"))).toEqual([
+      "recording.mp4",
+    ]);
+    await page.getByTestId("render-queue-button").click();
+    await expect(page.getByTestId("render-item")).toHaveCount(1);
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: join(tmpdir(), "alcyo-render-queue.png") });
+    await page.getByTestId("close-drawer").click();
   });
 });

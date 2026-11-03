@@ -9,6 +9,7 @@ import { Toaster } from "../ui/toast";
 import { watchProfile } from "../profile/store";
 import { importFileToast } from "./pages";
 import { Sidebar } from "./Sidebar";
+import { watchRenders } from "../streams/renders";
 import { watchStreams } from "../streams/store";
 import { useLinks } from "./useLinks";
 
@@ -110,6 +111,7 @@ export function Layout() {
   const dropping = useFileDrop();
   useEffect(() => watchStreams(), []);
   useEffect(() => watchProfile(), []);
+  useEffect(() => watchRenders(), []);
   const pathname = useLocation({ select: (l) => l.pathname });
   // Setup and Settings take the whole window; Settings brings its own nav.
   const fullWindow = pathname === "/setup" || inSettings(pathname);

@@ -58,6 +58,16 @@ function deps(overrides: Partial<HandlerDeps> = {}): HandlerDeps {
       send: () => Promise.reject(new Error("not used")),
       cancel: () => false,
     },
+    renders: {
+      enqueue: () => Promise.resolve({ renderId: "r_1" }),
+      list: () => [],
+      get: () => Promise.resolve(null),
+      cancel: () => undefined,
+      retry: () => undefined,
+      file: () => Promise.resolve("/Users/me/Movies/Alcyo Shorts/s.alcyo/renders/a-v1-1080p30.mp4"),
+    },
+    reveal: () => undefined,
+    useAgent: () => Promise.resolve(),
     ...overrides,
   };
 }
@@ -90,6 +100,63 @@ describe("handlers", () => {
 });
 
 describe("new channels", () => {
+  it("render channels are checked, and reveal takes only an id", async () => {
+    const revealed: string[] = [];
+    const h = createHandlers(deps({ reveal: (path) => revealed.push(path) }));
+    const call = <C extends (typeof CHANNELS)[number]>(c: C, input: unknown) =>
+      makeHandler(c, h[c] as never)(input);
+    await expect(call("render:enqueue", { streamId: "s_1", shortId: "sh_1" })).resolves.toEqual({
+      renderId: "r_1",
+    });
+    await expect(
+      call("render:enqueue", { streamId: "s_1", shortId: "sh_1", version: 0 }),
+    ).rejects.toThrow();
+    await expect(call("render:list", {})).resolves.toEqual([]);
+    await expect(call("render:get", { streamId: "s_1", renderId: "r_1" })).resolves.toBeNull();
+    await expect(call("render:cancel", { renderId: "r_1" })).resolves.toEqual({});
+    await expect(call("render:retry", { renderId: "r_1" })).resolves.toEqual({});
+    await expect(
+      call("render:reveal", { streamId: "s_1", renderId: "r_1", path: "/etc" }),
+    ).resolves.toEqual({});
+    expect(revealed).toEqual(["/Users/me/Movies/Alcyo Shorts/s.alcyo/renders/a-v1-1080p30.mp4"]);
+  });
+
+  it("agent:use takes only a known provider", async () => {
+    const used: string[] = [];
+    const h = createHandlers(deps({ useAgent: (p) => Promise.resolve(void used.push(p)) }));
+    const run = makeHandler("agent:use", h["agent:use"]);
+    await expect(run({ provider: "grok-cli" })).resolves.toEqual({});
+    await expect(run({ provider: "gemini-cli" })).rejects.toThrow();
+    expect(used).toEqual(["grok-cli"]);
+  });
+
+  it("planner channels are checked", async () => {
+    const sent: unknown[] = [];
+    const h = createHandlers(
+      deps({
+        planner: {
+          state: () => Promise.resolve({ ready: true, working: null }),
+          find: () => Promise.resolve({ jobId: "job_1" }),
+          send: (...a) => {
+            sent.push(a);
+            return Promise.resolve({ messageId: "m_1" });
+          },
+          cancel: () => false,
+        },
+      }),
+    );
+    const call = <C extends (typeof CHANNELS)[number]>(c: C, input: unknown) =>
+      makeHandler(c, h[c] as never)(input);
+    await expect(call("shorts:find", { streamId: "s_1" })).resolves.toEqual({ jobId: "job_1" });
+    await expect(call("chat:send", { streamId: "s_1", text: "" })).rejects.toThrow();
+    await call("chat:send", {
+      streamId: "s_1",
+      text: "hi",
+      replyTo: { shortId: "sh_1", version: 2 },
+    });
+    expect(sent).toEqual([["s_1", "hi", { shortId: "sh_1", version: 2 }]]);
+  });
+
   it("app:paths returns the checked folders", async () => {
     const run = makeHandler("app:paths", createHandlers(deps())["app:paths"]);
     await expect(run({})).resolves.toEqual(paths);

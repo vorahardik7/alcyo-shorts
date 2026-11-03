@@ -25,6 +25,7 @@ export function layout(folder: string) {
     clip: (id: string) => join(folder, "clips", id, "clip.json"),
     clipAnalysisDir: (id: string) => join(folder, "clips", id, "analysis"),
     renders: join(folder, "renders"),
+    renderIndex: join(folder, "renders", "index.json"),
     cache: join(folder, "cache"),
     logs: join(folder, "logs"),
   };

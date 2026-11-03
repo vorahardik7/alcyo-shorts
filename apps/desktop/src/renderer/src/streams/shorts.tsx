@@ -13,6 +13,7 @@ import { Button } from "../ui/Button";
 import { Spinner } from "../ui/parts";
 import { toast } from "../ui/toast";
 import { clock } from "./clips";
+import { startRender } from "./renders";
 import { plainError } from "./store";
 
 export interface ReplyTarget {
@@ -95,13 +96,23 @@ function ShortCard({
           </span>
         )}
       </div>
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-1.5">
         <span
           data-testid="version-chip"
           className="rounded-full bg-bubble-claude px-2 py-0.5 text-[12px] text-secondary ring-1 ring-hairline"
         >
           v{v.version} · {v.createdBy === "claude" ? "Agent" : "You"}
         </span>
+        <span className="flex-1" />
+        <Button
+          size="sm"
+          variant="ghost"
+          data-testid="render-short"
+          title="Render a 1080 × 1920 MP4 of this version"
+          onClick={() => startRender(streamId, v.shortId, v.version)}
+        >
+          Render
+        </Button>
         <Button
           size="sm"
           data-testid="reply-short"

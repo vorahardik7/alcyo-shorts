@@ -8,7 +8,7 @@ import { applyApiKey, CHANNELS, type SetupRequest, type WhisperModelName } from 
 import { probeAgent, providerForAgent, realSpawnDeps } from "@alcyo/planner";
 import { LINK_SCHEME, type LocalAgentId } from "@alcyo/schema";
 import { ProfileStore, SettingsFile, StreamsIndex } from "@alcyo/store";
-import { app, BrowserWindow, dialog, safeStorage, shell } from "electron";
+import { app, BrowserWindow, dialog, Notification, safeStorage, shell } from "electron";
 import pkg from "../../package.json";
 import { resolveBinDir } from "./bin";
 import { handle, sendEvent } from "./ipc";
@@ -19,6 +19,7 @@ import { Downloader } from "./downloader";
 import { AgentService } from "./agent";
 import { PlannerService } from "./planner";
 import { ProfileService } from "./profile";
+import { RenderService } from "./renders";
 import { scriptedAgent } from "./test-agent";
 import { fixtureKind, fixtureReport } from "./setup-fixture";
 import { SetupService } from "./setup-service";
@@ -278,6 +279,20 @@ function run(): void {
       emit: (event, payload) => sendEvent(win, event, payload),
     });
     late.planner = planner;
+    const fontsDir = app.isPackaged
+      ? join(process.resourcesPath, "fonts")
+      : join(mainDir, "..", "..", "resources", "fonts");
+    const renders = new RenderService({
+      streams,
+      profiles: profileStore,
+      worker: () => worker.get(),
+      tools: () => ({ ffmpeg: exe("ffmpeg"), ffprobe: exe("ffprobe"), fontsDir }),
+      emit: (event, payload) => sendEvent(win, event, payload),
+      notify: (title, body) => {
+        if (isHeadless() || !Notification.isSupported()) return;
+        new Notification({ title, body, silent: false }).show();
+      },
+    });
 
     const handlers = createHandlers({
       appInfo: () => ({
@@ -348,6 +363,11 @@ function run(): void {
         );
         return run;
       },
+      useAgent: async (provider) => {
+        await settings.patch({ provider });
+        // The next check reports the new choice.
+        await setup.get(true);
+      },
       setApiKey: async (key) => {
         if (!safeStorage.isEncryptionAvailable()) {
           throw new Error("This computer can't store a key safely.");
@@ -360,6 +380,8 @@ function run(): void {
       downloader,
       profile,
       planner,
+      renders,
+      reveal: (path) => shell.showItemInFolder(path),
       now: () => performance.now(),
       streams,
     });

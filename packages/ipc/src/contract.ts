@@ -9,6 +9,7 @@ import {
   Id,
   Message,
   Ms,
+  ProviderId,
   Project,
   Short,
   ShortRef,
@@ -20,6 +21,7 @@ import {
 import { z } from "zod";
 import type { Channel, EventName } from "./names";
 import { InterviewState, ProfileView } from "./profile";
+import { RenderView } from "./render";
 import { LocalAgentId, WhisperModelName, SetupReport } from "./setup";
 
 export const AppInfo = z.object({
@@ -119,6 +121,8 @@ export const contract = {
       z.object({ rejected: z.literal(true), message: z.string().max(300) }),
     ]),
   },
+  /** Which signed-in agent answers. Saved; setup:check then reports it as chosen. */
+  "agent:use": { input: z.object({ provider: ProviderId }), output: z.object({}) },
   /** Downloads the whisper model for this platform into the models folder. */
   "setup:downloadModel": {
     input: z.object({}),
@@ -233,6 +237,23 @@ export const contract = {
     input: StreamRef.extend({ text: z.string().min(1).max(4000), replyTo: ShortRef.optional() }),
     output: z.object({ messageId: Id }),
   },
+  /** Queues a render of a version (the head with no version). Posts a render message. */
+  "render:enqueue": {
+    input: ShortInput.extend({
+      version: z.number().int().positive().optional(),
+      presetId: Id.optional(),
+    }),
+    output: z.object({ renderId: Id }),
+  },
+  /** This session's renders, newest first. */
+  "render:list": { input: z.object({}), output: z.array(RenderView) },
+  /** One render, for its card. Null when it never finished and isn't queued. */
+  "render:get": { input: StreamRef.extend({ renderId: Id }), output: RenderView.nullable() },
+  "render:cancel": { input: z.object({ renderId: Id }), output: z.object({}) },
+  /** Runs a failed or cancelled render again, in place. */
+  "render:retry": { input: z.object({ renderId: Id }), output: z.object({}) },
+  /** Shows the finished file in Finder or Explorer. Takes no path. */
+  "render:reveal": { input: StreamRef.extend({ renderId: Id }), output: z.object({}) },
   "job:cancel": { input: JobRef, output: z.object({}) },
   "thread:messages": {
     input: StreamRef.extend({ before: Id.optional(), limit: z.number().int().min(1).max(200) }),
@@ -280,6 +301,8 @@ export const events = {
   }),
   /** The agent started or stopped working on a stream. */
   "thread:working": z.object({ streamId: Id, working: AgentWork.nullable() }),
+  /** A render was queued, moved along, or finished. */
+  "render:changed": z.object({ render: RenderView }),
   /** Past shorts moved along, or the profile changed. Reload profile:get. */
   "profile:changed": z.object({}),
   "model:progress": z.object({

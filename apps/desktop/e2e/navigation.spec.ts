@@ -56,7 +56,7 @@ test.describe("with setup complete", () => {
         await expect.poll(hash).toBe(`#/settings/${section}`);
         await expect(page.getByTestId(`settings-${section}`)).toBeVisible();
         const label =
-          section === "claude" ? "Agent" : `${section[0]!.toUpperCase()}${section.slice(1)}`;
+          section === "claude" ? "Agents" : `${section[0]!.toUpperCase()}${section.slice(1)}`;
         await expect.poll(title).toBe(`Settings · ${label} · Alcyo Shorts`);
         await goBack(way);
         await expect.poll(hash).toBe("#/");
@@ -187,12 +187,19 @@ test.describe("with setup complete", () => {
     await page.evaluate(() => {
       window.location.hash = "#/settings/claude";
     });
+    // Paths stay out of sight until asked for.
+    await expect(page.getByTestId("claude-path")).toBeHidden();
+    await page.getByText("Show where it is").click();
     await expect(page.getByTestId("claude-path")).toHaveText("/Users/creator/.local/bin/claude");
+    await expect(page.getByTestId("in-use-claude")).toBeAttached();
     await expect(page.getByTestId("agent-grok")).toContainText("Not found");
     await expect(page.getByTestId("agent-grok")).not.toContainText("Install Grok");
     await expect(page.getByTestId("locate-claude")).toBeVisible();
+    await page.getByTestId("agent-grok").click();
     await expect(page.getByTestId("locate-grok")).toBeVisible();
+    await page.getByTestId("agent-codex").click();
     await expect(page.getByTestId("locate-codex")).toBeVisible();
+    await page.getByTestId("agent-api").click();
     await expect(page.getByTestId("api-key-input")).toBeVisible();
     await page.getByTestId("section-models").click();
     await expect(page.getByTestId("download-model")).toBeVisible();

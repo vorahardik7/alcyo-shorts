@@ -77,14 +77,6 @@ async function checkTool(
   return { id: tool.id, path, present: true, runs, version };
 }
 
-const VIA_LABEL = {
-  saved: "at the saved path",
-  "known-folder": "in a standard folder",
-  "login-shell": "through your login shell",
-  where: "on PATH",
-  none: "",
-} as const;
-
 const AGENT_LABEL = { claude: "Claude Code", grok: "Grok", codex: "Codex" } as const;
 const AGENT_CHECK: Record<AgentHit["id"], CheckId> = {
   claude: "claude",
@@ -121,7 +113,7 @@ function agentRow(hit: AgentHit, claudeMissingMatters: boolean): SetupCheck {
       label,
       state: "pass",
       required: false,
-      detail: `${version}, signed in, ${VIA_LABEL[hit.via]}: ${hit.path}`,
+      detail: `${version}, signed in.`,
       fix: null,
       command: null,
     };
@@ -133,7 +125,8 @@ function agentRow(hit: AgentHit, claudeMissingMatters: boolean): SetupCheck {
       label,
       state: "fail",
       required: false,
-      detail: `Found, but not signed in: ${hit.path}`,
+      detail:
+        hit.version === null ? "Found, not signed in." : `Version ${hit.version}, not signed in.`,
       fix: sign.fix,
       command: sign.command,
     };
@@ -240,7 +233,10 @@ export async function runSetupCheck(
             label,
             state: "pass",
             required: true,
-            detail: `${tool.version === null ? "Bundled" : `Version ${tool.version}`}: ${tool.path}`,
+            detail:
+              tool.version === null
+                ? "Bundled with the app."
+                : `Version ${tool.version}, bundled with the app.`,
             fix: null,
             command: null,
           }
@@ -265,7 +261,7 @@ export async function runSetupCheck(
           label: "Silero VAD model",
           state: "pass",
           required: true,
-          detail: `Bundled: ${join(vadDir, vadFile)}`,
+          detail: "Bundled with the app.",
           fix: null,
           command: null,
         }
@@ -274,7 +270,7 @@ export async function runSetupCheck(
           label: "Silero VAD model",
           state: "fail",
           required: true,
-          detail: `Missing from ${vadDir}`,
+          detail: "Missing from the app's tools.",
           fix: REINSTALL,
           command: FETCH,
         },
@@ -320,7 +316,7 @@ export async function runSetupCheck(
     label: `Whisper model (${modelName})`,
     state: modelPresent ? "pass" : "pending",
     required: false,
-    detail: modelPresent ? `Downloaded: ${modelPath}` : "Not downloaded yet.",
+    detail: modelPresent ? "Downloaded to this computer." : "Not downloaded yet.",
     fix: modelPresent ? null : "Press Download. The model stays on this computer.",
     command: null,
   });

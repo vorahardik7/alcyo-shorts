@@ -331,6 +331,35 @@ describe("a stream folder", () => {
       expect((await store.shortFile(id)).status).toBe("edited");
     });
 
+    it("records renders in renders/index.json and marks the short rendered", async () => {
+      const v1 = await store.createShort({
+        sourceId,
+        short: F.short,
+        createdBy: "claude",
+        note: "",
+        fromMessageId: null,
+      });
+      expect(await store.renders()).toEqual([]);
+      const record = {
+        renderId: "r_1",
+        shortId: v1.shortId,
+        version: 1,
+        presetId: "1080p30",
+        file: "no-way-v1-1080p30.mp4",
+        createdAt: F.AT,
+        probe: {
+          width: 1080,
+          height: 1920,
+          durationMs: 4000,
+          videoCodec: "h264",
+          audioCodec: "aac",
+        },
+      };
+      await store.addRender(record);
+      expect(await store.renders()).toEqual([record]);
+      expect((await store.shortFile(v1.shortId)).status).toBe("rendered");
+    });
+
     it("restores by making a new version that copies the old one", async () => {
       const v1 = await store.createShort({
         sourceId,

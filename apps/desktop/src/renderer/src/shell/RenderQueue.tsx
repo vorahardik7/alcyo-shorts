@@ -4,6 +4,7 @@ import { useBack, usePageTitle } from "../nav/navigation";
 import { useEscape } from "../nav/overlays";
 import { IconButton } from "../ui/Button";
 import { CloseIcon, FilmIcon } from "../ui/icons";
+import { RenderStatus, useRenders } from "../streams/renders";
 import { Home } from "./pages";
 
 function Drawer() {
@@ -11,6 +12,8 @@ function Drawer() {
   const close = useBack();
   useEscape("overlay", true, close);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const byId = useRenders((s) => s.byId);
+  const renders = Object.values(byId).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
@@ -48,15 +51,29 @@ function Drawer() {
             <CloseIcon />
           </IconButton>
         </header>
-        <div className="flex flex-1 flex-col items-center justify-center px-10 text-center">
-          <div className="grid size-16 place-items-center rounded-[20px] bg-bubble-claude text-secondary ring-1 ring-hairline">
-            <FilmIcon size={26} />
+        {renders.length > 0 ? (
+          <ul data-testid="render-list" className="flex-1 space-y-2 overflow-y-auto p-3">
+            {renders.map((r) => (
+              <li
+                key={r.renderId}
+                data-testid="render-item"
+                className="rounded-2xl bg-bubble-claude px-4 py-3.5 ring-1 ring-hairline"
+              >
+                <RenderStatus r={r} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center px-10 text-center">
+            <div className="grid size-16 place-items-center rounded-[20px] bg-bubble-claude text-secondary ring-1 ring-hairline">
+              <FilmIcon size={26} />
+            </div>
+            <p className="mt-5 text-body font-medium">No renders yet</p>
+            <p className="mt-2 text-[14px] leading-snug text-secondary">
+              Press Render on a short to add it here.
+            </p>
           </div>
-          <p className="mt-5 text-body font-medium">No renders yet</p>
-          <p className="mt-2 text-[14px] leading-snug text-secondary">
-            Press Render on a short to add it here.
-          </p>
-        </div>
+        )}
       </div>
     </div>
   );

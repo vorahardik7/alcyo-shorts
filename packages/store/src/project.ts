@@ -13,6 +13,8 @@ import {
   type Message,
   type Probe,
   type Project,
+  RenderIndex as RenderIndexSchema,
+  type RenderIndex,
   type Short,
   type ShortFile,
   type ShortVersion,
@@ -548,6 +550,35 @@ export class ProjectStore {
       note: `Restored v${n}`,
       fromMessageId: null,
       parent: n,
+    });
+  }
+
+  // Renders (plan section 15): renders/index.json
+
+  async renders(): Promise<RenderIndex["renders"]> {
+    if (!(await exists(this.paths.renderIndex))) return [];
+    return (
+      await readProjectFile<RenderIndex>(this.paths.renderIndex, "renders", "renders/index.json")
+    ).renders;
+  }
+
+  /** Records a finished render and marks its short rendered. */
+  addRender(record: RenderIndex["renders"][number]): Promise<void> {
+    return this.serial(async () => {
+      const renders = await this.renders();
+      renders.push(record);
+      await mkdir(this.paths.renders, { recursive: true });
+      await writeJsonAtomic(
+        this.paths.renderIndex,
+        RenderIndexSchema.parse({ schemaVersion: 1, renders }),
+      );
+      const file = await this.shortFile(record.shortId);
+      if (file.status !== "rendered") {
+        await writeJsonAtomic(
+          this.paths.short(record.shortId),
+          ShortFileSchema.parse({ ...file, status: "rendered" }),
+        );
+      }
     });
   }
 

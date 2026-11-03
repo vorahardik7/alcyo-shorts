@@ -1,0 +1,106 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`captions > highlights the spoken word, draws the hook, and matches the snapshot 1`] = `
+"[Script Info]
+; Made by Alcyo Shorts. The preview and the render draw this same file.
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+YCbCr Matrix: TV.709
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Caption,Inter Black,88,&H00FFFFFF,&H0015CCFA,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,6,0,5,80,80,0,1
+Style: Hook,Inter Black,72,&H00000000,&H00000000,&H00FFFFFF,&H00FFFFFF,0,0,0,0,100,100,0,0,3,18,0,5,80,80,0,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:00.40,Caption,,0,0,0,,{\\an5\\pos(540,1382)}{\\1c&H15CCFA&}WORD0{\\r} WORD1 WORD2
+Dialogue: 0,0:00:00.40,0:00:00.80,Caption,,0,0,0,,{\\an5\\pos(540,1382)}WORD0 {\\1c&H15CCFA&}WORD1{\\r} WORD2
+Dialogue: 0,0:00:00.80,0:00:01.20,Caption,,0,0,0,,{\\an5\\pos(540,1382)}WORD0 WORD1 {\\1c&H15CCFA&}WORD2{\\r}
+Dialogue: 0,0:00:01.20,0:00:01.60,Caption,,0,0,0,,{\\an5\\pos(540,1382)}{\\1c&H15CCFA&}WORD3{\\r} WORD4 WORD10
+Dialogue: 0,0:00:01.60,0:00:02.00,Caption,,0,0,0,,{\\an5\\pos(540,1382)}WORD3 {\\1c&H15CCFA&}WORD4{\\r} WORD10
+Dialogue: 0,0:00:02.00,0:00:02.40,Caption,,0,0,0,,{\\an5\\pos(540,1382)}WORD3 WORD4 {\\1c&H15CCFA&}WORD10{\\r}
+Dialogue: 0,0:00:02.40,0:00:02.80,Caption,,0,0,0,,{\\an5\\pos(540,1382)}{\\1c&H15CCFA&}WORD11{\\r} WORD12 WORD13
+Dialogue: 0,0:00:02.80,0:00:03.20,Caption,,0,0,0,,{\\an5\\pos(540,1382)}WORD11 {\\1c&H15CCFA&}WORD12{\\r} WORD13
+Dialogue: 0,0:00:03.20,0:00:03.60,Caption,,0,0,0,,{\\an5\\pos(540,1382)}WORD11 WORD12 {\\1c&H15CCFA&}WORD13{\\r}
+Dialogue: 0,0:00:03.60,0:00:04.20,Caption,,0,0,0,,{\\an5\\pos(540,1382)}{\\1c&H15CCFA&}WORD14{\\r}
+Dialogue: 1,0:00:00.00,0:00:03.00,Hook,,0,0,0,,{\\an5\\pos(540,346)}WAIT FOR IT
+"
+`;
+
+exports[`frames and args > matches the snapshot for two segments, captions and hook 1`] = `
+[
+  "-hide_banner",
+  "-nostdin",
+  "-y",
+  "-nostats",
+  "-progress",
+  "pipe:1",
+  "-ss",
+  "10.000000",
+  "-to",
+  "12.500000",
+  "-i",
+  "/Users/me/Stream recordings 名前/it's live.mp4",
+  "-ss",
+  "14.000000",
+  "-to",
+  "16.500000",
+  "-i",
+  "/Users/me/Stream recordings 名前/it's live.mp4",
+  "-/filter_complex",
+  "filter.txt",
+  "-map",
+  "[v]",
+  "-map",
+  "[a]",
+  "-c:v",
+  "libx264",
+  "-preset",
+  "medium",
+  "-crf",
+  "20",
+  "-profile:v",
+  "high",
+  "-pix_fmt",
+  "yuv420p",
+  "-r",
+  "30",
+  "-c:a",
+  "aac",
+  "-b:a",
+  "192k",
+  "-ar",
+  "48000",
+  "-map_metadata",
+  "-1",
+  "-movflags",
+  "+faststart",
+  "/Users/me/Movies/Alcyo Shorts/My Stream.alcyo/renders/no-way-v1-1080p30.mp4.part.mp4",
+]
+`;
+
+exports[`frames and args > matches the snapshot for two segments, captions and hook 2`] = `
+"[0:v]trim=end_frame=120,setpts=PTS-STARTPTS[v0];
+[0:a]atrim=end=2.000000,asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo,afade=t=in:d=0.010000,afade=t=out:st=1.990000:d=0.010000[a0];
+[1:v]trim=end_frame=120,setpts=PTS-STARTPTS[v1];
+[1:a]atrim=end=2.000000,asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo,afade=t=in:d=0.010000,afade=t=out:st=1.990000:d=0.010000[a1];
+[v0][a0][v1][a1]concat=n=2:v=1:a=1[cv][ca];
+[cv]fps=30,crop=w=606:h=1076:x='clip(2*floor(1314*((gte(t,0)*0.5))/2),0,1314)':y=2,scale=1080:1920:flags=lanczos,setsar=1,subtitles=filename=captions.ass:fontsdir=fonts[v];
+[ca]anull[a]
+"
+`;
+
+exports[`frames and args > matches the snapshot with 200 crop keys 1`] = `
+"[0:v]trim=end_frame=120,setpts=PTS-STARTPTS[v0];
+[0:a]atrim=end=2.000000,asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo,afade=t=in:d=0.010000,afade=t=out:st=1.990000:d=0.010000[a0];
+[1:v]trim=end_frame=120,setpts=PTS-STARTPTS[v1];
+[1:a]atrim=end=2.000000,asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo,afade=t=in:d=0.010000,afade=t=out:st=1.990000:d=0.010000[a1];
+[v0][a0][v1][a1]concat=n=2:v=1:a=1[cv][ca];
+[cv]fps=30,crop=w=606:h=1076:x='clip(2*floor(1314*((gte(t,0)*lt(t,0.02)*(0+5*(t-0))+gte(t,0.02)*lt(t,0.04)*(0.1+5*(t-0.02))+gte(t,0.04)*lt(t,0.06)*(0.2+5*(t-0.04))+gte(t,0.06)*lt(t,0.08)*(0.3+5*(t-0.06))+gte(t,0.08)*lt(t,0.1)*(0.4+5*(t-0.08))+gte(t,0.1)*lt(t,0.12)*(0.5+5*(t-0.1))+gte(t,0.12)*lt(t,0.14)*(0.6+5*(t-0.12))+gte(t,0.14)*lt(t,0.16)*(0.7+5*(t-0.14))+gte(t,0.16)*lt(t,0.18)*(0.8+5*(t-0.16))+gte(t,0.18)*lt(t,0.2)*(0.9+-45*(t-0.18))+gte(t,0.2)*lt(t,0.22)*(0+5*(t-0.2))+gte(t,0.22)*lt(t,0.24)*(0.1+5*(t-0.22))+gte(t,0.24)*lt(t,0.26)*(0.2+5*(t-0.24))+gte(t,0.26)*lt(t,0.28)*(0.3+5*(t-0.26))+gte(t,0.28)*lt(t,0.3)*(0.4+5*(t-0.28))+gte(t,0.3)*lt(t,0.32)*(0.5+5*(t-0.3))+gte(t,0.32)*lt(t,0.34)*(0.6+5*(t-0.32))+gte(t,0.34)*lt(t,0.36)*(0.7+5*(t-0.34))+gte(t,0.36)*lt(t,0.38)*(0.8+5*(t-0.36))+gte(t,0.38)*lt(t,0.4)*(0.9+-45*(t-0.38))+gte(t,0.4)*lt(t,0.42)*(0+5*(t-0.4))+gte(t,0.42)*lt(t,0.44)*(0.1+5*(t-0.42))+gte(t,0.44)*lt(t,0.46)*(0.2+5*(t-0.44))+gte(t,0.46)*lt(t,0.48)*(0.3+5*(t-0.46))+gte(t,0.48)*lt(t,0.5)*(0.4+5*(t-0.48))+gte(t,0.5)*lt(t,0.52)*(0.5+5*(t-0.5))+gte(t,0.52)*lt(t,0.54)*(0.6+5*(t-0.52))+gte(t,0.54)*lt(t,0.56)*(0.7+5*(t-0.54))+gte(t,0.56)*lt(t,0.58)*(0.8+5*(t-0.56))+gte(t,0.58)*lt(t,0.6)*(0.9+-45*(t-0.58))+gte(t,0.6)*lt(t,0.62)*(0+5*(t-0.6))+gte(t,0.62)*lt(t,0.64)*(0.1+5*(t-0.62)))+(gte(t,0.64)*lt(t,0.66)*(0.2+5*(t-0.64))+gte(t,0.66)*lt(t,0.68)*(0.3+5*(t-0.66))+gte(t,0.68)*lt(t,0.7)*(0.4+5*(t-0.68))+gte(t,0.7)*lt(t,0.72)*(0.5+5*(t-0.7))+gte(t,0.72)*lt(t,0.74)*(0.6+5*(t-0.72))+gte(t,0.74)*lt(t,0.76)*(0.7+5*(t-0.74))+gte(t,0.76)*lt(t,0.78)*(0.8+5*(t-0.76))+gte(t,0.78)*lt(t,0.8)*(0.9+-45*(t-0.78))+gte(t,0.8)*lt(t,0.82)*(0+5*(t-0.8))+gte(t,0.82)*lt(t,0.84)*(0.1+5*(t-0.82))+gte(t,0.84)*lt(t,0.86)*(0.2+5*(t-0.84))+gte(t,0.86)*lt(t,0.88)*(0.3+5*(t-0.86))+gte(t,0.88)*lt(t,0.9)*(0.4+5*(t-0.88))+gte(t,0.9)*lt(t,0.92)*(0.5+5*(t-0.9))+gte(t,0.92)*lt(t,0.94)*(0.6+5*(t-0.92))+gte(t,0.94)*lt(t,0.96)*(0.7+5*(t-0.94))+gte(t,0.96)*lt(t,0.98)*(0.8+5*(t-0.96))+gte(t,0.98)*lt(t,1)*(0.9+-45*(t-0.98))+gte(t,1)*lt(t,1.02)*(0+5*(t-1))+gte(t,1.02)*lt(t,1.04)*(0.1+5*(t-1.02))+gte(t,1.04)*lt(t,1.06)*(0.2+5*(t-1.04))+gte(t,1.06)*lt(t,1.08)*(0.3+5*(t-1.06))+gte(t,1.08)*lt(t,1.1)*(0.4+5*(t-1.08))+gte(t,1.1)*lt(t,1.12)*(0.5+5*(t-1.1))+gte(t,1.12)*lt(t,1.14)*(0.6+5*(t-1.12))+gte(t,1.14)*lt(t,1.16)*(0.7+5*(t-1.14))+gte(t,1.16)*lt(t,1.18)*(0.8+5*(t-1.16))+gte(t,1.18)*lt(t,1.2)*(0.9+-45*(t-1.18))+gte(t,1.2)*lt(t,1.22)*(0+5*(t-1.2))+gte(t,1.22)*lt(t,1.24)*(0.1+5*(t-1.22))+gte(t,1.24)*lt(t,1.26)*(0.2+5*(t-1.24))+gte(t,1.26)*lt(t,1.28)*(0.3+5*(t-1.26)))+(gte(t,1.28)*lt(t,1.3)*(0.4+5*(t-1.28))+gte(t,1.3)*lt(t,1.32)*(0.5+5*(t-1.3))+gte(t,1.32)*lt(t,1.34)*(0.6+5*(t-1.32))+gte(t,1.34)*lt(t,1.36)*(0.7+5*(t-1.34))+gte(t,1.36)*lt(t,1.38)*(0.8+5*(t-1.36))+gte(t,1.38)*lt(t,1.4)*(0.9+-45*(t-1.38))+gte(t,1.4)*lt(t,1.42)*(0+5*(t-1.4))+gte(t,1.42)*lt(t,1.44)*(0.1+5*(t-1.42))+gte(t,1.44)*lt(t,1.46)*(0.2+5*(t-1.44))+gte(t,1.46)*lt(t,1.48)*(0.3+5*(t-1.46))+gte(t,1.48)*lt(t,1.5)*(0.4+5*(t-1.48))+gte(t,1.5)*lt(t,1.52)*(0.5+5*(t-1.5))+gte(t,1.52)*lt(t,1.54)*(0.6+5*(t-1.52))+gte(t,1.54)*lt(t,1.56)*(0.7+5*(t-1.54))+gte(t,1.56)*lt(t,1.58)*(0.8+5*(t-1.56))+gte(t,1.58)*lt(t,1.6)*(0.9+-45*(t-1.58))+gte(t,1.6)*lt(t,1.62)*(0+5*(t-1.6))+gte(t,1.62)*lt(t,1.64)*(0.1+5*(t-1.62))+gte(t,1.64)*lt(t,1.66)*(0.2+5*(t-1.64))+gte(t,1.66)*lt(t,1.68)*(0.3+5*(t-1.66))+gte(t,1.68)*lt(t,1.7)*(0.4+5*(t-1.68))+gte(t,1.7)*lt(t,1.72)*(0.5+5*(t-1.7))+gte(t,1.72)*lt(t,1.74)*(0.6+5*(t-1.72))+gte(t,1.74)*lt(t,1.76)*(0.7+5*(t-1.74))+gte(t,1.76)*lt(t,1.78)*(0.8+5*(t-1.76))+gte(t,1.78)*lt(t,1.8)*(0.9+-45*(t-1.78))+gte(t,1.8)*lt(t,1.82)*(0+5*(t-1.8))+gte(t,1.82)*lt(t,1.84)*(0.1+5*(t-1.82))+gte(t,1.84)*lt(t,1.86)*(0.2+5*(t-1.84))+gte(t,1.86)*lt(t,1.88)*(0.3+5*(t-1.86))+gte(t,1.88)*lt(t,1.9)*(0.4+5*(t-1.88))+gte(t,1.9)*lt(t,1.92)*(0.5+5*(t-1.9)))+(gte(t,1.92)*lt(t,1.94)*(0.6+5*(t-1.92))+gte(t,1.94)*lt(t,1.96)*(0.7+5*(t-1.94))+gte(t,1.96)*lt(t,1.98)*(0.8+5*(t-1.96))+gte(t,1.98)*lt(t,2)*(0.9+-45*(t-1.98))+gte(t,2)*lt(t,2.02)*(0+5*(t-2))+gte(t,2.02)*lt(t,2.04)*(0.1+5*(t-2.02))+gte(t,2.04)*lt(t,2.06)*(0.2+5*(t-2.04))+gte(t,2.06)*lt(t,2.08)*(0.3+5*(t-2.06))+gte(t,2.08)*lt(t,2.1)*(0.4+5*(t-2.08))+gte(t,2.1)*lt(t,2.12)*(0.5+5*(t-2.1))+gte(t,2.12)*lt(t,2.14)*(0.6+5*(t-2.12))+gte(t,2.14)*lt(t,2.16)*(0.7+5*(t-2.14))+gte(t,2.16)*lt(t,2.18)*(0.8+5*(t-2.16))+gte(t,2.18)*lt(t,2.2)*(0.9+-45*(t-2.18))+gte(t,2.2)*lt(t,2.22)*(0+5*(t-2.2))+gte(t,2.22)*lt(t,2.24)*(0.1+5*(t-2.22))+gte(t,2.24)*lt(t,2.26)*(0.2+5*(t-2.24))+gte(t,2.26)*lt(t,2.28)*(0.3+5*(t-2.26))+gte(t,2.28)*lt(t,2.3)*(0.4+5*(t-2.28))+gte(t,2.3)*lt(t,2.32)*(0.5+5*(t-2.3))+gte(t,2.32)*lt(t,2.34)*(0.6+5*(t-2.32))+gte(t,2.34)*lt(t,2.36)*(0.7+5*(t-2.34))+gte(t,2.36)*lt(t,2.38)*(0.8+5*(t-2.36))+gte(t,2.38)*lt(t,2.4)*(0.9+-45*(t-2.38))+gte(t,2.4)*lt(t,2.42)*(0+5*(t-2.4))+gte(t,2.42)*lt(t,2.44)*(0.1+5*(t-2.42))+gte(t,2.44)*lt(t,2.46)*(0.2+5*(t-2.44))+gte(t,2.46)*lt(t,2.48)*(0.3+5*(t-2.46))+gte(t,2.48)*lt(t,2.5)*(0.4+5*(t-2.48))+gte(t,2.5)*lt(t,2.52)*(0.5+5*(t-2.5))+gte(t,2.52)*lt(t,2.54)*(0.6+5*(t-2.52))+gte(t,2.54)*lt(t,2.56)*(0.7+5*(t-2.54)))+(gte(t,2.56)*lt(t,2.58)*(0.8+5*(t-2.56))+gte(t,2.58)*lt(t,2.6)*(0.9+-45*(t-2.58))+gte(t,2.6)*lt(t,2.62)*(0+5*(t-2.6))+gte(t,2.62)*lt(t,2.64)*(0.1+5*(t-2.62))+gte(t,2.64)*lt(t,2.66)*(0.2+5*(t-2.64))+gte(t,2.66)*lt(t,2.68)*(0.3+5*(t-2.66))+gte(t,2.68)*lt(t,2.7)*(0.4+5*(t-2.68))+gte(t,2.7)*lt(t,2.72)*(0.5+5*(t-2.7))+gte(t,2.72)*lt(t,2.74)*(0.6+5*(t-2.72))+gte(t,2.74)*lt(t,2.76)*(0.7+5*(t-2.74))+gte(t,2.76)*lt(t,2.78)*(0.8+5*(t-2.76))+gte(t,2.78)*lt(t,2.8)*(0.9+-45*(t-2.78))+gte(t,2.8)*lt(t,2.82)*(0+5*(t-2.8))+gte(t,2.82)*lt(t,2.84)*(0.1+5*(t-2.82))+gte(t,2.84)*lt(t,2.86)*(0.2+5*(t-2.84))+gte(t,2.86)*lt(t,2.88)*(0.3+5*(t-2.86))+gte(t,2.88)*lt(t,2.9)*(0.4+5*(t-2.88))+gte(t,2.9)*lt(t,2.92)*(0.5+5*(t-2.9))+gte(t,2.92)*lt(t,2.94)*(0.6+5*(t-2.92))+gte(t,2.94)*lt(t,2.96)*(0.7+5*(t-2.94))+gte(t,2.96)*lt(t,2.98)*(0.8+5*(t-2.96))+gte(t,2.98)*lt(t,3)*(0.9+-45*(t-2.98))+gte(t,3)*lt(t,3.02)*(0+5*(t-3))+gte(t,3.02)*lt(t,3.04)*(0.1+5*(t-3.02))+gte(t,3.04)*lt(t,3.06)*(0.2+5*(t-3.04))+gte(t,3.06)*lt(t,3.08)*(0.3+5*(t-3.06))+gte(t,3.08)*lt(t,3.1)*(0.4+5*(t-3.08))+gte(t,3.1)*lt(t,3.12)*(0.5+5*(t-3.1))+gte(t,3.12)*lt(t,3.14)*(0.6+5*(t-3.12))+gte(t,3.14)*lt(t,3.16)*(0.7+5*(t-3.14))+gte(t,3.16)*lt(t,3.18)*(0.8+5*(t-3.16))+gte(t,3.18)*lt(t,3.2)*(0.9+-45*(t-3.18)))+(gte(t,3.2)*lt(t,3.22)*(0+5*(t-3.2))+gte(t,3.22)*lt(t,3.24)*(0.1+5*(t-3.22))+gte(t,3.24)*lt(t,3.26)*(0.2+5*(t-3.24))+gte(t,3.26)*lt(t,3.28)*(0.3+5*(t-3.26))+gte(t,3.28)*lt(t,3.3)*(0.4+5*(t-3.28))+gte(t,3.3)*lt(t,3.32)*(0.5+5*(t-3.3))+gte(t,3.32)*lt(t,3.34)*(0.6+5*(t-3.32))+gte(t,3.34)*lt(t,3.36)*(0.7+5*(t-3.34))+gte(t,3.36)*lt(t,3.38)*(0.8+5*(t-3.36))+gte(t,3.38)*lt(t,3.4)*(0.9+-45*(t-3.38))+gte(t,3.4)*lt(t,3.42)*(0+5*(t-3.4))+gte(t,3.42)*lt(t,3.44)*(0.1+5*(t-3.42))+gte(t,3.44)*lt(t,3.46)*(0.2+5*(t-3.44))+gte(t,3.46)*lt(t,3.48)*(0.3+5*(t-3.46))+gte(t,3.48)*lt(t,3.5)*(0.4+5*(t-3.48))+gte(t,3.5)*lt(t,3.52)*(0.5+5*(t-3.5))+gte(t,3.52)*lt(t,3.54)*(0.6+5*(t-3.52))+gte(t,3.54)*lt(t,3.56)*(0.7+5*(t-3.54))+gte(t,3.56)*lt(t,3.58)*(0.8+5*(t-3.56))+gte(t,3.58)*lt(t,3.6)*(0.9+-45*(t-3.58))+gte(t,3.6)*lt(t,3.62)*(0+5*(t-3.6))+gte(t,3.62)*lt(t,3.64)*(0.1+5*(t-3.62))+gte(t,3.64)*lt(t,3.66)*(0.2+5*(t-3.64))+gte(t,3.66)*lt(t,3.68)*(0.3+5*(t-3.66))+gte(t,3.68)*lt(t,3.7)*(0.4+5*(t-3.68))+gte(t,3.7)*lt(t,3.72)*(0.5+5*(t-3.7))+gte(t,3.72)*lt(t,3.74)*(0.6+5*(t-3.72))+gte(t,3.74)*lt(t,3.76)*(0.7+5*(t-3.74))+gte(t,3.76)*lt(t,3.78)*(0.8+5*(t-3.76))+gte(t,3.78)*lt(t,3.8)*(0.9+-45*(t-3.78))+gte(t,3.8)*lt(t,3.82)*(0+5*(t-3.8))+gte(t,3.82)*lt(t,3.84)*(0.1+5*(t-3.82)))+(gte(t,3.84)*lt(t,3.86)*(0.2+5*(t-3.84))+gte(t,3.86)*lt(t,3.88)*(0.3+5*(t-3.86))+gte(t,3.88)*lt(t,3.9)*(0.4+5*(t-3.88))+gte(t,3.9)*lt(t,3.92)*(0.5+5*(t-3.9))+gte(t,3.92)*lt(t,3.94)*(0.6+5*(t-3.92))+gte(t,3.94)*lt(t,3.96)*(0.7+5*(t-3.94))+gte(t,3.96)*lt(t,3.98)*(0.8+5*(t-3.96))+gte(t,3.98)*0.9))/2),0,1314)':y=2,scale=1080:1920:flags=lanczos,setsar=1,subtitles=filename=captions.ass:fontsdir=fonts[v];
+[ca]anull[a]
+"
+`;

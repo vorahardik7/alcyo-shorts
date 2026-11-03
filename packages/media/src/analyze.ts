@@ -137,7 +137,21 @@ const ChunkFile = z.object({
 export interface AnalyzeDeps {
   run: Runner;
   now?: () => Date;
+  /**
+   * Awaited before each background step (after the transcript), so a render
+   * can run first. Plan section 23 spec 9: background analysis pauses.
+   */
+  waitTurn?: (step: AnalysisStepName) => Promise<void>;
 }
+
+/** Steps that wait while a render runs. Probe to transcript never wait. */
+export const BACKGROUND_STEPS: ReadonlySet<AnalysisStepName> = new Set([
+  "loudness",
+  "scenes",
+  "proxy",
+  "peaks",
+  "thumbnails",
+]);
 
 export interface Paths {
   probe: string;
@@ -538,6 +552,10 @@ export async function analyze(
   try {
     for (const step of order) {
       if (signal.aborted) throw new MediaError("cancelled", "Cancelled.");
+      if (deps.waitTurn !== undefined && BACKGROUND_STEPS.has(step)) {
+        await deps.waitTurn(step);
+        if (signal.aborted) throw new MediaError("cancelled", "Cancelled.");
+      }
 
       const blocked =
         (NEEDS_AUDIO.has(step) && probe.audio === null) ||

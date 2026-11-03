@@ -79,14 +79,14 @@ export function Card({
   return (
     <section
       data-testid={testId}
-      className="rounded-2xl bg-card ring-1 ring-hairline"
+      className="overflow-hidden rounded-xl bg-card/60 ring-1 ring-hairline"
       aria-label={title}
     >
-      <div className="flex items-center gap-4 px-5 py-4">
+      <div className="flex items-center gap-4 px-4 py-3.5">
         <div className="min-w-0 flex-1">
-          <h3 className="text-small font-semibold">{title}</h3>
+          <h3 className="text-[14px] font-semibold">{title}</h3>
           {description !== undefined && (
-            <p className="mt-0.5 text-[14px] leading-snug text-secondary">{description}</p>
+            <p className="mt-0.5 text-[13px] leading-snug text-tertiary">{description}</p>
           )}
         </div>
         {actions !== undefined && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
@@ -108,7 +108,7 @@ export function Row({
   aside?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-12 items-center gap-4 border-b border-hairline px-5 py-2.5 last:border-b-0">
+    <div className="flex min-h-11 items-center gap-4 border-b border-hairline px-4 py-2.5 last:border-b-0">
       <div className="w-40 shrink-0 text-[14px] text-secondary">{label}</div>
       <div
         className={`min-w-0 flex-1 text-[14px] break-words select-text ${mono ? "font-mono text-[13px]" : ""}`}
