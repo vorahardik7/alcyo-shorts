@@ -7,7 +7,8 @@ import { UploadIcon } from "../ui/icons";
 import { Spinner } from "../ui/parts";
 import { Toaster } from "../ui/toast";
 import { watchProfile } from "../profile/store";
-import { importFileToast } from "./pages";
+import { plainError } from "../streams/store";
+import { toast } from "../ui/toast";
 import { Sidebar } from "./Sidebar";
 import { watchRenders } from "../streams/renders";
 import { watchStreams } from "../streams/store";
@@ -63,8 +64,7 @@ function useFileDrop(): boolean {
       e.preventDefault();
       depth.current = 0;
       setOver(false);
-      const file = e.dataTransfer?.files[0];
-      if (file !== undefined) importFileToast(file.name);
+      // The preload hands the paths to main, which answers with drop:files.
     };
     window.addEventListener("dragenter", enter);
     window.addEventListener("dragleave", leave);
@@ -104,11 +104,39 @@ function useStartupGate(): boolean {
   return ready;
 }
 
+/** Files dropped on the window: main holds the paths; we say which stream they go to. */
+function useDroppedFiles(): void {
+  const router = useRouter();
+  useEffect(
+    () =>
+      window.alcyo.on("drop:files", ({ token, names }) => {
+        const streamId = /^\/s\/([^/]+)/.exec(router.state.location.pathname)?.[1];
+        toast(
+          names.length === 1 ? `Adding ${names[0]}` : `Adding ${names.length} files`,
+          "It stays where it is; nothing is copied or uploaded.",
+        );
+        window.alcyo
+          .invoke("drop:use", { token, ...(streamId === undefined ? {} : { streamId }) })
+          .then(
+            (out) => {
+              if ("failed" in out) toast("Couldn't add that", out.message);
+              else if (out.streamId !== streamId) {
+                void router.navigate({ to: "/s/$streamId", params: { streamId: out.streamId } });
+              }
+            },
+            (error: unknown) => toast("Couldn't add that", plainError(error)),
+          );
+      }),
+    [router],
+  );
+}
+
 export function Layout() {
   const { notice, dismiss } = useLinks();
   useNavShortcuts();
   const ready = useStartupGate();
   const dropping = useFileDrop();
+  useDroppedFiles();
   useEffect(() => watchStreams(), []);
   useEffect(() => watchProfile(), []);
   useEffect(() => watchRenders(), []);

@@ -2,8 +2,8 @@
 // Shorts and version messages show as simple cards; spec 10 adds inline
 // playback and the rest.
 import type { AgentWork, StreamDetail } from "@alcyo/ipc";
-import type { ClipFile, Message } from "@alcyo/schema";
-import { useParams } from "@tanstack/react-router";
+import type { ClipFile, Message, ShortRef } from "@alcyo/schema";
+import { useLocation, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePageTitle, useUi } from "../nav/navigation";
 import { Composer, HeaderPill } from "../shell/pages";
@@ -81,6 +81,7 @@ function MessageView({
   answered,
   onChange,
   onReply,
+  focus,
 }: {
   message: Message;
   streamId: string;
@@ -88,6 +89,7 @@ function MessageView({
   answered: boolean;
   onChange: () => void;
   onReply: (target: ReplyTarget) => void;
+  focus?: ShortRef | undefined;
 }) {
   const mine = message.author === "user";
   const body = message.body;
@@ -102,9 +104,21 @@ function MessageView({
     return (
       <div id={`m-${message.id}`} data-testid="message" className="flex justify-start">
         {body.kind === "shorts" ? (
-          <ShortsBubble streamId={streamId} body={body} clips={clips} onReply={onReply} />
+          <ShortsBubble
+            streamId={streamId}
+            body={body}
+            clips={clips}
+            onReply={onReply}
+            focus={focus}
+          />
         ) : (
-          <VersionBubble streamId={streamId} body={body} clips={clips} onReply={onReply} />
+          <VersionBubble
+            streamId={streamId}
+            body={body}
+            clips={clips}
+            onReply={onReply}
+            focus={focus}
+          />
         )}
       </div>
     );
@@ -185,11 +199,51 @@ function MissingSource({ streamId, sourceId }: { streamId: string; sourceId: str
 
 /** Keyed by stream, so moving between streams starts from a clean thread. */
 export function StreamThread() {
-  const { streamId = "" } = useParams({ strict: false });
-  return <Thread key={streamId} streamId={streamId} />;
+  const { streamId = "", shortId, version } = useParams({ strict: false });
+  const hash = useLocation({ select: (l) => l.hash });
+  const n = version === undefined ? undefined : Number(version);
+  const target =
+    shortId === undefined
+      ? undefined
+      : { shortId, ...(n !== undefined && Number.isInteger(n) && n > 0 ? { version: n } : {}) };
+  return (
+    <Thread
+      key={streamId}
+      streamId={streamId}
+      target={target}
+      messageId={hash.startsWith("m-") ? decodeURIComponent(hash.slice(2)) : undefined}
+    />
+  );
 }
 
-function Thread({ streamId }: { streamId: string }) {
+/** The latest message showing this short (and version, when given), and the ref it shows. */
+export function findShortMessage(
+  messages: readonly Message[],
+  target: { shortId: string; version?: number },
+): { messageId: string; ref: ShortRef } | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]!;
+    const refs =
+      m.body.kind === "shorts" ? m.body.shorts : m.body.kind === "version" ? [m.body.ref] : [];
+    const hit = refs.find(
+      (r) =>
+        r.shortId === target.shortId &&
+        (target.version === undefined || r.version === target.version),
+    );
+    if (hit !== undefined) return { messageId: m.id, ref: hit };
+  }
+  return null;
+}
+
+function Thread({
+  streamId,
+  target,
+  messageId,
+}: {
+  streamId: string;
+  target?: { shortId: string; version?: number } | undefined;
+  messageId?: string | undefined;
+}) {
   const [detail, setDetail] = useState<StreamDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -197,6 +251,11 @@ function Thread({ streamId }: { streamId: string }) {
   const [reply, setReply] = useState<ReplyTarget | null>(null);
   const focusComposer = useUi((s) => s.focusComposer);
   const end = useRef<HTMLDivElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const [older, setOlder] = useState<"more" | "loading" | "done">("more");
+  const lastId = messages.at(-1)?.id;
+  const focus = target === undefined ? null : findShortMessage(messages, target);
+  const jumpTo = focus?.messageId ?? messageId;
   usePageTitle(detail?.stream.name ?? "Stream");
 
   const reload = useCallback(() => {
@@ -212,9 +271,13 @@ function Thread({ streamId }: { streamId: string }) {
 
   useEffect(() => {
     reload();
-    window.alcyo
-      .invoke("thread:messages", { streamId, limit: PAGE })
-      .then(setMessages, () => undefined);
+    window.alcyo.invoke("thread:messages", { streamId, limit: PAGE }).then(
+      (page) => {
+        setMessages(page);
+        if (page.length < PAGE) setOlder("done");
+      },
+      () => undefined,
+    );
     const offMessage = window.alcyo.on("thread:message", (e) => {
       if (e.streamId !== streamId) return;
       setMessages((list) => mergeMessage(list, e.message));
@@ -236,9 +299,36 @@ function Thread({ streamId }: { streamId: string }) {
     };
   }, [streamId, reload]);
 
+  // New messages at the end scroll into view, unless a link points elsewhere.
   useEffect(() => {
+    if (jumpTo !== undefined) return;
     end.current?.scrollIntoView({ block: "end" });
-  }, [messages.length, working]);
+  }, [lastId, working, jumpTo]);
+
+  // A link to a message, short or version scrolls to it.
+  useEffect(() => {
+    if (jumpTo === undefined) return;
+    document.getElementById(`m-${jumpTo}`)?.scrollIntoView({ block: "center" });
+  }, [jumpTo, messages.length]);
+
+  const loadOlder = useCallback(() => {
+    const first = messages[0];
+    if (older !== "more" || first === undefined) return;
+    setOlder("loading");
+    const el = scroller.current;
+    const before = el === null ? 0 : el.scrollHeight - el.scrollTop;
+    window.alcyo.invoke("thread:messages", { streamId, limit: PAGE, before: first.id }).then(
+      (page) => {
+        setMessages((list) => [...page.filter((m) => !list.some((x) => x.id === m.id)), ...list]);
+        setOlder(page.length < PAGE ? "done" : "more");
+        // Keep the reader's place after the older page goes in above.
+        requestAnimationFrame(() => {
+          if (el !== null) el.scrollTop = el.scrollHeight - before;
+        });
+      },
+      () => setOlder("more"),
+    );
+  }, [messages, older, streamId]);
 
   const onReply = useCallback(
     (target: ReplyTarget) => {
@@ -268,8 +358,29 @@ function Thread({ streamId }: { streamId: string }) {
     <section data-testid="stream-thread" className="relative flex h-full flex-col">
       <div className="drag absolute inset-x-0 top-0 h-12" aria-hidden />
       {detail !== null && <HeaderPill label={name} />}
-      <div className="min-h-0 flex-1 overflow-y-auto px-8 pt-20 pb-4">
+      <div
+        ref={scroller}
+        data-testid="thread-scroll"
+        onScroll={(e) => {
+          if (e.currentTarget.scrollTop < 200) loadOlder();
+        }}
+        className="min-h-0 flex-1 overflow-y-auto px-8 pt-20 pb-4"
+      >
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
+          {older === "loading" && (
+            <div className="flex justify-center py-2">
+              <Spinner size={14} />
+            </div>
+          )}
+          {target !== undefined && messages.length > 0 && focus === null && (
+            <p
+              data-testid="short-not-found"
+              className="rounded-xl bg-warn/8 px-4 py-3 text-[14px] ring-1 ring-warn/20"
+            >
+              That {target.version === undefined ? "short" : `version (v${target.version})`}{" "}
+              isn&apos;t in this thread.
+            </p>
+          )}
           {missing.map(({ source }) => (
             <MissingSource key={source.sourceId} streamId={streamId} sourceId={source.sourceId} />
           ))}
@@ -284,6 +395,7 @@ function Thread({ streamId }: { streamId: string }) {
               }
               onChange={reload}
               onReply={onReply}
+              focus={focus?.ref}
             />
           ))}
           {working !== null && <WorkingBubble jobId={working.jobId} label={working.label} />}

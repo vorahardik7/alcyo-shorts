@@ -13,7 +13,7 @@ import type {
   RenderResult,
   RenderView,
 } from "@alcyo/ipc";
-import { DEFAULT_RENDER_PRESET, RENDER_PRESETS, renderFileName } from "@alcyo/render";
+import { DEFAULT_RENDER_PRESET, RENDER_PRESETS, buildAss, renderFileName } from "@alcyo/render";
 import {
   BUILTIN_CAPTION_PRESETS,
   BUILTIN_HOOK_PRESETS,
@@ -21,7 +21,17 @@ import {
   type Source,
 } from "@alcyo/schema";
 import { type ProfileStore, type ProjectStore, StoreError, exists, newId } from "@alcyo/store";
+import { playableFile, sourceUrl } from "./media-protocol";
 import type { StreamService } from "./streams";
+
+export interface ShortPreview {
+  version: ShortVersion;
+  /** alcyo-media:// URL of the recording or its proxy. Null while neither plays. */
+  src: string | null;
+  width: number;
+  height: number;
+  ass: string;
+}
 
 export interface RenderWorker {
   render(
@@ -166,6 +176,40 @@ export class RenderService {
     return source;
   }
 
+  /** The presets and words a version renders with. The preview uses the same. */
+  private async looks(store: ProjectStore, v: ShortVersion) {
+    const presets = await this.deps.profiles.presets();
+    const caption =
+      presets.captionPresets.find((p) => p.id === v.short.captions.presetId) ??
+      BUILTIN_CAPTION_PRESETS[0]!;
+    const hook =
+      presets.hookPresets.find((p) => p.id === v.short.hook?.presetId) ?? BUILTIN_HOOK_PRESETS[0]!;
+    const from = v.short.segments[0]!.srcIn;
+    const to = v.short.segments.at(-1)!.srcOut;
+    const words = await store
+      .transcript(v.sourceId)
+      .then((t) => t.words.filter((w) => w.endMs > from && w.startMs < to))
+      .catch(() => []);
+    return { caption, hook, words };
+  }
+
+  /** What a card or the editor needs to play a version: the media URL and the same .ass the render burns. */
+  async preview(streamId: string, shortId: string, version?: number): Promise<ShortPreview> {
+    const store = await this.deps.streams.forStream(streamId);
+    const v = await store.version(shortId, version);
+    const source = await store.source(v.sourceId);
+    const video = source.probe?.video ?? null;
+    const { caption, hook, words } = await this.looks(store, v);
+    const file = await playableFile(store, v.sourceId).catch(() => null);
+    return {
+      version: v,
+      src: file === null || video === null ? null : sourceUrl(streamId, v.sourceId),
+      width: video?.width ?? 1920,
+      height: video?.height ?? 1080,
+      ass: buildAss({ short: v.short, words, caption, hook }),
+    };
+  }
+
   private async outPath(store: ProjectStore, title: string, version: number): Promise<string> {
     const preset = DEFAULT_RENDER_PRESET;
     const name = renderFileName(title, version, preset);
@@ -189,19 +233,7 @@ export class RenderService {
       const video = probe.video!;
       const preset =
         RENDER_PRESETS.find((p) => p.id === job.view.presetId) ?? DEFAULT_RENDER_PRESET;
-      const presets = await this.deps.profiles.presets();
-      const caption =
-        presets.captionPresets.find((p) => p.id === v.short.captions.presetId) ??
-        BUILTIN_CAPTION_PRESETS[0]!;
-      const hook =
-        presets.hookPresets.find((p) => p.id === v.short.hook?.presetId) ??
-        BUILTIN_HOOK_PRESETS[0]!;
-      const from = v.short.segments[0]!.srcIn;
-      const to = v.short.segments.at(-1)!.srcOut;
-      const words = await store
-        .transcript(v.sourceId)
-        .then((t) => t.words.filter((w) => w.endMs > from && w.startMs < to))
-        .catch(() => []);
+      const { caption, hook, words } = await this.looks(store, v);
       const outPath = await this.outPath(store, v.short.title, v.version);
       const tools = this.deps.tools();
       this.set(job, { state: "running", pct: 0, message: null, file: null });

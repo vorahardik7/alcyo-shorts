@@ -11,6 +11,7 @@ import type { ProviderId } from "@alcyo/schema";
 import type { Downloader } from "../downloader";
 import type { PlannerService } from "../planner";
 import type { ProfileService } from "../profile";
+import { type DropBox, EXPIRED } from "../drops";
 import type { RenderService } from "../renders";
 import type { StreamService } from "../streams";
 import type { HandlerFn } from "./core";
@@ -33,7 +34,11 @@ export interface HandlerDeps {
   downloader: Pick<Downloader, "info" | "update" | "useBundled">;
   profile: ProfileService;
   planner: Pick<PlannerService, "state" | "find" | "send" | "cancel">;
-  renders: Pick<RenderService, "enqueue" | "list" | "get" | "cancel" | "retry" | "file">;
+  renders: Pick<
+    RenderService,
+    "enqueue" | "list" | "get" | "cancel" | "retry" | "file" | "preview"
+  >;
+  drops: Pick<DropBox, "take">;
   /** Shows a file in Finder or Explorer. */
   reveal(path: string): void;
 }
@@ -144,6 +149,13 @@ export function createHandlers(deps: HandlerDeps): Handlers {
     },
     "short:versions": async ({ streamId, shortId }) =>
       (await deps.streams.forStream(streamId)).versions(shortId),
+    "short:preview": ({ streamId, shortId, version }) =>
+      deps.renders.preview(streamId, shortId, version),
+    "drop:use": async ({ token, streamId }) => {
+      const paths = deps.drops.take(token);
+      if (paths === null) return { failed: true, message: EXPIRED };
+      return deps.streams.useFiles(paths, streamId);
+    },
     "short:saveDraft": async ({ streamId, shortId, short }) => {
       await (await deps.streams.forStream(streamId)).saveDraft(shortId, short);
       return {};

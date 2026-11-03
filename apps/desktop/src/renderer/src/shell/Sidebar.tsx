@@ -48,14 +48,23 @@ function StreamRow({ stream, active }: { stream: StreamSummary; active: boolean 
         active ? "bg-white/[0.07]" : "hover:bg-white/[0.04]"
       }`}
     >
-      <span
-        aria-hidden
-        className={`grid size-8 shrink-0 place-items-center rounded-[9px] font-mono text-[11px] font-semibold tracking-wide ring-1 ring-inset ring-white/[0.06] ${
-          active ? "bg-unread/15 text-[#9DB8FF]" : "bg-white/[0.05] text-secondary"
-        }`}
-      >
-        {initials(stream.name)}
-      </span>
+      {stream.thumbnail !== null && !stream.missing ? (
+        <img
+          alt=""
+          data-testid="stream-thumb"
+          src={`alcyo-media://thumb/${stream.streamId}`}
+          className="size-8 shrink-0 rounded-[9px] object-cover ring-1 ring-white/[0.08]"
+        />
+      ) : (
+        <span
+          aria-hidden
+          className={`grid size-8 shrink-0 place-items-center rounded-[9px] font-mono text-[11px] font-semibold tracking-wide ring-1 ring-inset ring-white/[0.06] ${
+            active ? "bg-unread/15 text-[#9DB8FF]" : "bg-white/[0.05] text-secondary"
+          }`}
+        >
+          {initials(stream.name)}
+        </span>
+      )}
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline gap-2">
           <span

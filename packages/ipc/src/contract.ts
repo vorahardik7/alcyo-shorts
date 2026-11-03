@@ -273,6 +273,31 @@ export const contract = {
     output: z.object({ version: ShortVersion, draft: Draft.nullable() }),
   },
   "short:versions": { input: ShortInput, output: z.array(VersionSummary) },
+  /**
+   * What the preview needs to play a version (the head with no version): an
+   * alcyo-media:// URL and the same .ass file the render burns.
+   */
+  "short:preview": {
+    input: ShortInput.extend({ version: z.number().int().positive().optional() }),
+    output: z.object({
+      version: ShortVersion,
+      src: z.string().startsWith("alcyo-media://").nullable(),
+      width: z.number().int().positive(),
+      height: z.number().int().positive(),
+      ass: z.string(),
+    }),
+  },
+  /**
+   * Uses files dropped on the window. main holds their paths under the token
+   * (from the drop:files event); the renderer never sees or sends a path.
+   */
+  "drop:use": {
+    input: z.object({ token: Id, streamId: Id.optional() }),
+    output: z.union([
+      z.object({ streamId: Id }),
+      z.object({ failed: z.literal(true), message: z.string().max(300) }),
+    ]),
+  },
   "short:saveDraft": { input: ShortInput.extend({ short: Short }), output: z.object({}) },
   "short:saveVersion": {
     input: ShortInput.extend({ short: Short, note: z.string().max(200) }),
@@ -301,6 +326,8 @@ export const events = {
   }),
   /** The agent started or stopped working on a stream. */
   "thread:working": z.object({ streamId: Id, working: AgentWork.nullable() }),
+  /** Files were dropped on the window. Names only; drop:use acts on them. */
+  "drop:files": z.object({ token: Id, names: z.array(z.string().max(260)).min(1).max(20) }),
   /** A render was queued, moved along, or finished. */
   "render:changed": z.object({ render: RenderView }),
   /** Past shorts moved along, or the profile changed. Reload profile:get. */
@@ -310,6 +337,19 @@ export const events = {
     total: z.number().int().positive().nullable(),
   }),
 } as const satisfies Record<EventName, z.ZodType>;
+
+/**
+ * Channels only the preload calls, with ipcRenderer directly. They're not in
+ * CHANNELS, so window.alcyo.invoke refuses them.
+ */
+export const preloadContract = {
+  /** The paths of files dropped on the window, from webUtils.getPathForFile. */
+  "preload:drop": {
+    input: z.object({ paths: z.array(z.string().min(1).max(4096)).min(1).max(20) }),
+    output: z.object({}),
+  },
+} as const;
+export type PreloadChannel = keyof typeof preloadContract;
 
 export type Contract = typeof contract;
 export type ChannelInput<C extends Channel> = z.input<Contract[C]["input"]>;

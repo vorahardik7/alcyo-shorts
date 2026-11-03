@@ -48,9 +48,6 @@ separate processes. Alcyo doesn't link to them.
 - Zod (MIT), Copyright (c) Colin McDonnell
 - Tailwind CSS (MIT), Copyright (c) Tailwind Labs, Inc.
 
-Fonts, JASSUB and libass (WASM) are added in later builds and listed here
-when they are.
-
 ## Caption fonts (SIL Open Font License 1.1)
 
 Bundled in `resources/fonts/` for burned-in captions. Each license file ships next to its fonts.
@@ -58,3 +55,7 @@ Bundled in `resources/fonts/` for burned-in captions. Each license file ships ne
 - Inter 4.1 (Regular, SemiBold, Black), Copyright (c) 2016 The Inter Project Authors. https://github.com/rsms/inter. `Inter-OFL.txt`.
 - Anton (Regular), Copyright 2020 The Anton Project Authors. https://github.com/googlefonts/AntonFont. `Anton-OFL.txt`.
 - Montserrat (ExtraBold), Copyright 2011 The Montserrat Project Authors. https://github.com/JulietaUla/Montserrat. `Montserrat-OFL.txt`.
+
+## Caption preview (JASSUB 2.5.24)
+
+The preview draws captions with JASSUB, libass compiled to WebAssembly, unmodified, loaded as separate files in the app's renderer assets. https://github.com/ThaUnknown/jassub. Licenses: LGPL-2.1-or-later (libass, JASSUB), FreeType (FTL or GPL-2.0-or-later), and MIT, ISC, Zlib, NTP and BSL-1.0 parts. Its local-font lookup is turned off.

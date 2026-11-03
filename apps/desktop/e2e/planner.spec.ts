@@ -75,9 +75,17 @@ function seed(userData: string): string {
     autoFindAt: AT,
   });
   writeFileSync(join(folder, "thread", "messages.jsonl"), "");
+  // A second stream with 250 messages, for loading older ones on scroll.
+  const chat = join(streams, "Long Chat.alcyo");
+  mkdirSync(join(chat, "thread"), { recursive: true });
+  json(join(chat, "project.json"), { schemaVersion: 1, streamId: "s_longchat01", name: "Long Chat", createdAt: AT, sources: [], shorts: [], clips: [], settings: { copyIntoProject: false }, autoFindAt: AT });
+  writeFileSync(join(chat, "thread", "messages.jsonl"), Array.from({ length: 250 }, (_, i) => JSON.stringify({ id: `m_chat${String(i).padStart(4, "0")}`, rev: 0, at: AT, author: i % 2 === 0 ? "user" : "app", body: { kind: "text", text: `Message ${i}` } })).join("\n") + "\n");
   json(join(userData, "streams.json"), {
     schemaVersion: 1,
-    streams: [{ streamId, folder, name: "Boss Fight Stream", thumbnail: null, lastActivityAt: AT, unread: false, preview: "" }],
+    streams: [
+      { streamId, folder, name: "Boss Fight Stream", thumbnail: null, lastActivityAt: AT, unread: false, preview: "" },
+      { streamId: "s_longchat01", folder: chat, name: "Long Chat", thumbnail: null, lastActivityAt: "2026-10-01T12:00:00.000Z", unread: false, preview: "" },
+    ],
   });
   return folder;
 } // prettier-ignore
@@ -118,6 +126,84 @@ test.describe("planner", () => {
     await expect(cards.first().getByTestId("version-chip")).toHaveText("v1 · Agent");
     await expect(page.getByTestId("working")).toHaveCount(0);
     await expect(page.getByTestId("find-shorts")).toHaveText("Find more shorts");
+  });
+
+  test("a card plays inline with the render's crop and captions, one at a time", async () => {
+    const cards = page.getByTestId("shorts-message").getByTestId("short-card");
+    const player = (n: number) => cards.nth(n).getByTestId("short-player");
+    await expect(player(0)).toBeVisible();
+    await expect
+      .poll(() =>
+        cards
+          .nth(0)
+          .getByTestId("player-video")
+          .evaluate((v: HTMLVideoElement) => v.readyState),
+      )
+      .toBeGreaterThanOrEqual(2);
+    // 1280 x 720 source: a 404 px window centered in 876 px of room.
+    await expect(player(0)).toHaveAttribute("data-crop-x", "438");
+    const captions = cards.nth(0).getByTestId("player-captions");
+    await expect(captions).toHaveAttribute("data-ready", "true", { timeout: 15_000 });
+    // The same .ass the render burns: the hook is drawn at 0.5 s, nothing after every event ends.
+    const drawn = (t: number) =>
+      captions.evaluate(async (c, at) => {
+        const j = (
+          c as unknown as {
+            jassub: {
+              renderer: {
+                _drawCapture: (t: number) => Promise<{ data: Uint8ClampedArray } | undefined>;
+              };
+            };
+          }
+        ).jassub;
+        const out = await j.renderer._drawCapture(at);
+        let n = 0;
+        for (let i = 3; i < (out?.data.length ?? 0); i += 4) if (out!.data[i]! > 0) n++;
+        return n;
+      }, t);
+    expect(await drawn(0.5)).toBeGreaterThan(1000);
+    expect(await drawn(3600)).toBe(0);
+    // A draw before JASSUB was ready used to leave it busy for good, drawing nothing.
+    await expect
+      .poll(() =>
+        captions.evaluate((c) => (c as unknown as { jassub: { busy: boolean } }).jassub.busy),
+      )
+      .toBe(false);
+
+    await cards.nth(0).getByTestId("player-toggle").click();
+    await expect(player(0)).toHaveAttribute("data-playing", "true");
+    const t0 = await cards
+      .nth(0)
+      .getByTestId("player-video")
+      .evaluate((v: HTMLVideoElement) => v.currentTime);
+    await expect
+      .poll(() =>
+        cards
+          .nth(0)
+          .getByTestId("player-video")
+          .evaluate((v: HTMLVideoElement) => v.currentTime),
+      )
+      .toBeGreaterThan(t0 + 0.3);
+    await cards.nth(1).getByTestId("player-toggle").click();
+    await expect(player(1)).toHaveAttribute("data-playing", "true");
+    await expect(player(0)).toHaveAttribute("data-playing", "false");
+    await cards.nth(1).getByTestId("player-toggle").click();
+    await expect(player(1)).toHaveAttribute("data-playing", "false");
+  });
+
+  test("Copy link copies an alcyo:// link, and the version chip is a link", async () => {
+    const card = page.getByTestId("shorts-message").getByTestId("short-card").first();
+    const shortId = (await card.getAttribute("data-short-id"))!;
+    await card.getByTestId("copy-link").click();
+    await expect(page.getByText(`alcyo://s/${streamId}/short/${shortId}/v/1`)).toBeVisible();
+    await card.getByTestId("version-chip").click();
+    await expect
+      .poll(() => page.evaluate(() => location.hash))
+      .toBe(`#/s/${streamId}/short/${shortId}/v/1`);
+    await expect(
+      page.locator(`[data-testid="short-card"][data-short-id="${shortId}"][data-focused]`),
+    ).toHaveCount(1);
+    await page.getByTestId("stream-row").filter({ hasText: "Boss Fight Stream" }).click();
   });
 
   test("a reply to a card makes a new version of that short", async () => {
@@ -202,5 +288,42 @@ test.describe("planner", () => {
     await page.waitForTimeout(300);
     await page.screenshot({ path: join(tmpdir(), "alcyo-render-queue.png") });
     await page.getByTestId("close-drawer").click();
+  });
+
+  test("alcyo:// links open a version, the editor page and a message", async () => {
+    const card = page.getByTestId("version-message").getByTestId("short-card");
+    const shortId = (await card.getAttribute("data-short-id"))!;
+    const open = (url: string) =>
+      run.app.evaluate(({ app }, u) => {
+        app.emit("open-url", { preventDefault: () => undefined }, u);
+      }, url);
+    await open(`alcyo://s/${streamId}/short/${shortId}/v/2`);
+    await expect(
+      page.locator(`[data-short-id="${shortId}"][data-version="2"][data-focused]`),
+    ).toHaveCount(1);
+    await open(`alcyo://s/${streamId}/short/${shortId}/v/2/edit`);
+    await expect(page.getByTestId("short-page")).toBeVisible();
+    await expect(page.getByTestId("short-page").getByTestId("short-player")).toBeVisible();
+    await open(`alcyo://s/${streamId}/short/${shortId}/v/9`);
+    await expect(page.getByTestId("short-not-found")).toContainText("v9");
+    const thread = readFileSync(join(folder, "thread", "messages.jsonl"), "utf8")
+      .trim()
+      .split("\n");
+    const first = (JSON.parse(thread[0]!) as { id: string }).id;
+    await open(`alcyo://s/${streamId}/m/${first}`);
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe(`#/s/${streamId}#m-${first}`);
+    await expect(page.locator(`#m-${first}`)).toBeInViewport();
+  });
+
+  test("older messages load on scroll, keeping the reader's place", async () => {
+    await page.getByTestId("stream-row").filter({ hasText: "Long Chat" }).click();
+    await expect(page.getByText("Message 249")).toBeVisible();
+    await expect(page.getByTestId("message")).toHaveCount(200);
+    await expect(page.getByText("Message 49", { exact: true })).toHaveCount(0);
+    await page.getByTestId("thread-scroll").evaluate((el) => (el.scrollTop = 0));
+    await expect(page.getByTestId("message")).toHaveCount(250);
+    await expect(page.getByText("Message 0", { exact: true })).toBeAttached();
+    // The message that was at the top is still near the top.
+    await expect(page.getByText("Message 50", { exact: true })).toBeInViewport();
   });
 });

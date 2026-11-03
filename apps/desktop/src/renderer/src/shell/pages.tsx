@@ -32,12 +32,6 @@ export function looksLikeUrl(text: string): boolean {
   return URL_RE.test(text);
 }
 
-/** Dropping needs the file's path, which the preload doesn't give the page yet. */
-export const importFileToast = (name?: string) =>
-  toast(
-    "Dropping files doesn't work yet",
-    `Use + then Choose a file to add ${name === undefined ? "it" : `“${name}”`}. Nothing was copied or uploaded.`,
-  );
 const demoToast = () =>
   toast("The demo stream comes in spec 13", "It opens a ready-made stream with three shorts.");
 

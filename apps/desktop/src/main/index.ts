@@ -8,10 +8,12 @@ import { applyApiKey, CHANNELS, type SetupRequest, type WhisperModelName } from 
 import { probeAgent, providerForAgent, realSpawnDeps } from "@alcyo/planner";
 import { LINK_SCHEME, type LocalAgentId } from "@alcyo/schema";
 import { ProfileStore, SettingsFile, StreamsIndex } from "@alcyo/store";
-import { app, BrowserWindow, dialog, Notification, safeStorage, shell } from "electron";
+import { app, BrowserWindow, dialog, Notification, protocol, safeStorage, shell } from "electron";
 import pkg from "../../package.json";
 import { resolveBinDir } from "./bin";
-import { handle, sendEvent } from "./ipc";
+import { handle, handlePreload, sendEvent } from "./ipc";
+import { DropBox } from "./drops";
+import { MEDIA_SCHEME, mediaHandler } from "./media-protocol";
 import { createHandlers } from "./ipc/handlers";
 import { findLinkInArgv, LinkQueue, linkEvent } from "./links";
 import { ApiKeyFile } from "./api-key";
@@ -39,6 +41,21 @@ if (userDataOverride !== undefined && userDataOverride.length > 0) {
 
 // Headless runs (tests, screenshots) show nothing, not even a Dock icon.
 if (isHeadless() && process.platform === "darwin") app.dock?.hide();
+
+// Before ready: alcyo-media:// streams video with Range, and fetch works on it
+// (JASSUB's worker loads the bundled fonts from it).
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: MEDIA_SCHEME,
+    privileges: {
+      standard: true,
+      secure: true,
+      stream: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+]);
 
 if (!app.requestSingleInstanceLock()) {
   // Another instance owns the window; it gets our argv through second-instance.
@@ -185,8 +202,10 @@ function run(): void {
     };
     // Made after the stream service, which tells it when a transcript is in.
     const late: { planner?: PlannerService } = {};
+    const streamsIndex = new StreamsIndex(userData);
+    const drops = new DropBox();
     const streams = new StreamService({
-      index: new StreamsIndex(userData),
+      index: streamsIndex,
       settings,
       defaultStreamsDir:
         envPath("ALCYO_STREAMS_DIR") ?? join(app.getPath("videos"), "Alcyo Shorts"),
@@ -381,11 +400,28 @@ function run(): void {
       profile,
       planner,
       renders,
+      drops,
       reveal: (path) => shell.showItemInFolder(path),
       now: () => performance.now(),
       streams,
     });
     const appUrl = () => rendererUrl(mainDir);
+    protocol.handle(
+      MEDIA_SCHEME,
+      mediaHandler({
+        forStream: (id) => streams.forStream(id),
+        thumbnail: async (id) => (await streamsIndex.get(id)).thumbnail,
+        fontsDir,
+      }),
+    );
+    handlePreload(
+      "preload:drop",
+      async ({ paths }) => {
+        const got = await drops.put(paths);
+        if (got !== null) sendEvent(win, "drop:files", got);
+      },
+      appUrl,
+    );
     for (const channel of CHANNELS) {
       // Each handler's types come from its channel; the loop just registers them.
       handle(channel, handlers[channel] as never, appUrl);

@@ -14,6 +14,7 @@ import { Layout } from "./shell/Layout";
 import { Home, NotFound } from "./shell/pages";
 import { StreamThread } from "./streams/StreamThread";
 import { RenderQueuePage } from "./shell/RenderQueue";
+import { ShortPage } from "./streams/ShortPage";
 
 const rootRoute = createRootRoute({ component: Layout, notFoundComponent: NotFound });
 
@@ -25,8 +26,24 @@ const streamRoute = createRoute({
   component: StreamThread,
 });
 
-// Messages, shorts, versions, the editor and source moments all sit below a
-// stream. Until specs 10 and 11 they show the stream's thread.
+// A short or a version opens the thread at its card (plan section 5).
+const shortRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/s/$streamId/short/$shortId",
+  component: StreamThread,
+});
+const versionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/s/$streamId/short/$shortId/v/$version",
+  component: StreamThread,
+});
+const editRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/s/$streamId/short/$shortId/v/$version/edit",
+  component: ShortPage,
+});
+
+// Anything else below a stream (the source view comes later) shows the thread.
 const streamChildRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/s/$streamId/$",
@@ -79,6 +96,9 @@ const sectionRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   streamRoute,
+  shortRoute,
+  versionRoute,
+  editRoute,
   streamChildRoute,
   rendersRoute,
   setupRoute,

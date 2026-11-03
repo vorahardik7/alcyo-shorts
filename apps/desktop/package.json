@@ -45,5 +45,8 @@
     "vite": "^8.3.5",
     "zod": "^4.6.7",
     "zustand": "^5.0.16"
+  },
+  "dependencies": {
+    "jassub": "2.5.24"
   }
 }

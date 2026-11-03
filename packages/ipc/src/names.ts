@@ -50,11 +50,16 @@ export const CHANNELS = [
   "transcript:search",
   "short:get",
   "short:versions",
+  "short:preview",
+  "drop:use",
   "short:saveDraft",
   "short:saveVersion",
   "short:restore",
 ] as const;
 export type Channel = (typeof CHANNELS)[number];
+
+/** Called by the preload only, never through window.alcyo. */
+export const PRELOAD_CHANNEL = "preload:drop";
 
 export const EVENTS = [
   "link:open",
@@ -63,6 +68,7 @@ export const EVENTS = [
   "thread:message",
   "thread:working",
   "render:changed",
+  "drop:files",
   "job:progress",
   "profile:changed",
   "model:progress",

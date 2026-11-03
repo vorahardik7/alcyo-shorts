@@ -87,7 +87,11 @@ export const COPY = {
     "That question was already answered or has expired. Paste the link again if you need to.",
   waitForVod: "This clip will be placed once the stream's recording is in and analyzed.",
   askChips: ["Use as the stream", "Add as a clip"],
+  notVideo: "That isn't a video file. Drop a recording or a clip, like an .mp4 or .mov.",
 } as const;
+
+/** File types Alcyo opens, the same as the Choose a file dialog. */
+export const VIDEO_EXT = new Set([".mp4", ".mov", ".m4v", ".mkv", ".webm", ".avi", ".flv", ".ts"]);
 
 export type LinkChoice = "stream" | "clip";
 
@@ -242,6 +246,14 @@ export class StreamService {
   ): Promise<{ stream: StreamSummary; jobId: string } | { cancelled: true }> {
     const path = await this.deps.chooseVideo();
     if (path === null) return { cancelled: true };
+    return this.addFile(path, streamId);
+  }
+
+  /** A file as a new stream (or the given stream's recording), then analysis. */
+  async addFile(
+    path: string,
+    streamId?: string,
+  ): Promise<{ stream: StreamSummary; jobId: string }> {
     const id = streamId ?? (await this.newStream(basename(path, extname(path))));
     const store = await this.store(id);
     const source = await store.addFileSource(path);
@@ -624,12 +636,41 @@ export class StreamService {
     await this.touch(streamId, "Downloading a clip");
   }
 
+  /**
+   * Dropped files: with no stream, the first becomes a new stream. In a
+   * stream without a recording, the first is the recording and the rest are
+   * clips; otherwise they're all clips.
+   */
+  async useFiles(
+    paths: readonly string[],
+    streamId?: string,
+  ): Promise<{ streamId: string } | { failed: true; message: string }> {
+    const videos = paths.filter((p) => VIDEO_EXT.has(extname(p).toLowerCase()));
+    if (videos.length === 0) {
+      return { failed: true, message: COPY.notVideo };
+    }
+    let id = streamId;
+    let rest = videos;
+    if (id === undefined || (await (await this.store(id)).project()).sources.length === 0) {
+      const added = await this.addFile(videos[0]!, id);
+      id = added.stream.streamId;
+      rest = videos.slice(1);
+    }
+    for (const path of rest) await this.addClipFile(id, path);
+    return { streamId: id };
+  }
+
   // Clips (plan section 12)
 
   /** Choose a file as a clip of this stream. It is referenced in place. */
   async chooseClipFile(streamId: string): Promise<{ clipId: string } | { cancelled: true }> {
     const path = await this.deps.chooseVideo();
     if (path === null) return { cancelled: true };
+    return this.addClipFile(streamId, path);
+  }
+
+  /** A file as a clip of this stream, referenced in place. */
+  async addClipFile(streamId: string, path: string): Promise<{ clipId: string }> {
     const store = await this.store(streamId);
     const clipId = newId("clip");
     await store.addClip({

@@ -138,10 +138,10 @@ test.describe("with setup complete", () => {
     await page.evaluate(() => {
       window.location.hash = "#/s/abc/short/sh1/v/2/edit";
     });
-    await expect(page.getByTestId("stream-placeholder")).toHaveText(
-      "That stream isn't in this app.",
+    await expect(page.getByTestId("short-missing")).toHaveText(
+      "That version isn't in this stream.",
     );
-    await expect.poll(title).toBe("Stream · Alcyo Shorts");
+    await expect.poll(title).toBe("Short · Alcyo Shorts");
     await page.keyboard.press(`${mod}+BracketLeft`);
     await expect.poll(hash).toBe("#/");
 
@@ -273,7 +273,7 @@ test.describe("with setup complete", () => {
     await expect(page.getByTestId("attach-menu")).toHaveCount(0);
   });
 
-  test("dragging a file shows the drop target; dropping shows the note and doesn't navigate", async () => {
+  test("dragging a file shows the drop target; a drop never navigates", async () => {
     await goHome();
     await page.evaluate(() => {
       const data = new DataTransfer();
@@ -290,7 +290,11 @@ test.describe("with setup complete", () => {
     });
     expect(navigated).toBe(false);
     await expect(page.getByTestId("drop-target")).toHaveCount(0);
-    await expect(page.getByTestId("toast")).toContainText("My Stream.mp4");
+    // A file made in the page has no path on disk, so the preload passes nothing to main.
+    // Real drops are covered in main (media-protocol.test.ts).
+    await page.waitForTimeout(300);
+    await expect(page.getByTestId("toast")).toHaveCount(0);
+    await expect(page.getByTestId("stream-row")).toHaveCount(0);
     await expect.poll(hash).toBe("#/");
   });
 });

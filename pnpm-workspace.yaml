@@ -9,6 +9,9 @@ allowBuilds:
   electron: true
   esbuild: true
   electron-winstaller: false
+  # JASSUB's local-font lookup; Alcyo uses only bundled fonts.
+  lfa-ponyfill: false
 
 minimumReleaseAgeExclude:
   - globals@17.14.0
+  - jassub@2.5.24
