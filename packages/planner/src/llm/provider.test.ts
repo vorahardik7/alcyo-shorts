@@ -89,6 +89,22 @@ describe("parseStructuredOutput", () => {
     expect(() => parseStructuredOutput("not json")).toThrow(/didn't return JSON/);
   });
 
+  it("reads Grok Build's envelope (recorded from grok 1.0.70) and its error", () => {
+    const grok = {
+      text: '{"lineIds":["L0002","L0003"],"reason":"peak"}',
+      stopReason: "end_turn",
+      sessionId: "01a19fd8-f26f-7e12-8864-be69cc7fb166",
+      num_turns: 1,
+      structuredOutput: { lineIds: ["L0002", "L0003"], reason: "peak" },
+    };
+    expect(parseStructuredOutput(JSON.stringify(grok))).toEqual(grok.structuredOutput);
+    const { structuredOutput: _, ...noSchema } = grok;
+    expect(parseStructuredOutput(JSON.stringify(noSchema))).toEqual(grok.structuredOutput);
+    expect(() =>
+      parseStructuredOutput('{"type":"error","message":"Couldn\'t set model \'x\'"}'),
+    ).toThrow(PlannerError);
+  });
+
   it("spots a rejected --safe-mode flag", () => {
     expect(
       rejectedSafeMode({ code: 1, stdout: "", stderr: "error: unexpected argument '--safe-mode'" }),

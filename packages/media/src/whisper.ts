@@ -30,7 +30,7 @@ export function whisperArgs(opts: {
     "-nfa",
     "-of",
     opts.outBase,
-    "-np",
+    // No -np: the VAD time map is only logged without it (see parseVadMap).
     "-pp",
     "-t",
     String(opts.threads),
@@ -72,6 +72,88 @@ export const MAX_WORD_MS = 3000;
 
 const SPECIAL = /^\[_[A-Z]+_?\d*\]$|^\[_\w+\]$/;
 const NON_SPEECH = /^[[(].*[\])]$/;
+
+/** One point of whisper's VAD map: a time in the speech-only audio and in the file. */
+export interface VadPoint {
+  processedMs: number;
+  originalMs: number;
+}
+
+const VAD_INFO =
+  /vad_segment_info: orig_start: ([\d.]+), orig_end: ([\d.]+), vad_start: ([\d.]+), vad_end: ([\d.]+)/;
+
+/**
+ * whisper.cpp 1.9.5 with --vad maps segment times back to the file, but not
+ * token times or t_dtw: those stay in the speech-only audio it builds after
+ * cutting the silences out. It logs the segments it kept; this rebuilds its
+ * map from those lines.
+ */
+export function parseVadMap(stderr: readonly string[]): VadPoint[] {
+  const points: VadPoint[] = [];
+  for (const line of stderr) {
+    const m = VAD_INFO.exec(line);
+    if (m === null) continue;
+    const [origStart, origEnd, vadStart, vadEnd] = m
+      .slice(1)
+      .map((s) => Math.round(Number(s) * 1000));
+    points.push({ processedMs: vadStart!, originalMs: origStart! });
+    points.push({ processedMs: vadEnd!, originalMs: origEnd! });
+  }
+  points.sort((a, b) => a.processedMs - b.processedMs);
+  return points.filter((p, i) => i === 0 || p.processedMs !== points[i - 1]!.processedMs);
+}
+
+/** whisper.cpp's map_processed_to_original_time: clamp at the ends, interpolate between points. */
+export function vadToOriginal(ms: number, map: readonly VadPoint[]): number {
+  if (map.length === 0) return ms;
+  const first = map[0]!;
+  const last = map.at(-1)!;
+  if (ms <= first.processedMs) return first.originalMs + (ms - first.processedMs);
+  if (ms >= last.processedMs) return last.originalMs + (ms - last.processedMs);
+  let hi = map.findIndex((p) => p.processedMs >= ms);
+  if (map[hi]!.processedMs === ms) return map[hi]!.originalMs;
+  const a = map[--hi]!;
+  const b = map[hi + 1]!;
+  const span = b.processedMs - a.processedMs;
+  return span === 0
+    ? a.originalMs
+    : a.originalMs + ((ms - a.processedMs) * (b.originalMs - a.originalMs)) / span;
+}
+
+/**
+ * Puts token times (offsets and t_dtw) on the file's clock. A segment whose
+ * tokens already sit inside its own range is left alone, so a whisper.cpp
+ * that fixes this upstream isn't shifted twice.
+ */
+export function remapTokens(json: WhisperJson, map: readonly VadPoint[]): WhisperJson {
+  if (map.length === 0) return json;
+  const SLACK_MS = 1500;
+  return {
+    ...json,
+    transcription: json.transcription.map((seg) => {
+      const speech = seg.tokens.filter((t) => !SPECIAL.test(t.text.trim()));
+      const inside = speech.every(
+        (t) =>
+          t.offsets.from >= seg.offsets.from - SLACK_MS &&
+          t.offsets.from <= seg.offsets.to + SLACK_MS,
+      );
+      if (speech.length === 0 || inside) return seg;
+      return {
+        ...seg,
+        tokens: seg.tokens.map((t) => ({
+          ...t,
+          offsets: {
+            from: Math.round(vadToOriginal(t.offsets.from, map)),
+            to: Math.round(vadToOriginal(t.offsets.to, map)),
+          },
+          ...(t.t_dtw !== undefined && t.t_dtw >= 0
+            ? { t_dtw: Math.round(vadToOriginal(t.t_dtw * 10, map)) / 10 }
+            : {}),
+        })),
+      };
+    }),
+  };
+}
 
 /**
  * Merges tokens into words. A token starting with a space starts a word;

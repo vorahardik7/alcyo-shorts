@@ -54,6 +54,13 @@ Spec 8 is the first caller of `complete()`. This spec still ships
   logged-out `grok` exits non-zero. `--tools ""` and the prompt-file shape
   were not run against a live login. The parser accepts both a Claude-like
   envelope and a raw object.
+- **Grok, checked live (Nov 2).** grok 1.0.70, `grok-4.7-build-fast` at
+  `--reasoning-effort medium`, the args above: exit 0 in about 10 s, about
+  $0.03. stdout is `{ text, stopReason, sessionId, structuredOutput, … }`,
+  so the parser reads `structuredOutput` too. An unknown model prints
+  `{"type":"error",…}` and exits 1. `--tools ""` was accepted. The provider
+  takes an optional model and effort; unset, Grok uses its own defaults.
+  `ALCYO_LIVE_GROK=1` runs `planner/src/llm/live.test.ts` against it.
 - **Codex.** `codex login status` is the sign-in check. Its stdout is
   discarded. The safety boundary is `--sandbox read-only` plus
   `--ignore-user-config` and `--ignore-rules`. The last-message file is

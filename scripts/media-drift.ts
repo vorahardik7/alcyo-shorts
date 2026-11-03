@@ -8,14 +8,20 @@
 //
 // Prints the median and worst drift for DTW starts and for token-offset
 // starts. Writes nothing outside a temp folder.
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { audioArgs } from "../packages/media/src/ffmpeg-args.ts";
-import { WhisperJson, tokensToWords, whisperArgs } from "../packages/media/src/whisper.ts";
+import {
+  WhisperJson,
+  parseVadMap,
+  remapTokens,
+  tokensToWords,
+  whisperArgs,
+} from "../packages/media/src/whisper.ts";
 
 const PARAGRAPH =
   "alright chat we are live today we finally try the boss again no way did you see that " +
@@ -142,7 +148,7 @@ if (values.clip !== undefined) {
 }
 
 const outBase = join(dir, "whisper");
-execFileSync(
+const whisperRun = spawnSync(
   exe("whisper-cli"),
   whisperArgs({
     model,
@@ -153,9 +159,15 @@ execFileSync(
     threads: 8,
     vad: values["no-vad"] !== true,
   }),
-  { stdio: "ignore" },
+  { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
 );
-const json = WhisperJson.parse(JSON.parse(readFileSync(`${outBase}.json`, "utf8")));
+if (whisperRun.status !== 0)
+  throw new Error(`whisper-cli failed: ${whisperRun.stderr.slice(-500)}`);
+// Same as analysis: token times back on the file's clock when VAD cut silences.
+const json = remapTokens(
+  WhisperJson.parse(JSON.parse(readFileSync(`${outBase}.json`, "utf8"))),
+  parseVadMap(whisperRun.stderr.split(/\r?\n/)),
+);
 const tokens = json.transcription.flatMap((s) => s.tokens);
 
 const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9']/g, "");

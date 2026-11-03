@@ -62,6 +62,8 @@ import {
   WhisperJson,
   buildTranscript,
   fixWordTimes,
+  parseVadMap,
+  remapTokens,
   tokensToWords,
   whisperArgs,
 } from "./whisper.ts";
@@ -255,6 +257,8 @@ export async function analyze(
           language: "en",
           nfa: true,
           timing: "dtw",
+          // Token times put back on the file's clock (whisper.cpp 1.9.5 VAD bug).
+          vadMap: 1,
         };
       case "loudness":
         return { framelog: "1s-max" };
@@ -378,7 +382,9 @@ export async function analyze(
         );
         const outBase = join(paths.tmp, `whisper-${n}`);
         temps.add(`${outBase}.json`);
+        const vadLines: string[] = [];
         const onLine = (line: string) => {
+          if (line.includes("vad_segment_info")) vadLines.push(line);
           const pct = whisperProgress(line);
           if (pct !== null)
             progress("transcript", stage, ((doneMs + (span * pct) / 100) / durationMs) * 100);
@@ -396,8 +402,9 @@ export async function analyze(
           }),
           { onStdoutLine: onLine, onStderrLine: onLine },
         );
-        const json = await readJson(`${outBase}.json`, WhisperJson);
-        if (json === null) throw stepFailed("transcript", ["whisper-cli wrote no readable JSON."]);
+        const raw = await readJson(`${outBase}.json`, WhisperJson);
+        if (raw === null) throw stepFailed("transcript", ["whisper-cli wrote no readable JSON."]);
+        const json = remapTokens(raw, parseVadMap(vadLines));
         const chunkWords = json.transcription.flatMap((seg) =>
           tokensToWords(seg.tokens, chunk.startMs),
         );

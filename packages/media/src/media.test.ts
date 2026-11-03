@@ -24,7 +24,10 @@ import {
   fixWordTimes,
   groupLines,
   MAX_WORD_MS,
+  parseVadMap,
+  remapTokens,
   tokensToWords,
+  vadToOriginal,
   WhisperJson,
   whisperArgs,
 } from "./whisper.ts";
@@ -275,6 +278,49 @@ describe("whisper", () => {
     expect(args).toContain("-nfa");
     expect(args[args.indexOf("-f") + 1]).toBe(AWKWARD);
     expect(args[args.indexOf("-vm") + 1]).toBe("/m/silero.bin");
+  });
+
+  it("puts VAD token times back on the file's clock (whisper.cpp 1.9.5 logs, recorded)", () => {
+    const log = [
+      "whisper_vad: vad_segment_info: orig_start: 1.99, orig_end: 6.05, vad_start: 0.00, vad_end: 4.06",
+      "whisper_vad: vad_segment_info: orig_start: 10.98, orig_end: 15.65, vad_start: 4.26, vad_end: 8.93",
+      "whisper_vad: vad_segment_info: orig_start: 32.99, orig_end: 36.80, vad_start: 13.13, vad_end: 16.94",
+    ];
+    const map = parseVadMap(log);
+    expect(map[0]).toEqual({ processedMs: 0, originalMs: 1990 });
+    // Inside a kept segment the shift is constant; in a gap it's interpolated.
+    expect(vadToOriginal(13_320, map)).toBe(33_180);
+    expect(vadToOriginal(5_000, map)).toBeCloseTo(11_720, -1);
+    // "No way" from the demo stand-in: segment at 33.1 s, its tokens at 13.3 s.
+    const json = WhisperJson.parse({
+      transcription: [
+        {
+          offsets: { from: 33_100, to: 36_800 },
+          text: " No way",
+          tokens: [
+            { text: " No", offsets: { from: 13_250, to: 13_500 }, p: 0.9, t_dtw: 1332 },
+            { text: " way", offsets: { from: 13_500, to: 13_800 }, p: 0.9, t_dtw: 1362 },
+          ],
+        },
+      ],
+    });
+    const words = tokensToWords(
+      remapTokens(json, map).transcription.flatMap((s) => s.tokens),
+      0,
+    );
+    expect(words.map((w) => w.startMs)).toEqual([33_180, 33_480]);
+    // Tokens already inside their segment (a fixed whisper.cpp) are left alone.
+    const fixed = WhisperJson.parse({
+      transcription: [
+        {
+          offsets: { from: 33_100, to: 36_800 },
+          text: " No",
+          tokens: [{ text: " No", offsets: { from: 33_150, to: 33_400 }, t_dtw: 3318 }],
+        },
+      ],
+    });
+    expect(remapTokens(fixed, map)).toEqual(fixed);
+    expect(parseVadMap(["no vad here"])).toEqual([]);
   });
 
   it("merges tokens into words, drops special tokens, and joins punctuation", () => {

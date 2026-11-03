@@ -1695,7 +1695,7 @@ As of Nov 2, local `main` only (no GitHub repo yet).
 | 3 `media-engine` | Done | `@alcyo/media`: probe, audio, silences, chunked transcript with resume, loudness, scenes, encoder test, proxy, peaks, thumbnails; cache keys; cancel; worker job. Real-tools test passes on this Mac. Not wired to a stream yet (needs spec 4). |
 | 4 `project-store` | Done | `@alcyo/store` (stream folders, streams.json, settings, thread, sources with Locate file, versions that never overwrite, drafts, transcript reads), the stream service and job queue in main, IPC for streams, analysis, thread, transcript and shorts. Choose a file makes a stream and analyzes it; the sidebar lists streams; the thread shows status with Cancel. Ran end to end on Soul's 5-minute edit. |
 | 5 `setup-and-claude` | Done | Lookup for Claude Code, Grok and Codex, with the agent's folder first on PATH so npm-installed Codex is found from Finder. Providers, `--safe-mode` retry, API backup through structured output (Sonnet 5.5 rejects forced tool use), pinned whisper download, Locate, OS-encrypted API key. No billed call was made. See `.kiro/specs/setup-and-claude/`. |
-| 6 `import-and-clips` | Done, except the demo clips test | `@alcyo/import`: yt-dlp info then download into the project, cancel removes the folder, Update downloader with SHA-256 check, viewer clips from links or files, quick analysis, transcript then audio matching (within 100 ms on generated audio), Place by hand. The format uses `<=?1080` so plain file links work. Dropped files still show a note: the preload doesn't expose file paths. See `.kiro/specs/import-and-clips/`. |
+| 6 `import-and-clips` | Done | `@alcyo/import`: yt-dlp info then download into the project, cancel removes the folder, Update downloader with SHA-256 check, viewer clips from links or files, quick analysis, transcript then audio matching (within 100 ms on generated audio), Place by hand. The format uses `<=?1080` so plain file links work. Dropped files still show a note: the preload doesn't expose file paths. See `.kiro/specs/import-and-clips/`. |
 | 7–13 | Not started | |
 
 Answers recorded so far:
@@ -1707,6 +1707,13 @@ Answers recorded so far:
   the hand-marked demo clip with `pnpm media:drift` before applying any
   correction. Details are in `.kiro/specs/media-engine/design.md`.
 - ffprobe names MKV `matroska,webm`; H.264 MKV gets a proxy.
+- whisper.cpp 1.9.5 with `--vad` maps segment times back to the file but
+  not token times or `t_dtw`. Analysis now rebuilds the VAD map from
+  whisper's log (so `-np` is no longer passed) and remaps tokens. Found by
+  the demo stand-in test, which places two clips in a spoken 2-minute stream
+  at 0 ms error. There are no recorded demo clips; that test stands in.
+- Grok Build answers through the provider live: `grok-4.7-build-fast`,
+  medium effort, about 10 s and $0.03 a call. Its JSON is `structuredOutput`.
 - Hook self-test answers are in `.kiro/specs/project-setup/hook-self-test.md`.
 
 On this Mac (Nov 2): Node 24.18, pnpm 12.14, the pinned tools fetched,
@@ -1727,9 +1734,7 @@ Footage on hand: `~/Desktop/Soul47_Edit_Assets` (Soul's 5-minute edit, the
 VOD's yt-dlp info and YouTube word times, cut list, fonts, CC-BY music). Used
 locally for tests only; nothing from it is in the repo.
 
-Waiting on Hardik: the demo clip with 20 hand-marked word times and two cut
-clips (section 33), or written permission to cut them from Soul's VOD;
-signing; and the go-ahead to create the GitHub repo.
+Waiting on Hardik: signing; and the go-ahead to create the GitHub repo.
 
 ---
 

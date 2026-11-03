@@ -1,7 +1,10 @@
 // Spawns one agent with an args array. No shell. Cancel sends SIGINT, then
 // SIGTERM if the process is still there after the grace period.
 import { spawn } from "node:child_process";
-import { PlannerError, type SpawnResult } from "./provider";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { PlannerError, type SpawnDeps, type SpawnResult } from "./provider";
 
 const MAX_BYTES = 4 * 1024 * 1024;
 const DEFAULT_KILL_GRACE_MS = 5_000;
@@ -100,4 +103,18 @@ export function spawnCommand(
       });
     });
   });
+}
+
+/** The real SpawnDeps: spawnCommand, and temp folders under the OS temp dir. */
+export function realSpawnDeps(
+  env: Record<string, string | undefined> = { ...process.env },
+): SpawnDeps {
+  return {
+    env,
+    spawn: (file, args, opts) => spawnCommand(file, args, opts),
+    mkdtemp: () => mkdtemp(join(tmpdir(), "alcyo-agent-")),
+    writeFile: (path, text) => writeFile(path, text, "utf8"),
+    readFile: (path) => readFile(path, "utf8"),
+    remove: (path) => rm(path, { recursive: true, force: true }),
+  };
 }

@@ -9,8 +9,19 @@ import {
   withAgentDir,
 } from "./provider";
 
-export function grokArgs(promptFile: string, schema: object): string[] {
+/** Grok's own model and effort, e.g. grok-4.7-build-fast at medium. Unset: Grok's defaults. */
+export interface GrokOptions {
+  model?: string;
+  effort?: "low" | "medium" | "high";
+}
+
+export function grokArgs(promptFile: string, schema: object, opts: GrokOptions = {}): string[] {
+  const extra = [
+    ...(opts.model === undefined ? [] : ["-m", opts.model]),
+    ...(opts.effort === undefined ? [] : ["--reasoning-effort", opts.effort]),
+  ];
   return [
+    ...extra,
     "--no-auto-update",
     "--prompt-file",
     promptFile,
@@ -36,7 +47,7 @@ export function scrubGrokEnv(
   return copy;
 }
 
-export function grokProvider(path: string, deps: SpawnDeps): LlmProvider {
+export function grokProvider(path: string, deps: SpawnDeps, opts: GrokOptions = {}): LlmProvider {
   return {
     name: "grok-cli",
     async complete(req) {
@@ -45,7 +56,7 @@ export function grokProvider(path: string, deps: SpawnDeps): LlmProvider {
       const promptFile = join(cwd, "prompt.txt");
       try {
         await deps.writeFile(promptFile, `${req.instruction}\n\n${req.input}`);
-        const result = await deps.spawn(path, grokArgs(promptFile, req.jsonSchema), {
+        const result = await deps.spawn(path, grokArgs(promptFile, req.jsonSchema, opts), {
           cwd,
           env: withAgentDir(scrubGrokEnv(deps.env), path),
           input: "",

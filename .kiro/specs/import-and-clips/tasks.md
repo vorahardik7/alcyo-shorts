@@ -32,6 +32,11 @@
     a foreign clip file is placed by hand
   - _Requirements: 6.1–6.3_
 
-- [ ] 7. Demo clips test (blocked)
-  - Waits on the demo clip and two cut clips (plan section 33).
+- [x] 7. Demo clips stand-in
+  - There are no recorded demo clips. `demo.integration.test.ts` builds a
+    2-minute stream from `say` lines at known times over noise, cuts two
+    clips at 31.25 s and 77.8 s, and runs real whisper and matching.
+    Both land at 0 ms error. macOS only (needs `say` and the model).
+  - It found a whisper.cpp 1.9.5 bug: with `--vad`, token times stay on
+    the speech-only clock. Fixed in `@alcyo/media` (`remapTokens`).
   - _Requirements: 5.5_

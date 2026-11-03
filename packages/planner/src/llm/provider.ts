@@ -98,11 +98,20 @@ export function parseStructuredOutput(stdout: string): unknown {
   }
   if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
   const record = value as Record<string, unknown>;
-  if (record["is_error"] === true) {
+  if (record["is_error"] === true || record["type"] === "error") {
     throw new PlannerError("The agent reported an error.", "failed");
   }
-  if ("structured_output" in record && record["structured_output"] != null) {
-    return record["structured_output"];
+  // Claude Code writes structured_output; Grok Build writes structuredOutput.
+  for (const key of ["structured_output", "structuredOutput"]) {
+    if (key in record && record[key] != null) return record[key];
+  }
+  // Grok's envelope without a schema: the answer is the text.
+  if (typeof record["text"] === "string" && "sessionId" in record) {
+    try {
+      return JSON.parse(record["text"]);
+    } catch {
+      throw new PlannerError("The agent didn't return JSON.", "failed");
+    }
   }
   if (record["type"] === "result" && typeof record["result"] === "string") {
     try {
