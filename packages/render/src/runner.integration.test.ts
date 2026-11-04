@@ -15,6 +15,7 @@ import {
 } from "@alcyo/schema";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RENDER_PRESET } from "./args.ts";
+import { cropSize, cropWindow } from "./crop.ts";
 import { type RenderJob, renderShort } from "./runner.ts";
 
 const win = process.platform === "win32";
@@ -127,4 +128,69 @@ describe.skipIf(!have)("renderShort with the bundled ffmpeg", () => {
     await expect(run).rejects.toBeInstanceOf(MediaError);
     expect(await readdir(join(job.outPath, ".."))).toEqual(["source clip.mp4"]);
   });
+
+  it(
+    "ffmpeg's crop matches cropWindow within 1 px, for hold and linear keys",
+    { timeout: 120_000 },
+    async () => {
+      const job = await setup();
+      // A black 1920 x 1080 source with a 2 px white line at x = 1300 (inside every window), so the
+      // line's column in each output frame gives the crop's x.
+      const src = join(job.workDir, "..", "line.mp4");
+      execFileSync(ffmpeg, [
+      "-v", "error", "-y",
+      "-f", "lavfi", "-i", "color=c=black:s=1920x1080:r=30:d=6,drawbox=x=1300:y=0:w=2:h=1080:color=white:t=fill",
+      "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+      "-c:v", "libx264", "-preset", "ultrafast", "-crf", "0", "-pix_fmt", "yuv444p", "-c:a", "aac", "-t", "6",
+      src,
+    ]); // prettier-ignore
+      const keys = [
+        { t: 0, x: 0.6, ease: "hold" as const },
+        { t: 1000, x: 0.65, ease: "linear" as const },
+        { t: 4000, x: 0.95, ease: "hold" as const },
+      ];
+      const short: Short = { ...job.short, segments: [{ srcIn: 0, srcOut: 5000 }], crop: { keys } };
+      delete short.hook;
+      await renderShort(
+        {
+          ...job,
+          sourcePath: src,
+          source: { width: 1920, height: 1080, fpsNum: 30, fpsDen: 1, hasAudio: true },
+          short,
+          words: [],
+        },
+        { run: runTool },
+        () => undefined,
+        new AbortController().signal,
+      );
+      const { w } = cropSize(1920, 1080);
+      const scale = 1080 / w;
+      for (const tMs of [500, 1000, 2000, 2500, 3500, 4500]) {
+        // One output row at the frame for tMs, as gray bytes.
+        const row = execFileSync(ffmpeg, [
+        "-v", "error", "-ss", String(tMs / 1000), "-i", job.outPath,
+        "-frames:v", "1", "-vf", "crop=1080:1:0:960,format=gray", "-f", "rawvideo", "-",
+      ]); // prettier-ignore
+        let sum = 0;
+        let wsum = 0;
+        for (let x = 0; x < row.length; x++) {
+          const v = row[x]!;
+          if (v > 40) {
+            sum += x * v;
+            wsum += v;
+          }
+        }
+        expect(wsum, `line visible at ${tMs} ms`).toBeGreaterThan(0);
+        // The line's center in source pixels, from the output column.
+        const center = (sum / wsum + 0.5) / scale;
+        const ffmpegX = 1301 - center;
+        // Output frames sit on 30 fps; cropWindow at that frame's time.
+        const frameT = Math.round((Math.round((tMs / 1000) * 30) / 30) * 1000);
+        expect(
+          Math.abs(ffmpegX - cropWindow(keys, frameT, 1920, 1080).x),
+          `at ${tMs} ms`,
+        ).toBeLessThanOrEqual(1);
+      }
+    },
+  );
 });

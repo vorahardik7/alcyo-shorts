@@ -105,6 +105,23 @@ describe("alcyo-media://", () => {
     expect(await resolveMedia(`alcyo-media://thumb/${streamId}`, deps())).toBeNull();
   });
 
+  it("serves the waveform and numbered thumbnails of a stream's source", async () => {
+    const cache = store.paths.cacheDir(sourceId);
+    await writeFile(join(cache, "peaks.bin"), "pk");
+    expect(await resolveMedia(`alcyo-media://peaks/${streamId}/${sourceId}`, deps())).toBe(
+      join(cache, "peaks.bin"),
+    );
+    expect(await resolveMedia(`alcyo-media://frames/${streamId}/${sourceId}/2`, deps())).toBe(
+      thumb,
+    );
+    for (const bad of ["0", "x", "2/3", "../2"]) {
+      expect(
+        await resolveMedia(`alcyo-media://frames/${streamId}/${sourceId}/${bad}`, deps()),
+      ).toBeNull();
+    }
+    expect(await resolveMedia(`alcyo-media://peaks/${streamId}/src_notmine123`, deps())).toBeNull();
+  });
+
   it("uses the proxy when the recording doesn't play directly", async () => {
     await store.applyAnalysis(sourceId, {
       probe: { ...F.source.probe!, playsDirectly: false },

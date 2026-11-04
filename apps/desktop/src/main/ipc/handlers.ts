@@ -12,6 +12,7 @@ import type { Downloader } from "../downloader";
 import type { PlannerService } from "../planner";
 import type { ProfileService } from "../profile";
 import { type DropBox, EXPIRED } from "../drops";
+import type { EditorService } from "../editor";
 import type { RenderService } from "../renders";
 import type { StreamService } from "../streams";
 import type { HandlerFn } from "./core";
@@ -39,6 +40,7 @@ export interface HandlerDeps {
     "enqueue" | "list" | "get" | "cancel" | "retry" | "file" | "preview"
   >;
   drops: Pick<DropBox, "take">;
+  editor: Pick<EditorService, "open" | "save">;
   /** Shows a file in Finder or Explorer. */
   reveal(path: string): void;
 }
@@ -160,13 +162,13 @@ export function createHandlers(deps: HandlerDeps): Handlers {
       await (await deps.streams.forStream(streamId)).saveDraft(shortId, short);
       return {};
     },
-    "short:saveVersion": async ({ streamId, shortId, short, note }) =>
-      (await deps.streams.forStream(streamId)).saveVersion(shortId, {
+    "short:saveVersion": ({ streamId, shortId, short, note, parent }) =>
+      deps.editor.save(streamId, shortId, {
         short,
         note,
-        createdBy: "user",
-        fromMessageId: null,
+        ...(parent === undefined ? {} : { parent }),
       }),
+    "editor:open": ({ streamId, shortId, version }) => deps.editor.open(streamId, shortId, version),
     "short:restore": async ({ streamId, shortId, version }) =>
       (await deps.streams.forStream(streamId)).restore(shortId, version),
   };

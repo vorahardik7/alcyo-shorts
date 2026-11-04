@@ -5,6 +5,8 @@
 //   alcyo-media://source/<streamId>/<sourceId>   the recording, or its proxy
 //   alcyo-media://thumb/<streamId>               the sidebar thumbnail
 //   alcyo-media://fonts/<file>.ttf               a bundled caption font
+//   alcyo-media://peaks/<streamId>/<sourceId>    the waveform (peaks.bin)
+//   alcyo-media://frames/<streamId>/<sourceId>/<n>  thumbnail n (thumbs-NNN.jpg)
 //
 // Range requests get 206 so video can seek. Electron-free except for the
 // Response the handler returns, so it's tested with real files.
@@ -28,6 +30,7 @@ const MIME: Record<string, string> = {
   ".ttf": "font/ttf",
   ".otf": "font/otf",
   ".woff2": "font/woff2",
+  ".bin": "application/octet-stream",
 };
 
 const ID = /^[a-z]+_[0-9a-z]{6,40}$/;
@@ -143,6 +146,29 @@ export async function resolveMedia(url: string, deps: MediaDeps): Promise<string
       if (!ID.test(streamId) || !ID.test(sourceId)) return null;
       try {
         return await playableFile(await deps.forStream(streamId), sourceId);
+      } catch {
+        return null;
+      }
+    }
+    case "peaks":
+    case "frames": {
+      const [streamId, sourceId, n, ...rest] = parts;
+      if (streamId === undefined || sourceId === undefined || rest.length > 0) return null;
+      if (!ID.test(streamId) || !ID.test(sourceId)) return null;
+      const file =
+        u.hostname === "peaks"
+          ? n === undefined
+            ? "peaks.bin"
+            : null
+          : n !== undefined && /^[1-9]\d{0,5}$/.test(n)
+            ? `thumbs-${n.padStart(3, "0")}.jpg`
+            : null;
+      if (file === null) return null;
+      try {
+        const store = await deps.forStream(streamId);
+        if (!(await store.project()).sources.some((s) => s.sourceId === sourceId)) return null;
+        const path = join(store.paths.cacheDir(sourceId), file);
+        return (await exists(path)) ? path : null;
       } catch {
         return null;
       }

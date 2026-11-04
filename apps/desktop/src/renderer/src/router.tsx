@@ -14,7 +14,7 @@ import { Layout } from "./shell/Layout";
 import { Home, NotFound } from "./shell/pages";
 import { StreamThread } from "./streams/StreamThread";
 import { RenderQueuePage } from "./shell/RenderQueue";
-import { ShortPage } from "./streams/ShortPage";
+import { Editor } from "./editor/Editor";
 
 const rootRoute = createRootRoute({ component: Layout, notFoundComponent: NotFound });
 
@@ -40,7 +40,7 @@ const versionRoute = createRoute({
 const editRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/s/$streamId/short/$shortId/v/$version/edit",
-  component: ShortPage,
+  component: Editor,
 });
 
 // Anything else below a stream (the source view comes later) shows the thread.

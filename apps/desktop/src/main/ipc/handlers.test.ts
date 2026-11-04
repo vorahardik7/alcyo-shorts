@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CHANNELS, SetupReport } from "@alcyo/ipc";
 import * as F from "@alcyo/schema/testing";
-import { SettingsFile, StreamsIndex, hashFile, writeJsonAtomic } from "@alcyo/store";
+import { ProfileStore, SettingsFile, StreamsIndex, hashFile, writeJsonAtomic } from "@alcyo/store";
+import { EditorService } from "../editor";
 import { StreamService } from "../streams";
 import { describe, expect, it } from "vitest";
 import { makeHandler } from "./core";
@@ -68,6 +69,7 @@ function deps(overrides: Partial<HandlerDeps> = {}): HandlerDeps {
       preview: () => Promise.reject(new Error("not used")),
     },
     drops: { take: () => null },
+    editor: {} as never,
     reveal: () => undefined,
     useAgent: () => Promise.resolve(),
     ...overrides,
@@ -283,7 +285,15 @@ describe("stream channels", () => {
       emit: () => undefined,
       log: () => undefined,
     });
-    const h = createHandlers(deps({ streams }));
+    const h = createHandlers(
+      deps({
+        streams,
+        editor: new EditorService({
+          streams,
+          profiles: new ProfileStore(await mkdtemp(join(tmpdir(), "alcyo-p-"))),
+        }),
+      }),
+    );
     const call = <C extends (typeof CHANNELS)[number]>(c: C, input: unknown) =>
       makeHandler(c, h[c] as never)(input);
     const out = (await call("source:chooseFile", {})) as { stream: { streamId: string } };
@@ -355,11 +365,41 @@ describe("stream channels", () => {
     expect(
       await call("short:saveVersion", { streamId, shortId, short: draft, note: "Editor" }),
     ).toMatchObject({ version: 2, createdBy: "user", parent: 1 });
+    // Saving posts a version message, by the creator.
+    const thread = (await call("thread:messages", { streamId, limit: 50 })) as Array<{
+      author: string;
+      body: { kind: string };
+    }>;
+    expect(thread.at(-1)).toMatchObject({
+      author: "user",
+      body: { kind: "version", ref: { shortId, version: 2 }, whatChanged: "Editor" },
+    });
+    // A branch from v1 records v1 as its parent.
+    expect(
+      await call("short:saveVersion", {
+        streamId,
+        shortId,
+        short: draft,
+        note: "Branch",
+        parent: 1,
+      }),
+    ).toMatchObject({ version: 3, parent: 1 });
+    const view = (await call("editor:open", { streamId, shortId, version: 1 })) as {
+      version: { version: number };
+      head: number;
+      draft: unknown;
+      versions: unknown[];
+      words: unknown[];
+      source: { src: string | null; thumbs: { count: number } };
+    };
+    expect(view).toMatchObject({ version: { version: 1 }, head: 3, draft: null });
+    expect(view.versions).toHaveLength(3);
+    expect(view.words.length).toBeGreaterThan(0);
     expect(await call("short:restore", { streamId, shortId, version: 1 })).toMatchObject({
-      version: 3,
+      version: 4,
       note: "Restored v1",
     });
-    expect(((await call("short:versions", { streamId, shortId })) as unknown[]).length).toBe(3);
+    expect(((await call("short:versions", { streamId, shortId })) as unknown[]).length).toBe(4);
     await expect(
       call("short:saveDraft", { streamId, shortId, short: { ...draft, segments: [] } }),
     ).rejects.toThrow("bad input");

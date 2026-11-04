@@ -141,7 +141,7 @@ test.describe("with setup complete", () => {
     await expect(page.getByTestId("short-missing")).toHaveText(
       "That version isn't in this stream.",
     );
-    await expect.poll(title).toBe("Short · Alcyo Shorts");
+    await expect.poll(title).toBe("Editor · Alcyo Shorts");
     await page.keyboard.press(`${mod}+BracketLeft`);
     await expect.poll(hash).toBe("#/");
 

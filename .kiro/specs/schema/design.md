@@ -26,6 +26,7 @@ math. `scripts/validate-plan.ts` is the `pnpm plan:validate` command.
 | `project.ts` | `Project`, `StreamsIndex`, `RenderIndex`, `Settings`, `defaultSettings` |
 | `checks.ts` | `checkShort`, `checkVersion`, `checkChatAction`, `checkTranscript`, `checkProfile`, `Issue`, `zodIssues` |
 | `time.ts` | `shortDuration`, `shortToSource`, `sourceToShort`, `remapShortTime`, `normalizeShortTimes`, `rippleDelete`, `rippleDeleteWords`, `wordRangeToSource` |
+| `edit.ts` | The editor's edits (spec 11): `trimSegment`, `splitAt`, `rippleDeleteShortRange`, `restoreWords`, `isWordKept`, `setWordOverride`, `nudgeWord`, `setWordsPerLine`, `setCaptionPreset`, `setCropKey`, `moveCropKey`, `deleteCropKey`, `setHook`, `snapTo`, `SAFE_AREAS`. Pure functions on `Short`; no new file formats. |
 | `migrate.ts` | `CURRENT_VERSIONS`, `migrate(kind, raw, registry?)` |
 | `files.ts` | `fileKindOf(path)`, `parseProjectFile(kind, text)` |
 | `link.ts` | The one link parser (spec 1, extended in app-shell-polish) |
@@ -177,3 +178,9 @@ Each is a fast-check property with at least 200 runs.
 - Spec 4: `Settings.streamsDir` (nullable, default null) and
   `StreamsIndex.streams[].preview` (default ""). Both have defaults, so files
   written before them still parse and `schemaVersion` stays 1.
+- Spec 6: `Settings.urlNoteShown` (default false).
+- Spec 8: `Project.autoFindAt` (nullable ISO time, default null): when Find
+  shorts ran by itself. Defaulted, so older `project.json` files parse and
+  `schemaVersion` stays 1.
+- Spec 11: `edit.ts`, pure edit functions. No schema or file format change,
+  so fixtures, Claude's JSON Schemas and migrations are unchanged.

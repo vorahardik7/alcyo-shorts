@@ -13,6 +13,7 @@ import pkg from "../../package.json";
 import { resolveBinDir } from "./bin";
 import { handle, handlePreload, sendEvent } from "./ipc";
 import { DropBox } from "./drops";
+import { EditorService } from "./editor";
 import { MEDIA_SCHEME, mediaHandler } from "./media-protocol";
 import { createHandlers } from "./ipc/handlers";
 import { findLinkInArgv, LinkQueue, linkEvent } from "./links";
@@ -401,6 +402,7 @@ function run(): void {
       planner,
       renders,
       drops,
+      editor: new EditorService({ streams, profiles: profileStore }),
       reveal: (path) => shell.showItemInFolder(path),
       now: () => performance.now(),
       streams,

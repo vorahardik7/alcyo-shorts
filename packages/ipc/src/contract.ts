@@ -2,6 +2,11 @@
 // needs; later specs add the rest of section 10 here.
 import {
   AnalysisStepName,
+  CaptionPreset,
+  HookPreset,
+  Line,
+  Platform,
+  Word,
   AppLink,
   ClipFile,
   CreatorProfile,
@@ -58,6 +63,37 @@ export const StreamSummary = z.object({
   missing: z.boolean(),
 });
 export type StreamSummary = z.infer<typeof StreamSummary>;
+
+/** The editor's view of one version (spec 11). Words and silences cover the short ± 60 s. */
+export const EditorView = z.object({
+  version: ShortVersion,
+  head: z.number().int().positive(),
+  /** An autosaved draft newer than the head, when editing the head. */
+  draft: Draft.nullable(),
+  versions: z.array(VersionSummary),
+  /** The message that asked for this version, as text. */
+  fromMessage: z.string().max(4000).nullable(),
+  source: z.object({
+    src: z.string().startsWith("alcyo-media://").nullable(),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    fpsNum: z.number().int().positive(),
+    fpsDen: z.number().int().positive(),
+    durationMs: Ms,
+    /** alcyo-media:// URL of peaks.bin (Int8 min/max, 100 per second), when built. */
+    peaks: z.string().nullable(),
+    /** Thumbnails every everyMs, numbered from 1; count 0 when none. */
+    thumbs: z.object({ base: z.string(), everyMs: Ms, count: z.number().int().nonnegative() }),
+  }),
+  window: z.object({ fromMs: Ms, toMs: Ms }),
+  words: z.array(Word),
+  lines: z.array(Line),
+  silences: z.array(z.object({ startMs: Ms, endMs: Ms })),
+  captionPresets: z.array(CaptionPreset),
+  hookPresets: z.array(HookPreset),
+  platforms: z.array(Platform),
+});
+export type EditorView = z.infer<typeof EditorView>;
 
 /** The agent working on a stream: Find shorts, or a chat message. */
 export const AgentWork = z.object({ jobId: Id, label: z.string().max(120) });
@@ -299,9 +335,22 @@ export const contract = {
     ]),
   },
   "short:saveDraft": { input: ShortInput.extend({ short: Short }), output: z.object({}) },
+  /**
+   * Saves an editor edit as a user version and posts a version message.
+   * parent: the version it was edited from (a branch), else the head.
+   */
   "short:saveVersion": {
-    input: ShortInput.extend({ short: Short, note: z.string().max(200) }),
+    input: ShortInput.extend({
+      short: Short,
+      note: z.string().max(200),
+      parent: z.number().int().positive().optional(),
+    }),
     output: ShortVersion,
+  },
+  /** Everything the editor needs for one version, in one call. */
+  "editor:open": {
+    input: ShortInput.extend({ version: z.number().int().positive().optional() }),
+    output: EditorView,
   },
   "short:restore": {
     input: ShortInput.extend({ version: z.number().int().positive() }),

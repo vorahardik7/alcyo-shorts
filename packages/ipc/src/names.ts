@@ -51,6 +51,7 @@ export const CHANNELS = [
   "short:get",
   "short:versions",
   "short:preview",
+  "editor:open",
   "drop:use",
   "short:saveDraft",
   "short:saveVersion",

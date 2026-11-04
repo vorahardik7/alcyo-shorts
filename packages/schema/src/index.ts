@@ -13,3 +13,4 @@ export * from "./time.ts";
 export * from "./checks.ts";
 export * from "./migrate.ts";
 export * from "./files.ts";
+export * from "./edit.ts";

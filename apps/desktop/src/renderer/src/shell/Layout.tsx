@@ -141,8 +141,11 @@ export function Layout() {
   useEffect(() => watchProfile(), []);
   useEffect(() => watchRenders(), []);
   const pathname = useLocation({ select: (l) => l.pathname });
-  // Setup and Settings take the whole window; Settings brings its own nav.
-  const fullWindow = pathname === "/setup" || inSettings(pathname);
+  // Setup, Settings and the editor take the whole window.
+  const fullWindow =
+    pathname === "/setup" ||
+    inSettings(pathname) ||
+    /\/short\/[^/]+\/v\/[^/]+\/edit$/.test(pathname);
 
   if (!ready) return <Splash />;
 
