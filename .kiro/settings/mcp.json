@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "alcyo": {
+      "command": "node",
+      "args": ["packages/mcp/dist/index.js", "--root", "examples"],
+      "disabled": false,
+      "autoApprove": [
+        "probe_video",
+        "open_project",
+        "list_shorts",
+        "get_transcript_window",
+        "get_thread",
+        "validate_version"
+      ]
+    }
+  }
+}
