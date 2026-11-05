@@ -1,4 +1,4 @@
-// The composer's model picker, laid out like T3 Code's: a trigger with the
+// The composer's model picker: a trigger with the
 // agent's mark and the model name, and a popover above it with a rail of
 // agents on the left and that agent's models on the right. Agents that
 // aren't installed or signed in stay visible but can't be picked, with a note
@@ -105,7 +105,7 @@ export function ModelPicker({ compact = false }: { compact?: boolean }) {
   const none = active === null || !readiness(agent).ready;
 
   return (
-    // Not relative: the panel anchors to the composer card, as in T3 Code.
+    // Not relative: the panel anchors to the composer card.
     <div className="min-w-0">
       <button
         type="button"
@@ -166,7 +166,7 @@ function PickerPanel({
   const search = useRef<HTMLInputElement>(null);
 
   const q = query.trim().toLowerCase();
-  // Typing searches every agent, like T3 Code; empty shows the rail's agent.
+  // Typing searches every agent; empty shows the rail's agent.
   const rows = useMemo(() => {
     const agents = q.length > 0 ? RAIL : [rail];
     return agents.flatMap((a) =>

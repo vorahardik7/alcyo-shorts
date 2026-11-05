@@ -76,4 +76,4 @@ Non-video files get a plain message.
 - Per-short proxies: a source that doesn't play directly previews only once
   the full proxy is built.
 - The creator's name and avatar in the sidebar; the footer has the Settings
-  gear instead, following T3 Code.
+  gear instead.

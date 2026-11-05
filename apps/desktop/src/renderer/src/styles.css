@@ -3,7 +3,7 @@
 /* Visual system: neutral layers a step apart, one blue accent, footage as
    the only loud thing on screen. */
 @theme {
-  /* Near-black canvas like T3 Code; the sidebar sits on the same black and
+  /* Near-black canvas; the sidebar sits on the same black and
      a hairline separates them. Surfaces step up in small, even amounts. */
   --color-bg: #08080a;
   --color-sidebar: #08080a;

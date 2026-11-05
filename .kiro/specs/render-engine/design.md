@@ -54,7 +54,7 @@ path). In the worker, `RenderGate` holds analysis's background steps.
 
 ## UI pass
 
-From a delegated read of T3 Code's source (`b183048`):
+The layout, from a study of desktop chat apps' sidebars and settings:
 
 - Window: macOS `hiddenInset` with traffic lights at `{ x: 16, y: 19 }`.
 - Sidebar 264 px: 52 px drag bar with the glyph and "Alcyo Shorts", a

@@ -154,7 +154,7 @@ export function Composer({
   /** What + > Choose a file does on this screen. */
   onFile: () => void;
   className?: string;
-  /** The agent and model picker in the footer, as in T3 Code. */
+  /** The agent and model picker in the footer. */
   showModel?: boolean;
 }) {
   const [text, setText] = useState("");
@@ -338,7 +338,7 @@ export function Home() {
     <section className="relative flex h-full flex-col">
       <div className="drag h-[52px] shrink-0" aria-hidden />
       <div className="flex min-h-0 flex-1 overflow-y-auto px-6 sm:px-12">
-        {/* Like T3 Code's new thread: a headline, then the composer at the
+        {/* A new thread: a headline, then the composer at the
             center of the window, then a few quiet ways to start. */}
         <div
           data-testid="empty-thread"

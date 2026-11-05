@@ -106,7 +106,7 @@ interface AgentState {
   tone: "ok" | "warn" | "bad" | "idle";
 }
 
-/** One status line per agent, like T3 Code's provider rows. No paths. */
+/** One status line per agent. No paths. */
 function agentState(report: SetupReport | null, id: LocalAgentId): AgentState {
   if (report === null) {
     return { headline: "Checking", detail: "Looking for it on this computer.", tone: "idle" };

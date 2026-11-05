@@ -2,7 +2,7 @@
 
 Source: docs/build-plan.md v3, sections 15, 18 and 23 spec 9. Depends on
 specs 3, 4 and 8. This spec also carries a UI pass the owner asked for on
-Nov 3: a new logo, a T3 Code-style sidebar, home and Settings, and agent
+Nov 3: a new logo, a new sidebar, home and Settings, and agent
 settings without paths everywhere.
 
 ## Requirements
@@ -51,7 +51,7 @@ settings without paths everywhere.
 ### Requirement 5: UI pass (owner request)
 
 1. A new app icon and mark, drawn for 16 px to 1024 px.
-2. THE sidebar SHALL follow T3 Code's layout: a 52 px top bar with the
+2. THE sidebar SHALL have a 52 px top bar with the
    name, a search row with New stream, stream rows with a monogram, time
    and preview, and a footer with Settings and the render queue.
 3. Home SHALL center the composer with the headline above and quiet

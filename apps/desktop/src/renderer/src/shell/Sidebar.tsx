@@ -1,4 +1,4 @@
-// Sidebar (plan section 4), laid out like T3 Code's: a 52 px top bar with the
+// Sidebar (plan section 4): a 52 px top bar with the
 // traffic lights and the name, a search row with New stream, the stream
 // rows, and a footer with Settings and the render queue.
 import type { StreamSummary } from "@alcyo/ipc";
@@ -167,7 +167,7 @@ export function Sidebar() {
       data-testid="sidebar"
       className="flex w-[256px] shrink-0 flex-col border-r border-hairline bg-sidebar"
     >
-      {/* Like T3 Code: the traffic lights, then the name, all one drag region. */}
+      {/* The traffic lights, then the name, all one drag region. */}
       <div
         className={`drag flex h-[52px] shrink-0 items-center pr-3 ${isMac ? "pl-[78px]" : "pl-4"}`}
       >
@@ -227,7 +227,7 @@ export function Sidebar() {
       </nav>
 
       <footer className="flex shrink-0 flex-col px-2 pt-1 pb-2">
-        {/* Compact icon buttons, one row, like T3 Code's sidebar footer. */}
+        {/* Compact icon buttons in one row. */}
         <div className="flex items-center gap-0.5">
           <Link
             to="/settings"

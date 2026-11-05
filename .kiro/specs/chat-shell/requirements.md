@@ -2,7 +2,7 @@
 
 Source: docs/build-plan.md v3, sections 4, 5, 18 and 23 spec 10. Depends
 on specs 8 and 9. The sidebar, home and Settings layout from spec 9's UI
-pass (after T3 Code) stays.
+pass stays.
 
 ## Requirements
 

@@ -7,22 +7,54 @@ the build machine. This page answers the rules' questions in their order.
 
 ## 1. Surfaces
 
-- **Kiro agent sessions** (the Kiro agent over ACP, with the same hook engine
-  as CLI V3) built specs 1 to 13: planning each spec, writing code and tests,
-  running the checks, and committing.
-- **kiro-cli 2.34.0** was used to prove the hooks on both engines (the V2
-  default and `--agent-engine v3`), see
+- **Kiro agent sessions** from kiro-cli (the same hook engine as CLI V3)
+  built every spec except 3 and 4: planning each spec, writing code and
+  tests, running the checks, and committing.
+- **A kiro-cli chat** built specs 3 (`media-engine`) and 4
+  (`project-store`), and fixed the Back button on the way.
+- **kiro-cli 2.34.0** was also used to prove the hooks on both engines (the
+  V2 default and `--agent-engine v3`), see
   [`hook-self-test.md`](.kiro/specs/project-setup/hook-self-test.md), and
   to validate the custom agent (`kiro-cli agent validate`).
-- **Kiro's MCP client** called the project's own MCP server to check the
-  demo project and renders (section 6).
-- Sub-agents ran research in parallel with the build, for example how T3
-  Code lays out its provider settings and sidebar before spec 9's UI pass.
+- **Kiro's sub-agents**: `introspect` read Kiro's own docs before the agent
+  wrote the hook files and the custom agent, so both follow the documented
+  format; `context-gatherer` collected the code spec 6 builds on.
+- **Kiro's `createHook` tool** wrote the hooks in spec 1.
 
 The Kiro IDE wasn't used: every spec ran from the terminal, through Kiro
 agent sessions and kiro-cli, by preference. The plan had wanted the IDE for
 `schema`, for its spec Correctness feature; instead, the correctness
 properties became fast-check tests (section 7).
+
+### The sessions
+
+Read from the session records Kiro keeps on the build machine (times are
+Pacific).
+
+| When         | Surface       | Length  | Work                                                    |
+| ------------ | ------------- | ------- | ------------------------------------------------------- |
+| Nov 1, 11:41 | Agent session | 3 h     | Refining the build plan; the repo's first scaffold      |
+| Nov 1, 14:43 | Agent session | 47 min  | Spec 1: steering, hooks, MCP config, monorepo, CI       |
+| Nov 1, 15:27 | Both          | minutes | The hook self-test on both engines                      |
+| Nov 1, 16:19 | Agent session | 45 min  | `app-shell-polish` and spec 2 (`schema`)                |
+| Nov 1, 17:24 | kiro-cli chat | 75 min  | Specs 3 and 4                                           |
+| Nov 2, 20:05 | Agent session | 2 h 10  | Specs 5, 6 and 7                                        |
+| Nov 3, 09:45 | Agent session | 10 h 49 | Specs 8 to 13                                           |
+| Nov 4, 13:39 | Agent session | 3 h 33  | A UI redesign pass over the shell, sidebar and composer |
+
+### By the numbers
+
+Across those sessions:
+
+- About 22 hours of sessions and 1,934 credits in the agent sessions (the
+  kiro-cli chat doesn't record credits).
+- About 2,100 tool calls: 1,030 shell commands, 720 file writes and edits
+  across 374 files, and 300 file reads.
+- 45 commits, the repo's whole history through spec 12.
+- 1,089 hook runs (section 3).
+- The checks the agent ran on its own work: lint and format about 260
+  times, typecheck 194, unit tests 147, Playwright 127, build 83 and
+  packaging 20.
 
 ## 2. Custom agents
 
@@ -39,17 +71,18 @@ Run it with `kiro-cli chat --agent reviewer "Review spec render-engine"`.
 
 ## 3. Hooks
 
-Five files in [`.kiro/hooks/`](.kiro/hooks/):
+Seven hooks in five files in [`.kiro/hooks/`](.kiro/hooks/), with how often each
+ran in the sessions above:
 
-| Hook                      | Trigger                             | What it does                                                                                                                 |
-| ------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `checks-after-task`       | PostTaskExec                        | `turbo run lint typecheck test` after each spec task, cached per package.                                                    |
-| `checks-before-done`      | Stop                                | Reminds the agent to run the checks (and build and package at the end of a spec) and say which ran.                          |
-| `lint-on-save`            | PostFileSave `.ts`/`.tsx`           | ESLint `--fix` and Prettier on the one saved file (`scripts/hooks/lint-file.mjs`).                                           |
-| `validate-project-files`  | PostFileSave on project JSON        | `pnpm plan:validate`: every project, version, clip, profile and thread file against the Zod schemas.                         |
-| `schema-change-followups` | PostFileSave `packages/schema/src/` | Prompts the agent to update fixtures, the demo project, migrations and the JSON Schemas sent to the agent.                   |
-| `ipc-contract-followups`  | PostFileSave `packages/ipc/src/`    | Prompts for a Zod-checked handler and a handler test for every new channel. It fired while `demo:open` was added in spec 13. |
-| `guard-footage`           | PreToolUse `shell`                  | Blocks commands that look like they upload or commit video or audio.                                                         |
+| Hook                      | Trigger                             | What it does                                                                                                                                                                                                                  | Runs |
+| ------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| `checks-after-task`       | PostTaskExec                        | `turbo run lint typecheck test` after a spec task. The specs were built in agent sessions, not with the spec task runner, so it never had a task to follow; `checks-before-done` and the agent's own check runs did that job. | 0    |
+| `checks-before-done`      | Stop                                | Reminds the agent to run the checks (and build and package at the end of a spec) and say which ran.                                                                                                                           | 26   |
+| `lint-on-save`            | PostFileSave `.ts`/`.tsx`           | ESLint `--fix` and Prettier on the one saved file (`scripts/hooks/lint-file.mjs`).                                                                                                                                            | 296  |
+| `validate-project-files`  | PostFileSave on project JSON        | `pnpm plan:validate`: every project, version, clip, profile and thread file against the Zod schemas.                                                                                                                          | 2    |
+| `schema-change-followups` | PostFileSave `packages/schema/src/` | Prompts the agent to update fixtures, the demo project, migrations and the JSON Schemas sent to the agent.                                                                                                                    | 31   |
+| `ipc-contract-followups`  | PostFileSave `packages/ipc/src/`    | Prompts for a Zod-checked handler and a handler test for every new channel. It fired while `demo:open` was added in spec 13.                                                                                                  | 10   |
+| `guard-footage`           | PreToolUse `shell`                  | Blocks commands that look like they upload or commit video or audio.                                                                                                                                                          | 724  |
 
 **guard-footage is one of three layers.** Video and audio must never leave
 the computer or reach git (except the demo footage in `examples/demo/`).
@@ -62,7 +95,9 @@ the computer or reach git (except the demo footage in `examples/demo/`).
    ffmpeg writing to a network output, and
    `git add` of media outside `examples/demo/`. The self-test showed it
    blocking `curl -T hook-selftest-cli.mp4 https://example.invalid/upload`
-   on V3, with the agent reporting the reason and not retrying.
+   on V3, with the agent reporting the reason and not retrying. Across the
+   build it checked 724 shell commands; the self-test's upload was the only
+   one it had to block.
 2. **git pre-commit hook**, installed by `pnpm hooks:install`
    ([`scripts/install-git-hooks.mjs`](scripts/install-git-hooks.mjs)),
    which runs `scripts/check-no-media.mjs --staged`.
@@ -85,7 +120,7 @@ Fourteen specs in [`.kiro/specs/`](.kiro/specs/), each with
 `demo-and-docs`.
 
 Each spec ended with lint, typecheck, unit tests, build, the Playwright
-tests and a packaged macOS build, then one commit. When the build changed a
+tests and a packaged macOS build, then its commits. When the build changed a
 decision, the spec and the plan were updated with it (for example the
 render engine's move from one input per segment to one sequential decoder,
 recorded in `render-engine/requirements.md` and the plan's audit notes).
@@ -102,6 +137,10 @@ Seven files in [`.kiro/steering/`](.kiro/steering/):
   for media, render, import and profile; `claude.md` for planner and
   profile; `ui.md` for the renderer.
 
+The three always-on files loaded in every session. The file-match ones
+loaded when their code was touched: `electron` and `ui` in 6 sessions,
+`ffmpeg` and `claude` in 3.
+
 ## 6. MCP
 
 [`packages/mcp`](packages/mcp) is Alcyo's own MCP server, configured in
@@ -111,8 +150,11 @@ Seven tools with Zod inputs: `probe_video`, `open_project`, `list_shorts`,
 `render_short`. The six read-only tools are auto-approved. Every path is
 resolved through symlinks and must stay inside the root.
 
-Kiro used it to check work instead of trusting it. In spec 13,
-`render_short` on the demo's editor version returned
+Kiro used it to check work instead of trusting it. The agent started the
+built server from the shell and spoke MCP to it over stdio (`initialize`,
+then `tools/call`): `open_project`, `probe_video`, `validate_version` and
+`render_short`. In spec 13, `render_short` on the demo's editor version
+returned
 `1080 × 1920, h264/aac` with the expected length, and frames from that file
 showed the crop following the moving box. That check also caught a bug in
 the demo footage: the "boss" box hadn't been moving at all (ffmpeg's
