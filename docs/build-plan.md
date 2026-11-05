@@ -749,7 +749,7 @@ A message in a stream thread becomes exactly one action. Claude chooses the acti
 - Setup checks ffmpeg has `subtitles` (libass) and libx264, and runs the encoder test.
 - Third-party notices: ffmpeg (GPL builds), whisper.cpp (MIT), yt-dlp (Unlicense), Silero VAD (MIT), JASSUB and libass, and the fonts.
 - On macOS, ad-hoc sign rather than ship unsigned, or downloaded copies show as damaged. Test on a second Mac.
-- CI: `.github/workflows/ci.yml`, a matrix on `macos-14` and `windows-latest`: fetch binaries, checks, package, Playwright demo test, upload installers. A tag push attaches both to a GitHub Release. Workflows are written in spec 1 and run once the repo exists.
+- CI: `.github/workflows/ci.yml`, a matrix on `macos-15` and `windows-latest`: fetch binaries, checks, package, Playwright demo test, upload installers. A tag push attaches both to a GitHub Release. Workflows are written in spec 1 and run once the repo exists.
 
 ---
 
@@ -1001,7 +1001,7 @@ Side by side: 3, 4 and 5; then 6, 7 and 9; then 8; then 10 and 12; then 11.
 - `scripts/fetch-binaries` SHALL fetch or build pinned ffmpeg, ffprobe, whisper-cli and yt-dlp, copy the Silero model, verify checksums, and fail plainly on a mismatch.
 - THE repo SHALL have an MIT `LICENSE`, third-party notices in the app, and a `.gitignore` as in section 21.
 - `guard-footage` SHALL exit 2 with a reason when a shell command would upload video or audio or `git add` media outside `examples/demo/`. `check-no-media.mjs` SHALL fail on tracked media outside `examples/demo/`, and CI SHALL run it.
-- `.github/workflows/ci.yml` SHALL run checks and packaging on `macos-14` and `windows-latest`.
+- `.github/workflows/ci.yml` SHALL run checks and packaging on `macos-15` and `windows-latest`.
 - THE spec SHALL end with a hook self-test: save a dummy `.ts` file and run a dummy blocked command, and record which hooks fired.
 
 ### 2. schema

@@ -136,7 +136,7 @@ leaving my computer by accident.
 
 ### Requirement 9: CI (P0)
 
-1. `.github/workflows/ci.yml` SHALL run the checks and packaging on `macos-14`
+1. `.github/workflows/ci.yml` SHALL run the checks and packaging on `macos-15`
    and `windows-latest`.
 
 ### Requirement 10: Hook self-test (P0)

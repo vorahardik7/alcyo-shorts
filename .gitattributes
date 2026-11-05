@@ -1,0 +1,11 @@
+# Check out text as LF on every OS, so Prettier's endOfLine "lf" passes on
+# Windows runners (core.autocrlf is true there).
+* text=auto eol=lf
+
+*.mp4 binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
+*.bin binary
+*.woff2 binary

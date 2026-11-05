@@ -311,7 +311,7 @@ real field name.
 ## CI
 
 `.github/workflows/ci.yml`, on push and pull_request, with a matrix of
-`macos-14` and `windows-latest`. Steps: checkout, pnpm (from `packageManager`),
+`macos-15` and `windows-latest`. Steps: checkout, pnpm (from `packageManager`),
 Node 24 with the pnpm cache, `pnpm install --frozen-lockfile`, `pnpm
 check:media`, `pnpm fetch-binaries`, `pnpm lint`, `pnpm typecheck`, `pnpm
 test`, `pnpm build`, `pnpm test:e2e`, `pnpm package:mac` or `package:win`, and

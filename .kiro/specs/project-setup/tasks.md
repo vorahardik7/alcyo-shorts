@@ -54,7 +54,7 @@ and test after each task. Build, e2e and packaging run in task 10.
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.2, 4.3, 4.4, 5.3_
 
 - [x] 9. CI
-  - `.github/workflows/ci.yml`: matrix of macos-14 and windows-latest, with media check, binaries, checks, e2e, package, artifacts
+  - `.github/workflows/ci.yml`: matrix of macos-15 and windows-latest, with media check, binaries, checks, e2e, package, artifacts
   - _Requirements: 8.4, 9.1_
 
 - [x] 10. Final checks and hook self-test

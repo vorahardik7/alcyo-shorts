@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          - os: macos-15
             target: mac-arm64
             package: package:mac
             executable: apps/desktop/release/mac-arm64/Alcyo Shorts.app/Contents/MacOS/Alcyo Shorts
