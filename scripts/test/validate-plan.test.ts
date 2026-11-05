@@ -61,7 +61,12 @@ describe("validate", () => {
       match: { ...F.clipFile.match, confidence: 2 },
     });
     const bad = (await validate([dir])).filter((r) => r.issues.length > 0);
-    expect(bad.map((r) => [r.file.slice(dir.length + 1), r.issues.map((i) => i.path)])).toEqual([
+    expect(
+      bad.map((r) => [
+        r.file.slice(dir.length + 1).replaceAll("\\", "/"),
+        r.issues.map((i) => i.path),
+      ]),
+    ).toEqual([
       ["My Stream.alcyo/clips/c1/clip.json", ["match.confidence"]],
       ["My Stream.alcyo/shorts/sh1/versions/0002.user.json", ["createdBy"]],
     ]);

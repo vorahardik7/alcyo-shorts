@@ -71,7 +71,8 @@ jobs:
 
       - name: Unit tests
         # --continue: report every failing package, not just the first.
-        run: pnpm exec turbo run test --continue
+        # Real-tool tests (ffmpeg renders, spawned node) are slower on shared runners.
+        run: pnpm exec turbo run test --continue -- --testTimeout=30000
 
       - name: Build
         run: pnpm build
