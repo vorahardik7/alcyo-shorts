@@ -55,8 +55,10 @@ test.describe("demo stream", () => {
   test("short 1 renders to a checked 1080 × 1920 MP4", async () => {
     test.setTimeout(240_000);
     await page.getByTestId("shorts-message").scrollIntoViewIfNeeded();
-    const card = page.getByTestId("shorts-message").getByTestId("short-card").first();
-    await card.getByTestId("render-short").click();
+    const cards = page.getByTestId("shorts-message").getByTestId("short-card");
+    // Every card, so first() is short 1 and not whichever preview loaded first.
+    await expect(cards).toHaveCount(3, { timeout: 15_000 });
+    await cards.first().getByTestId("render-short").click();
     const bubble = page.getByTestId("render-message").last();
     await expect(bubble.getByTestId("render-status")).toHaveAttribute("data-state", "done", {
       timeout: 200_000,

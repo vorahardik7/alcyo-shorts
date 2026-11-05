@@ -4,7 +4,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { type Launched, launch } from "./launch";
+import { type Launched, launch, showInvisibly } from "./launch";
 
 const out = join(import.meta.dirname, "..", "..", "..", ".agent-runs", "screens", "pass3");
 mkdirSync(out, { recursive: true });
@@ -18,7 +18,10 @@ async function go(route: string) {
   }, route);
   await page.waitForTimeout(250);
 }
-const shot = (name: string) => page.screenshot({ path: join(out, `${name}.png`) });
+const shot = async (name: string) => {
+  await showInvisibly(run.app);
+  await page.screenshot({ path: join(out, `${name}.png`) });
+};
 
 test.describe("@screens fixture: setup complete", () => {
   test.beforeAll(async () => {

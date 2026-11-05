@@ -2,7 +2,7 @@
 // executable when ALCYO_E2E_EXECUTABLE is set.
 import { spawn } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
-import { command, type Launched, launch } from "./launch";
+import { command, type Launched, launch, showInvisibly } from "./launch";
 
 let run: Launched;
 let page: Page;
@@ -25,13 +25,7 @@ test("opens to the chat shell with an empty sidebar", async () => {
   await expect(page.getByTestId("empty-streams")).toContainText("No streams yet");
   await expect(page.getByTestId("empty-thread")).toBeVisible();
   await expect(page.getByPlaceholder("Paste a stream link or choose a recording")).toBeVisible();
-  // A never-shown window gives no frame to capture on Windows: show it, inactive
-  // and invisible, as the editor tests do.
-  await run.app.evaluate(({ BrowserWindow }) => {
-    const w = BrowserWindow.getAllWindows()[0]!;
-    w.setOpacity(0);
-    w.showInactive();
-  });
+  await showInvisibly(run.app);
   await page.screenshot({ path: testInfo.outputPath("shell.png") });
 });
 

@@ -4,7 +4,7 @@ import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { launch, type Launched } from "./launch";
+import { launch, type Launched, showInvisibly } from "./launch";
 import { seed, sourceId, streamId } from "./seed";
 
 const mod = process.platform === "darwin" ? "Meta" : "Control";
@@ -48,14 +48,13 @@ test.beforeAll(async () => {
     ALCYO_STREAMS_DIR: join(userData, "Streams"),
   });
   page = run.page;
-  await run.app.evaluate(({ BrowserWindow }) => {
-    const w = BrowserWindow.getAllWindows()[0]!;
-    w.setOpacity(0);
-    w.showInactive();
-  });
+  await showInvisibly(run.app);
   await page.getByTestId("stream-row").filter({ hasText: "Boss Fight Stream" }).click();
   await page.getByTestId("find-shorts").click();
-  const card = page.getByTestId("shorts-message").getByTestId("short-card").first();
+  const cards = page.getByTestId("shorts-message").getByTestId("short-card");
+  // Every card, so first() is short 1 and not whichever preview loaded first.
+  await expect(cards).toHaveCount(3, { timeout: 15_000 });
+  const card = cards.first();
   await expect(card).toBeVisible();
   shortId = (await card.getAttribute("data-short-id"))!;
 });

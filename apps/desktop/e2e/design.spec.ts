@@ -5,7 +5,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { type Page, test } from "@playwright/test";
-import { type Launched, launch } from "./launch";
+import { type Launched, launch, showInvisibly } from "./launch";
 
 const round = process.env["DESIGN_ROUND"] ?? "r0";
 const out = join(
@@ -38,7 +38,10 @@ async function go(route: string) {
   }, route);
   await page.waitForTimeout(400);
 }
-const shot = (name: string) => page.screenshot({ path: join(out, `${name}.png`) });
+const shot = async (name: string) => {
+  await showInvisibly(run.app);
+  await page.screenshot({ path: join(out, `${name}.png`) });
+};
 
 test.describe("@screens design: main screens", () => {
   test.beforeAll(async () => {

@@ -64,6 +64,19 @@ export async function launch(
   };
 }
 
+/**
+ * Shows the window inactive and fully transparent: nothing appears on screen,
+ * but it is composited. On Windows a never-shown window gives no frame to a
+ * screenshot, and canvases and captions don't paint.
+ */
+export async function showInvisibly(app: ElectronApplication): Promise<void> {
+  await app.evaluate(({ BrowserWindow }) => {
+    const w = BrowserWindow.getAllWindows()[0]!;
+    w.setOpacity(0);
+    w.showInactive();
+  });
+}
+
 /** Makes main's next file dialogs answer with these paths (null = cancelled). */
 export async function stubFileDialog(app: ElectronApplication, path: string | null): Promise<void> {
   await app.evaluate(({ dialog }, chosen) => {
