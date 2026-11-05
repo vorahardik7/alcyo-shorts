@@ -1603,7 +1603,7 @@ Rechecked Nov 5, 2026 against the [rules](https://kiroween.devpost.com/rules), [
 - [ ] Rule: the project is newly created during the submission period (opened Oct 30, 9:00 AM PDT); disclose any pre-existing code or templates
 - [x] Rule: public GitHub repo with all source, assets and instructions to run it, and an open-source license (MIT, shown in the repo's About section)
 - [x] Rule: `.kiro/` at the root with specs, hooks, steering, settings and agents, not gitignored
-- [ ] Rule: a working build judges can get for free until judging ends (Jan 29, 2027, 1:00 PM PST). Here: Mac and Windows installers on a GitHub Release by CI, plus build-from-source steps
+- [x] Rule: a working build judges can get for free until judging ends (Jan 29, 2027, 1:00 PM PST). Here: Mac and Windows installers on a GitHub Release by CI ([v0.1.0](https://github.com/vorahardik7/alcyo-shorts/releases/tag/v0.1.0), Nov 5), plus build-from-source steps
 - [ ] README with the judge path, Gatekeeper and SmartScreen steps, and the download-rights note
 - [ ] README says the full pipeline uses the judge's own Claude Code, Grok or Codex login, or an API key
 - [ ] Text description of features
