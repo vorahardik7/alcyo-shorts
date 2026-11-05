@@ -26,8 +26,8 @@ const info = (over: Record<string, unknown> = {}) =>
   JSON.stringify({
     _type: "video",
     id: "abc",
-    title: "Soul47 stream",
-    uploader: "Soul47",
+    title: "Rook42 stream",
+    uploader: "Rook42",
     upload_date: "20261030",
     duration: 10712.4,
     webpage_url: "https://www.youtube.com/watch?v=abc",
@@ -84,8 +84,8 @@ describe("parseInfo and classifyLink", () => {
       parts: 2,
       info: {
         id: "abc",
-        title: "Soul47 stream",
-        uploader: "Soul47",
+        title: "Rook42 stream",
+        uploader: "Rook42",
         uploadDate: "20261030",
         durationMs: 10_712_400,
         webpageUrl: "https://www.youtube.com/watch?v=abc",
@@ -105,7 +105,7 @@ describe("parseInfo and classifyLink", () => {
     expect(parseInfo("not json", "https://x.test")).toEqual({ kind: "unsupported" });
     expect(parseInfo("{}", "https://x.test")).toEqual({ kind: "unsupported" });
     expect(isClipUrl("https://clips.twitch.tv/FunnyClip-abc")).toBe(true);
-    expect(isClipUrl("https://www.twitch.tv/soul47/clip/FunnyClip-abc")).toBe(true);
+    expect(isClipUrl("https://www.twitch.tv/rook42/clip/FunnyClip-abc")).toBe(true);
     expect(isClipUrl("https://www.youtube.com/clip/Ugkx123")).toBe(true);
     expect(isClipUrl("https://www.twitch.tv/videos/123")).toBe(false);
     expect(isClipUrl("https://www.youtube.com/watch?v=abc")).toBe(false);

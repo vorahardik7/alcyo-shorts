@@ -192,10 +192,10 @@ onEvent)` returns `{ jobId, done, cancel }`. Analysis has no reply timeout.
   clip in a folder named with spaces, quotes and non-ASCII. Skipped, with a
   note, when the binaries or the whisper model aren't present.
 
-## Real speech check: Soul47 (Nov 1, 2026)
+## Real speech check (Nov 1, 2026)
 
-`~/Desktop/Soul47_Edit_Assets` holds a 4:55 edit of Soul's 4h42m VOD plus
-YouTube's auto-caption word starts for the whole VOD (`transcript/words.json`).
+A local folder (not in the repo) holds a 4:55 edit of a creator's 4h42m VOD
+plus YouTube's auto-caption word starts for the whole VOD (`transcript/words.json`).
 Matching 4-word runs of our transcript of the edit against the VOD's words
 placed 341 of 762 words and recovered the edit's 29 cuts and their VOD times,
 which line up with the cut list in `PROMPT_5min_edit.md`. Within each cut, our

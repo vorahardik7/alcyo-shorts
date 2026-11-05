@@ -34,7 +34,7 @@ describe("names and ids", () => {
     expect(safeFolderName("ends with dots... ")).toBe("ends with dots");
     expect(safeFolderName("   ")).toBe("Stream");
     expect(safeFolderName("x".repeat(200))).toHaveLength(80);
-    expect(safeFolderName("Soul47 名前 🔥")).toBe("Soul47 名前 🔥");
+    expect(safeFolderName("Rook42 名前 🔥")).toBe("Rook42 名前 🔥");
   });
 
   it("gives prefixed ids that are safe in paths and links", () => {
@@ -143,18 +143,21 @@ describe("a stream folder", () => {
   beforeEach(async () => {
     const elsewhere = join(root, "Videos 名前");
     await mkdir(elsewhere);
-    video = join(elsewhere, "soul47 stream.mp4");
+    video = join(elsewhere, "rook42 stream.mp4");
     await writeFile(video, Buffer.alloc(9 * 1024 * 1024, 7));
-    const { folder } = await createStream({ dir: join(root, "Streams"), name: "Soul47: EX Peter" });
+    const { folder } = await createStream({
+      dir: join(root, "Streams"),
+      name: "Rook42: Boss Rush",
+    });
     store = await ProjectStore.open(folder, now);
   });
 
   it("is created in the section 15 layout, with a unique safe name", async () => {
-    expect(store.folder).toBe(join(root, "Streams", "Soul47- EX Peter.alcyo"));
+    expect(store.folder).toBe(join(root, "Streams", "Rook42- Boss Rush.alcyo"));
     expect((await readdir(store.folder)).sort()).toEqual(["project.json", "thread"]);
-    expect((await store.project()).name).toBe("Soul47: EX Peter");
-    const second = await createStream({ dir: join(root, "Streams"), name: "Soul47: EX Peter" });
-    expect(second.folder).toBe(join(root, "Streams", "Soul47- EX Peter 2.alcyo"));
+    expect((await store.project()).name).toBe("Rook42: Boss Rush");
+    const second = await createStream({ dir: join(root, "Streams"), name: "Rook42: Boss Rush" });
+    expect(second.folder).toBe(join(root, "Streams", "Rook42- Boss Rush 2.alcyo"));
     expect(second.project.streamId).not.toBe((await store.project()).streamId);
   });
 
@@ -168,7 +171,7 @@ describe("a stream folder", () => {
     const source = await store.addFileSource(video);
     expect(source.origin).toEqual({ kind: "file", path: video, copied: false });
     expect(source.fingerprint.sizeBytes).toBe(9 * 1024 * 1024);
-    expect(await readdir(join(root, "Videos 名前"))).toEqual(["soul47 stream.mp4"]);
+    expect(await readdir(join(root, "Videos 名前"))).toEqual(["rook42 stream.mp4"]);
     expect((await store.project()).sources).toEqual([{ sourceId: source.sourceId }]);
 
     const copied = await store.addFileSource(video, { copy: true });
@@ -215,21 +218,21 @@ describe("a stream folder", () => {
     expect((await store.clip("clip_a")).match).toEqual(match);
     expect(ProjectStore.clipMedia(saved)).toBe(media);
     // A file clip stays where it is; nothing is written next to it.
-    expect(await readdir(join(root, "Videos 名前"))).toEqual(["soul47 stream.mp4"]);
+    expect(await readdir(join(root, "Videos 名前"))).toEqual(["rook42 stream.mp4"]);
   });
 
   it("resolves media paths stored relative to the stream folder", async () => {
     const source = await store.addFileSource(video);
     const file = store.paths.source(source.sourceId);
     const saved = JSON.parse(await readFile(file, "utf8")) as { origin: { path: string } };
-    saved.origin.path = "../../Videos 名前/soul47 stream.mp4";
+    saved.origin.path = "../../Videos 名前/rook42 stream.mp4";
     await writeFile(file, JSON.stringify(saved));
     expect((await store.source(source.sourceId)).origin.path).toBe(video);
     expect((await store.sources())[0]?.missing).toBe(false);
 
     await store.addClip({
       clipId: "clip_r",
-      origin: { kind: "file", path: "../../Videos 名前/soul47 stream.mp4" },
+      origin: { kind: "file", path: "../../Videos 名前/rook42 stream.mp4" },
       durationMs: 0,
     });
     expect((await store.clip("clip_r")).origin.path).toBe(video);

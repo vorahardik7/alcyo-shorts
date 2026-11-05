@@ -105,7 +105,7 @@ export const source: Source = {
 
 export const profile: CreatorProfile = {
   schemaVersion: 1,
-  name: "Soul",
+  name: "Rook",
   streams: "Minecraft hardcore and chat hangouts",
   audience: "Viewers 16 to 24",
   goodMoments: ["funny", "rage", "close-call"],
@@ -203,7 +203,7 @@ export const presets: PresetFile = {
 export const template: Template = {
   schemaVersion: 1,
   kind: "alcyo-template",
-  name: "Soul's look",
+  name: "Rook's look",
   captionPresets: presets.captionPresets,
   hookPresets: presets.hookPresets,
   targetLengthMs: { min: 25_000, max: 40_000 },

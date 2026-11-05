@@ -180,7 +180,7 @@ describe("profileText", () => {
     expect(text).toBe(
       [
         "# Creator profile",
-        "Streams: Soul: Minecraft hardcore and chat hangouts. Viewers: Viewers 16 to 24",
+        "Streams: Rook: Minecraft hardcore and chat hangouts. Viewers: Viewers 16 to 24",
         "Good moments: funny, rage, close calls.",
         'Length: 25 to 40 s. Titles: Short, caps, no emoji. Examples: "HE DID NOT SEE THAT"',
         "Avoid: sponsor mentions.",
@@ -216,10 +216,10 @@ describe("templates", () => {
   });
 
   it("turns [V4+ Styles] into caption and hook presets, with a font fallback note", () => {
-    const got = parseAss(ASS, "Soul look.ass");
+    const got = parseAss(ASS, "Rook look.ass");
     expect(got.captionPresets).toEqual([
       {
-        id: "ass-soul-look-ass-default",
+        id: "ass-rook-look-ass-default",
         name: "Default",
         font: "Anton",
         sizePx: 96,
@@ -245,12 +245,12 @@ describe("templates", () => {
   });
 
   it("exports and re-imports a template with unique ids", () => {
-    const t = exportTemplate("Soul's look", F.presets, F.profile);
+    const t = exportTemplate("Rook's look", F.presets, F.profile);
     expect(Template.parse(t)).toEqual(t);
     expect(t).toMatchObject({ targetLengthMs: F.profile.lengthMs, safeArea: "tiktok" });
     const back = importTemplate(JSON.parse(JSON.stringify(t)));
     expect(back.captionPresets[0]).toMatchObject({
-      id: "t-soul-s-look-bold-pop",
+      id: "t-rook-s-look-bold-pop",
       origin: "template",
     });
     expect(() => importTemplate({ kind: "something else" })).toThrow();

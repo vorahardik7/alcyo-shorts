@@ -62,14 +62,14 @@ test.describe("streams from a chosen file", () => {
   test.afterAll(async () => run.close());
 
   test("Choose a file makes a stream, analyzes it, and shows it in the sidebar", async () => {
-    const clip = makeClip(8, "Soul's stream (part 1).mp4");
+    const clip = makeClip(8, "Rook's stream (part 1).mp4");
     await stubFileDialog(run.app, clip);
     await page.getByTestId("choose-file").click();
 
     await expect.poll(() => hash(page)).toMatch(/^#\/s\/s_[0-9a-z]{10}$/);
-    await expect(page.getByTestId("thread-header")).toHaveText("Soul's stream (part 1)");
+    await expect(page.getByTestId("thread-header")).toHaveText("Rook's stream (part 1)");
     await expect(page.getByTestId("message").first()).toContainText(
-      "Added Soul's stream (part 1).mp4. It stays where it is",
+      "Added Rook's stream (part 1).mp4. It stays where it is",
     );
     await waitForStatus(page, "done");
     await expect(page.getByTestId("status-label").last()).toHaveText("Analysis finished");
@@ -80,16 +80,16 @@ test.describe("streams from a chosen file", () => {
 
     const row = page.getByTestId("stream-row");
     await expect(row).toHaveCount(1);
-    await expect(row).toContainText("Soul's stream (part 1)");
+    await expect(row).toContainText("Rook's stream (part 1)");
     await expect(row).toContainText("Analysis finished");
     // Viewing the stream marks it read.
     await expect(page.getByTestId("unread-dot")).toHaveCount(0);
 
     // The stream folder is in the streams folder; nothing went next to the clip.
     const streamsDir = run.env["ALCYO_STREAMS_DIR"]!;
-    expect(readdirSync(streamsDir)).toEqual(["Soul's stream (part 1).alcyo"]);
-    expect(readdirSync(join(clip, ".."))).toEqual(["Soul's stream (part 1).mp4"]);
-    const folder = join(streamsDir, "Soul's stream (part 1).alcyo");
+    expect(readdirSync(streamsDir)).toEqual(["Rook's stream (part 1).alcyo"]);
+    expect(readdirSync(join(clip, ".."))).toEqual(["Rook's stream (part 1).mp4"]);
+    const folder = join(streamsDir, "Rook's stream (part 1).alcyo");
     const [sourceId] = readdirSync(join(folder, "sources"));
     const analysis = readdirSync(join(folder, "sources", sourceId!, "analysis")).sort();
     expect(analysis).toEqual([
@@ -122,14 +122,14 @@ test.describe("streams from a chosen file", () => {
   });
 
   test("Back from a stream returns home, and the sidebar opens it again", async () => {
-    await page.getByTestId("stream-row").filter({ hasText: "Soul's stream" }).click();
-    await expect(page.getByTestId("thread-header")).toHaveText("Soul's stream (part 1)");
+    await page.getByTestId("stream-row").filter({ hasText: "Rook's stream" }).click();
+    await expect(page.getByTestId("thread-header")).toHaveText("Rook's stream (part 1)");
     await expect(page.getByTestId("status-label").last()).toHaveText("Analysis finished");
     await page.getByTestId("settings-row").click();
     await page.getByTestId("section-storage").click();
     await expect(page.getByTestId("streams-folder")).toHaveText(run.env["ALCYO_STREAMS_DIR"]!);
     await page.getByTestId("back").click();
-    await expect(page.getByTestId("thread-header")).toHaveText("Soul's stream (part 1)");
+    await expect(page.getByTestId("thread-header")).toHaveText("Rook's stream (part 1)");
   });
 });
 

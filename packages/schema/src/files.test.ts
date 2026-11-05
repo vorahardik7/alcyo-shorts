@@ -16,7 +16,7 @@ describe("fileKindOf", () => {
     ["thread/messages.jsonl", "messages"],
     ["examples/demo-profile.json", "profile"],
     ["userData/profile.json", "profile"],
-    ["templates/soul.alcyo-template.json", "template"],
+    ["templates/rook.alcyo-template.json", "template"],
     ["bold.preset.json", "preset"],
     ["My Stream.alcyo/renders/index.json", "renders"],
     ["userData/streams.json", "streams"],

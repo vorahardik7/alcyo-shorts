@@ -139,7 +139,7 @@ describe("section 22 rules", () => {
       info: {
         id: "x",
         title: "My Stream",
-        uploader: "Soul",
+        uploader: "Rook",
         uploadDate: "20261030",
         durationMs: 10_000,
         webpageUrl: "https://www.youtube.com/watch?v=x",

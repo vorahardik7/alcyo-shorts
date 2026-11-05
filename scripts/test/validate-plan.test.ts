@@ -28,7 +28,7 @@ function goodProject(root = "My Stream.alcyo") {
   put(`${root}/clips/c1/clip.json`, F.clipFile);
   put(`${root}/renders/index.json`, F.renderIndex);
   put("demo-profile.json", F.profile);
-  put("soul.alcyo-template.json", F.template);
+  put("rook.alcyo-template.json", F.template);
   // Not project files: ignored.
   put("package.json", { name: "x" });
   put(`${root}/cache/project.json`, "garbage");

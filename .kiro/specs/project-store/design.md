@@ -145,11 +145,11 @@ to open.
 
 ## Real run (Nov 1, 2026)
 
-`soul47_5min_final.mp4` (Soul's 4:55 YouTube edit, 1080p60 H.264/AAC, 92 MB,
+A creator's 4:55 YouTube edit (1080p60 H.264/AAC, 92 MB,
 music beds and SFX under the voice), chosen through the app with the dialog
 stubbed: stream created, file referenced in place, analysis finished in
 about 45 s on this Mac (transcript 20 s), 762 words in 79 lines. It plays
-directly, so no proxy was made. Nothing was written in the Soul47 folder.
+directly, so no proxy was made. Nothing was written in the recording's folder.
 Run it with:
 
 ```

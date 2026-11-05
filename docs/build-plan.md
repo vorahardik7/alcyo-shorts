@@ -1632,7 +1632,7 @@ These dates and rules weren't rechecked after v1 because the rules page blocked 
 | 2:15–2:45 | `.kiro/`, a spec, the guard hook blocking an upload, Kiro calling the MCP server | How Kiro built it. |
 | 2:45–2:58 | Same app on Windows, the repo link | Mac and Windows, open source. |
 
-Use your own footage or Soul's with written permission. Mute or cut music you don't own.
+Use your own footage, or another creator's with written permission. Mute or cut music you don't own.
 
 ---
 
@@ -1693,7 +1693,7 @@ As of Nov 3, local `main` only (no GitHub repo yet).
 | `app-shell-polish` (extra) | Done | Setup and Settings screens, navigation, sidebar, render queue drawer, headless e2e, screenshots. A second pass made Settings full-window with its own nav, so Back leaves Settings in one step, and quieted home, sidebar and Setup. |
 | 2 `schema` | Done | Section 22 schemas plus files, checks, time math, id mapping and snapping with property tests, Claude JSON Schemas, migrations, `plan:validate`. |
 | 3 `media-engine` | Done | `@alcyo/media`: probe, audio, silences, chunked transcript with resume, loudness, scenes, encoder test, proxy, peaks, thumbnails; cache keys; cancel; worker job. Real-tools test passes on this Mac. Not wired to a stream yet (needs spec 4). |
-| 4 `project-store` | Done | `@alcyo/store` (stream folders, streams.json, settings, thread, sources with Locate file, versions that never overwrite, drafts, transcript reads), the stream service and job queue in main, IPC for streams, analysis, thread, transcript and shorts. Choose a file makes a stream and analyzes it; the sidebar lists streams; the thread shows status with Cancel. Ran end to end on Soul's 5-minute edit. |
+| 4 `project-store` | Done | `@alcyo/store` (stream folders, streams.json, settings, thread, sources with Locate file, versions that never overwrite, drafts, transcript reads), the stream service and job queue in main, IPC for streams, analysis, thread, transcript and shorts. Choose a file makes a stream and analyzes it; the sidebar lists streams; the thread shows status with Cancel. Ran end to end on a real 5-minute stream edit. |
 | 5 `setup-and-claude` | Done | Lookup for Claude Code, Grok and Codex, with the agent's folder first on PATH so npm-installed Codex is found from Finder. Providers, `--safe-mode` retry, API backup through structured output (Sonnet 5.5 rejects forced tool use), pinned whisper download, Locate, OS-encrypted API key. No billed call was made. See `.kiro/specs/setup-and-claude/`. |
 | 6 `import-and-clips` | Done | `@alcyo/import`: yt-dlp info then download into the project, cancel removes the folder, Update downloader with SHA-256 check, viewer clips from links or files, quick analysis, transcript then audio matching (within 100 ms on generated audio), Place by hand. The format uses `<=?1080` so plain file links work. Dropped files still show a note: the preload doesn't expose file paths. See `.kiro/specs/import-and-clips/`. |
 | 7 `creator-profile` | Done | `@alcyo/profile`: interview through the signed-in agent (up to 8 questions, skips use defaults, checked with one retry), four built-in caption looks, past shorts measured in place (not copied), style summary written by the agent with measured targets, `.ass` and Alcyo template import, export. Checked live with Grok in the app. Jump cuts aren't counted; scene cuts only. See `.kiro/specs/creator-profile/`. |
@@ -1736,9 +1736,9 @@ No Windows PC is available (Hardik, Nov 1). Windows is checked only by CI on
 untested. Windows-only code paths (claude.exe lookup, nsis, EPERM retries,
 path rules) have unit tests that run on macOS.
 
-Footage on hand: `~/Desktop/Soul47_Edit_Assets` (Soul's 5-minute edit, the
-VOD's yt-dlp info and YouTube word times, cut list, fonts, CC-BY music). Used
-locally for tests only; nothing from it is in the repo.
+Footage on hand: a local folder with a creator's 5-minute edit (the
+VOD's yt-dlp info and YouTube word times, cut list, fonts, CC-BY music), used
+with permission for local tests only; nothing from it is in the repo.
 
 Waiting on Hardik: signing; and the go-ahead to create the GitHub repo.
 

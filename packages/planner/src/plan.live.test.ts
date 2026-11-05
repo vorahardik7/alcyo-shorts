@@ -1,8 +1,8 @@
 // Find shorts and a chat edit, live, on a real stream's words. Off by default:
 // each run is several real, billed requests.
-//   ALCYO_LIVE_GROK=1 pnpm --filter @alcyo/planner exec vitest run src/plan.live.test.ts
-// Needs ~/Desktop/Soul47_Edit_Assets/transcript/words.json (YouTube word
-// times for a 4.7-hour VOD; local only, never in the repo).
+//   ALCYO_LIVE_GROK=1 ALCYO_LIVE_WORDS=<words.json> pnpm --filter @alcyo/planner exec vitest run src/plan.live.test.ts
+// Needs ALCYO_LIVE_WORDS=<path to words.json> (YouTube word times for a
+// 4.7-hour VOD; local only, never in the repo).
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -25,7 +25,7 @@ import type { LlmProvider, LlmRequest } from "./llm/provider";
 import { realSpawnDeps } from "./llm/spawn";
 
 const grok = process.env["ALCYO_GROK_PATH"] ?? join(homedir(), ".local", "bin", "grok");
-const words = join(homedir(), "Desktop", "Soul47_Edit_Assets", "transcript", "words.json");
+const words = process.env["ALCYO_LIVE_WORDS"] ?? "";
 const live = process.env["ALCYO_LIVE_GROK"] === "1" && existsSync(grok) && existsSync(words);
 
 /** YouTube's [startMs, text] pairs -> words and lines of at most 12 s, split at gaps. */
@@ -69,7 +69,7 @@ function fromYouTube(pairs: [number, string][]): Transcript {
     if (/[.?!]$/.test(w.text) && cur.length >= 6) flush();
   }
   flush();
-  return { schemaVersion: 1, sourceId: "soul", language: "en", model: "youtube", words: ws, lines };
+  return { schemaVersion: 1, sourceId: "rook", language: "en", model: "youtube", words: ws, lines };
 }
 
 function inputs(): PlanInputs {
@@ -156,7 +156,7 @@ describe.skipIf(!live)("planner, live with Grok on a real VOD", () => {
       createdAt: new Date().toISOString(),
       fromMessageId: null,
       note: "",
-      sourceId: "soul",
+      sourceId: "rook",
       sourceFingerprint: "x",
       short,
     }));

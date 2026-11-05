@@ -100,13 +100,13 @@ test.describe("creator profile", () => {
     await page.getByTestId("profile-min").fill("50");
     await expect(page.getByTestId("profile-save")).toBeDisabled();
     await page.getByTestId("profile-min").fill("20");
-    await page.getByTestId("profile-name").fill("Soul");
+    await page.getByTestId("profile-name").fill("Rook");
     await page.getByTestId("profile-save").click();
     await expect(page.getByTestId("toast")).toContainText("Profile saved");
     const saved = JSON.parse(
       readFileSync(join(run.env["ALCYO_USER_DATA"]!, "profile.json"), "utf8"),
     ) as { name: string; lengthMs: { min: number } };
-    expect(saved).toMatchObject({ name: "Soul", lengthMs: { min: 20_000 } });
+    expect(saved).toMatchObject({ name: "Rook", lengthMs: { min: 20_000 } });
   });
 
   test("past shorts are measured in place, and the style is written from them", async () => {
@@ -150,7 +150,7 @@ test.describe("creator profile", () => {
       captionPresets: Array<{ id: string }>;
       targetLengthMs: { min: number };
     };
-    expect(template).toMatchObject({ kind: "alcyo-template", name: "Soul's look" });
+    expect(template).toMatchObject({ kind: "alcyo-template", name: "Rook's look" });
     expect(template.captionPresets.map((p) => p.id)).toEqual([
       "punch",
       "ass-editor-look-my-captions",

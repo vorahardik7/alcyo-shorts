@@ -200,7 +200,7 @@ describe("templates", () => {
       added: 1,
       notes: ["Papyrus isn't bundled, so Inter is used instead."],
     });
-    template = join(root, "soul.alcyo-template.json");
+    template = join(root, "rook.alcyo-template.json");
     await writeFile(template, JSON.stringify(F.template));
     expect(await service.importTemplate()).toMatchObject({ added: 2 });
     const view = await service.view();
@@ -224,7 +224,7 @@ describe("templates", () => {
     expect(out.captionPresets.map((p) => p.id)).toEqual([
       "punch",
       "ass-look-main",
-      "t-soul-s-look-bold-pop",
+      "t-rook-s-look-bold-pop",
     ]);
   });
 });

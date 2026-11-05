@@ -60,8 +60,8 @@ const linkVideo = (durationMs: number | null, over: { isClip?: boolean; title?: 
     parts: 2,
     info: {
       id: "v1",
-      title: over.title ?? "Soul47 EX Peter",
-      uploader: "Soul47",
+      title: over.title ?? "Rook42 Boss Rush",
+      uploader: "Rook42",
       uploadDate: "20261030",
       durationMs,
       webpageUrl: "https://www.youtube.com/watch?v=v1",
@@ -178,7 +178,7 @@ let deps: StreamServiceDeps;
 
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "alcyo-service-"));
-  video = join(root, "Soul47 stream.mp4");
+  video = join(root, "Rook42 stream.mp4");
   await writeFile(video, "video");
   worker = new FakeWorker();
   events = [];
@@ -216,13 +216,13 @@ describe("StreamService", () => {
   it("chooses a file, makes a stream named after it, and runs analysis to the end", async () => {
     const out = await service.chooseFile();
     if ("cancelled" in out) throw new Error("cancelled");
-    expect(out.stream).toMatchObject({ name: "Soul47 stream", missing: false });
-    expect(out.stream.folder).toBe(join(root, "Streams", "Soul47 stream.alcyo"));
+    expect(out.stream).toMatchObject({ name: "Rook42 stream", missing: false });
+    expect(out.stream.folder).toBe(join(root, "Streams", "Rook42 stream.alcyo"));
     await until(() => worker.jobs.length === 1);
 
     const job = worker.jobs[0]!;
     expect(job.request.sourcePath).toBe(video);
-    expect(job.request.analysisDir).toContain(join("Soul47 stream.alcyo", "sources"));
+    expect(job.request.analysisDir).toContain(join("Rook42 stream.alcyo", "sources"));
     job.emit(progress(10));
     job.finish();
     await service.idle();
@@ -411,11 +411,11 @@ describe("links and clips", () => {
     const out = await service.addLink(undefined, url);
     if (!("streamId" in out)) throw new Error("failed");
     const [entry] = await service.list();
-    expect(entry).toMatchObject({ name: "Soul47 EX Peter" });
+    expect(entry).toMatchObject({ name: "Rook42 Boss Rush" });
     await until(() => worker.downloads.length === 1);
     const dl = worker.downloads[0]!;
     expect(dl.request).toMatchObject({ url, ytDlp: "/b/yt-dlp", ffmpegDir: "/b", parts: 2 });
-    expect(dl.request.outDir).toContain(join("Soul47 EX Peter.alcyo", "sources", "src_"));
+    expect(dl.request.outDir).toContain(join("Rook42 Boss Rush.alcyo", "sources", "src_"));
     dl.emit({ kind: "import-progress", stage: "Downloading", pct: 40 });
     await dl.finish();
     await until(() => worker.jobs.length === 1);
@@ -429,7 +429,7 @@ describe("links and clips", () => {
       url,
       path: join(dl.request.outDir, "media.mp4"),
     });
-    expect(detail.sources[0]!.source.info?.title).toBe("Soul47 EX Peter");
+    expect(detail.sources[0]!.source.info?.title).toBe("Rook42 Boss Rush");
     const messages = await service.messages(out.streamId, 50);
     expect(texts(messages).slice(0, 2)).toEqual([`user: ${url}`, `app: ${COPY.permission}`]);
     expect(statuses(messages).map((s) => s.label)).toEqual(["Downloaded", "Analysis finished"]);
@@ -471,7 +471,7 @@ describe("links and clips", () => {
     )!;
     expect(question.body).toEqual({
       kind: "question",
-      text: "“Soul47 EX Peter” is 45 s long. Use this as the stream, or add it as a clip?",
+      text: "“Rook42 Boss Rush” is 45 s long. Use this as the stream, or add it as a clip?",
       chips: ["Use as the stream", "Add as a clip"],
     });
     await service.answer(out.streamId, question.id, "clip");
@@ -486,7 +486,7 @@ describe("links and clips", () => {
     expect(texts(messages)).toContain("user: Add as a clip");
     expect(texts(messages).at(-1)).toBe(`app: ${COPY.waitForVod}`);
     const [clip] = (await service.open(out.streamId)).clips;
-    expect(clip).toMatchObject({ title: "Soul47 EX Peter", clippedBy: "Soul47", match: null });
+    expect(clip).toMatchObject({ title: "Rook42 Boss Rush", clippedBy: "Rook42", match: null });
 
     await service.answer(out.streamId, question.id, "stream");
     expect(texts(await service.messages(out.streamId, 50)).at(-1)).toBe(`app: ${COPY.expired}`);
