@@ -1,9 +1,9 @@
 # How Kiro was used
 
 Alcyo Shorts was built with Kiro, one spec at a time, from the plan in
-[`docs/build-plan.md`](docs/build-plan.md). Everything Kiro reads is in
-[`.kiro/`](.kiro/) and committed. This page answers the rules' questions in
-their order.
+[`docs/build-plan.md`](docs/build-plan.md). Kiro worked from `.kiro/` and
+that plan, both committed; each build run's prompt, report and log stayed on
+the build machine. This page answers the rules' questions in their order.
 
 ## 1. Surfaces
 
@@ -19,8 +19,10 @@ their order.
 - Sub-agents ran research in parallel with the build, for example how T3
   Code lays out its provider settings and sidebar before spec 9's UI pass.
 
-_To confirm by Hardik:_ which specs, if any, were run in the Kiro IDE (the
-plan wanted the IDE for `schema`, for its spec Correctness feature).
+The Kiro IDE wasn't used: every spec ran from the terminal, through Kiro
+agent sessions and kiro-cli, by preference. The plan had wanted the IDE for
+`schema`, for its spec Correctness feature; instead, the correctness
+properties became fast-check tests (section 7).
 
 ## 2. Custom agents
 
@@ -33,8 +35,7 @@ media leaves the computer, the LLM returns only ids and one listed action,
 Zod at every boundary, args arrays and no shell strings, integer ms, one crop
 function, one `.ass` builder, one link parser.
 
-Run it with `kiro-cli chat --agent reviewer "Review spec render-engine"`, or
-pick `reviewer` in the IDE's agent menu.
+Run it with `kiro-cli chat --agent reviewer "Review spec render-engine"`.
 
 ## 3. Hooks
 

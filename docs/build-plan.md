@@ -64,7 +64,7 @@ Nov 2, 2026: section 16 now uses whichever of Claude Code, Grok or Codex is sign
 | Coding agent | Whichever of Claude Code, Grok or Codex is signed in. The saved choice wins when that one is signed in. Otherwise Claude, then Grok, then Codex. Anthropic API key when none is signed in. |
 | Storage | A project folder of JSON files on disk, one project per stream. No database, no cloud. |
 | Privacy | Video and audio are never uploaded. Only transcript text goes to the signed-in agent. The only network traffic is downloading footage you asked for, the whisper model download, and that agent. |
-| Built with | Kiro CLI V3 for most specs, the Kiro IDE for the schema spec. |
+| Built with | Kiro from the terminal (agent sessions and kiro-cli) for every spec. The IDE wasn't used. |
 | Deadline | Dec 4, 2026, 2:00 PM PT. No extensions. |
 
 ---
@@ -1017,7 +1017,7 @@ Side by side: 3, 4 and 5; then 6, 7 and 9; then 8; then 10 and 12; then 11.
 - FOR ANY valid `AppLink`, formatting it as an `alcyo://` URL and parsing it back SHALL give an equal link (property).
 - THE package SHALL export JSON Schema for `ClaudeProposal`, `ChatAction` and `InterviewStep`, and `pnpm plan:validate` SHALL report file, path and reason for each bad file.
 
-Build in the Kiro IDE for its spec Correctness feature (IDE-only today).
+Planned for the Kiro IDE's spec Correctness feature (IDE-only); built from the terminal like every spec, with the properties as fast-check tests.
 
 ### 3. media-engine
 
@@ -1548,9 +1548,9 @@ Kiro renders the demo and reads the ffprobe summary itself while it builds specs
 | Steering | Four always-on files plus `electron.md`, `ffmpeg.md` and `claude.md` by file match. |
 | Hooks | Checks after each task, lint of the saved file, schema validation, schema and IPC follow-ups, a blocking footage guard, all proven by a self-test. |
 | MCP | The project's own server, used by Kiro to verify renders and threads. |
-| Property tests | Ripple delete, time mapping, snapping, id mapping, link round-trips, JSON round-trips, via the IDE's spec Correctness feature. |
+| Property tests | Ripple delete, time mapping, snapping, id mapping, link round-trips, JSON round-trips, as fast-check tests that run with the unit tests. |
 | Custom agent | `.kiro/agents/reviewer.json`: a read-only reviewer that checks each finished spec against this page's rules. |
-| Kiro IDE and CLI | CLI for most specs, IDE for `schema`. The write-up compares them. |
+| Kiro IDE and CLI | The terminal for every spec; the IDE wasn't used. |
 | Powers (stretch) | MCP server plus ffmpeg notes as a power. |
 
 `KIRO.md` answers the rules' questions in their order: surfaces, custom agents, hooks, specs, steering, MCP, property-based testing, powers.
@@ -1597,24 +1597,27 @@ One overall or one category prize, plus any number of bonus prizes.
 
 ## 31. Submission checklist
 
-- [ ] Request the 4,000 free Kiro credits (by Dec 1, 12:00 PM PT; redeem by Dec 4)
-- [ ] Public GitHub repo created on or after Oct 30, all source and instructions in it
-- [ ] MIT LICENSE, showing in the repo's About section
-- [ ] `.kiro/` at the root with specs, hooks, steering, settings and agents, not gitignored
-- [ ] Mac and Windows builds on a GitHub Release by CI, plus build-from-source steps
+Rechecked Nov 5, 2026 against the [rules](https://kiroween.devpost.com/rules), [FAQ](https://kiroween.devpost.com/details/faqs), [dates](https://kiroween.devpost.com/details/dates) and [resources](https://kiroween.devpost.com/resources). "Rule" marks what the rules require; the rest are this project's choices.
+
+- [ ] Request the 4,000 free Kiro credits by Dec 1, 12:00 PM PT; redeem by Dec 4; they expire Dec 31, 11:59 PM PT
+- [ ] Rule: the project is newly created during the submission period (opened Oct 30, 9:00 AM PDT); disclose any pre-existing code or templates
+- [x] Rule: public GitHub repo with all source, assets and instructions to run it, and an open-source license (MIT, shown in the repo's About section)
+- [x] Rule: `.kiro/` at the root with specs, hooks, steering, settings and agents, not gitignored
+- [ ] Rule: a working build judges can get for free until judging ends (Jan 29, 2027, 1:00 PM PST). Here: Mac and Windows installers on a GitHub Release by CI, plus build-from-source steps
 - [ ] README with the judge path, Gatekeeper and SmartScreen steps, and the download-rights note
 - [ ] README says the full pipeline uses the judge's own Claude Code, Grok or Codex login, or an API key
 - [ ] Text description of features
-- [ ] `KIRO.md` answering the rules' Kiro questions
-- [ ] Public YouTube demo under 3 minutes
-- [ ] Demo footage you own or have written permission for, no copyrighted music
+- [ ] Rule: a write-up of how Kiro was used, in the submission itself; it links [`KIRO.md`](../KIRO.md), which answers the rules' Kiro questions in order
+- [ ] Public YouTube demo under 3 minutes, showing the app working on the computer it's made for
+- [ ] Rule: rights cleared for everything submitted: demo footage you own or have written permission for, no copyrighted music
+- [ ] Rule: materials in English, or with English translations
+- [ ] Test login details for judges, if any are needed (none expected: the demo stream needs no agent)
 - [ ] Category set to Frankenstein
-- [ ] Social post starting with #KiroweenHackathon26, in your own words, linked on the form
-- [ ] Optional blog post that says it's for Kiroween 2026
-- [ ] Disclose pre-existing code or templates
-- [ ] Submit before Dec 4, 2:00 PM PT
+- [ ] Optional bonus: social post starting with #KiroweenHackathon26, in your own words, published during the submission period, URL on the form
+- [ ] Optional bonus: blog post on a public third-party platform that says it's for Kiroween 2026, published during the submission period, URL on the form
+- [ ] Submit before Dec 4, 2:00 PM PST
 
-These dates and rules weren't rechecked after v1 because the rules page blocked automated fetches. Recheck them on [the rules page](https://kiroween.devpost.com/rules).
+Judging runs Dec 16, 2026 to Jan 29, 2027; winners are announced on or around Feb 3, 2027.
 
 ---
 
