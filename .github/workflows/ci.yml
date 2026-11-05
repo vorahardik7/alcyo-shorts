@@ -77,6 +77,13 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # The runner's 1024 x 768 screen clamps the 1280 x 820 window, so only some
+      # short cards are in view and load; give it a desktop-sized screen.
+      - name: Display 1920 x 1080 (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Set-DisplayResolution -Width 1920 -Height 1080 -Force
+
       - name: End-to-end tests (built app)
         run: pnpm test:e2e
 

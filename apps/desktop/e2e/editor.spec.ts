@@ -3,7 +3,7 @@
 // reframe, hook, 200+ undo steps, shortcuts, saving a version, the chat
 // drawer, and a JASSUB frame against an ffmpeg frame of the same .ass.
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, type Locator, type Page, test } from "@playwright/test";
@@ -332,11 +332,14 @@ test("a JASSUB frame matches an ffmpeg frame of the same caption", async () => {
   // ffmpeg: the same .ass on mid-gray, with the bundled fonts; cells that differ from gray.
   const dir = mkdtempSync(join(tmpdir(), "alcyo-ass-"));
   writeFileSync(join(dir, "c.ass"), preview.ass);
+  // Relative names inside the work folder, as the render engine passes them, so no
+  // drive letter (D:) has to be escaped inside the filter graph.
+  cpSync(fonts, join(dir, "fonts"), { recursive: true });
   const raw = execFileSync(
     ffmpeg,
     [
       "-v", "error", "-f", "lavfi", "-i", "color=c=0x808080:s=1080x1920:r=30:d=1",
-      "-vf", `subtitles=filename=c.ass:fontsdir=${fonts.replace(/\\/g, "/").replace(/:/g, "\\:")},format=gray`,
+      "-vf", "subtitles=filename=c.ass:fontsdir=fonts,format=gray",
       "-ss", String(tSec), "-frames:v", "1", "-f", "rawvideo", "-",
     ],
     { cwd: dir, maxBuffer: 8 * 1024 * 1024 },
