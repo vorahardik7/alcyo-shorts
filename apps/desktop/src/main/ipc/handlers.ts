@@ -1,5 +1,6 @@
 // Handlers for every channel in @alcyo/ipc's contract.
 import type {
+  AgentSelection,
   AppInfo,
   AppPaths,
   Channel,
@@ -7,7 +8,7 @@ import type {
   SetupReport,
   WhisperModelName,
 } from "@alcyo/ipc";
-import type { ProviderId } from "@alcyo/schema";
+import { AGENT_MODELS, type ProviderId } from "@alcyo/schema";
 import type { Downloader } from "../downloader";
 import type { PlannerService } from "../planner";
 import type { ProfileService } from "../profile";
@@ -27,6 +28,8 @@ export interface HandlerDeps {
   ): Promise<{ path: string } | { cancelled: true } | { rejected: true; message: string }>;
   downloadModel(): Promise<{ path: string; name: WhisperModelName }>;
   useAgent(provider: ProviderId): Promise<void>;
+  agentSelection(): Promise<AgentSelection>;
+  setAgentModel(agent: LocalAgentId, model: string): Promise<void>;
   setApiKey(key: string): Promise<void>;
   clearApiKey(): Promise<void>;
   pingWorker(text: string): Promise<string>;
@@ -40,9 +43,11 @@ export interface HandlerDeps {
     "enqueue" | "list" | "get" | "cancel" | "retry" | "file" | "preview"
   >;
   drops: Pick<DropBox, "take">;
-  editor: Pick<EditorService, "open" | "save">;
+  editor: Pick<EditorService, "open" | "save" | "restore">;
   /** Shows a file in Finder or Explorer. */
   reveal(path: string): void;
+  /** Copies the demo stream in the first time; its id. */
+  openDemo(): Promise<string>;
 }
 
 type Handlers = { [C in Channel]: HandlerFn<C> };
@@ -60,6 +65,14 @@ export function createHandlers(deps: HandlerDeps): Handlers {
     "setup:downloadModel": () => deps.downloadModel(),
     "agent:use": async ({ provider }) => {
       await deps.useAgent(provider);
+      return {};
+    },
+    "agent:get": () => deps.agentSelection(),
+    "agent:setModel": async ({ agent, model }) => {
+      if (!AGENT_MODELS[agent].models.some((m) => m.id === model)) {
+        throw new Error(`${AGENT_MODELS[agent].label} has no model called ${model}.`);
+      }
+      await deps.setAgentModel(agent, model);
       return {};
     },
     "settings:setApiKey": async ({ key }) => {
@@ -81,11 +94,18 @@ export function createHandlers(deps: HandlerDeps): Handlers {
       ...(await deps.streams.open(streamId)),
       planner: await deps.planner.state(streamId),
     }),
+    "stream:locate": ({ streamId }) => deps.streams.locate(streamId),
+    "demo:open": async () => {
+      const streamId = await deps.openDemo();
+      const stream = (await deps.streams.list()).find((s) => s.streamId === streamId);
+      if (stream === undefined) throw new Error("The demo stream didn't open. Try again.");
+      return { stream };
+    },
     "stream:markRead": async ({ streamId }) => {
       await deps.streams.markRead(streamId);
       return {};
     },
-    "source:chooseFile": ({ streamId }) => deps.streams.chooseFile(streamId),
+    "source:chooseFile": ({ streamId, copy }) => deps.streams.chooseFile(streamId, copy),
     "source:relink": ({ streamId, sourceId }) => deps.streams.relink(streamId, sourceId),
     "analysis:start": ({ streamId, sourceId }) => deps.streams.startAnalysis(streamId, sourceId),
     "link:add": ({ streamId, url }) => deps.streams.addLink(streamId, url),
@@ -137,6 +157,7 @@ export function createHandlers(deps: HandlerDeps): Handlers {
     },
     "thread:messages": ({ streamId, limit, before }) =>
       deps.streams.messages(streamId, limit, before),
+    "thread:locate": ({ streamId, target }) => deps.streams.locateMessage(streamId, target),
     "transcript:window": async ({ streamId, sourceId, fromMs, toMs }) =>
       (await deps.streams.forStream(streamId)).transcriptWindow(sourceId, fromMs, toMs),
     "transcript:search": async ({ streamId, sourceId, query }) =>
@@ -146,20 +167,26 @@ export function createHandlers(deps: HandlerDeps): Handlers {
       const v = await store.version(shortId, version);
       // A draft only applies to the head.
       const draft =
-        version === undefined || version === v.version ? await store.draft(shortId) : null;
+        version === undefined || version === v.version
+          ? await store.draft(shortId, v.version)
+          : null;
       return { version: v, draft };
     },
     "short:versions": async ({ streamId, shortId }) =>
       (await deps.streams.forStream(streamId)).versions(shortId),
     "short:preview": ({ streamId, shortId, version }) =>
       deps.renders.preview(streamId, shortId, version),
-    "drop:use": async ({ token, streamId }) => {
+    "drop:use": async ({ token, streamId, copy }) => {
       const paths = deps.drops.take(token);
       if (paths === null) return { failed: true, message: EXPIRED };
-      return deps.streams.useFiles(paths, streamId);
+      return deps.streams.useFiles(paths, streamId, copy);
     },
-    "short:saveDraft": async ({ streamId, shortId, short }) => {
-      await (await deps.streams.forStream(streamId)).saveDraft(shortId, short);
+    "short:saveDraft": async ({ streamId, shortId, short, baseVersion }) => {
+      await (await deps.streams.forStream(streamId)).saveDraft(shortId, short, baseVersion);
+      return {};
+    },
+    "short:clearDraft": async ({ streamId, shortId, baseVersion }) => {
+      await (await deps.streams.forStream(streamId)).clearDraft(shortId, baseVersion);
       return {};
     },
     "short:saveVersion": ({ streamId, shortId, short, note, parent }) =>
@@ -168,8 +195,9 @@ export function createHandlers(deps: HandlerDeps): Handlers {
         note,
         ...(parent === undefined ? {} : { parent }),
       }),
-    "editor:open": ({ streamId, shortId, version }) => deps.editor.open(streamId, shortId, version),
-    "short:restore": async ({ streamId, shortId, version }) =>
-      (await deps.streams.forStream(streamId)).restore(shortId, version),
+    "editor:open": ({ streamId, shortId, version, range }) =>
+      deps.editor.open(streamId, shortId, version, range),
+    "short:restore": ({ streamId, shortId, version }) =>
+      deps.editor.restore(streamId, shortId, version),
   };
 }

@@ -5,7 +5,7 @@
 import type { CaptionPreset, HookPreset } from "@alcyo/schema";
 
 const SAMPLE = ["he", "did", "not", "see", "that"];
-const BOX_H = 220;
+const BOX_H = 168;
 
 function outline(px: number, color: string, shadow: number): string {
   const shadows = [];
@@ -50,12 +50,19 @@ export function CaptionLook({
       aria-pressed={selected === true}
       aria-label={`${caption.name} caption look`}
       onClick={onPick}
-      className={`group flex flex-col items-center gap-2 rounded-2xl p-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-unread ${
-        selected === true ? "bg-bubble-user ring-1 ring-unread" : "hover:bg-bubble-claude"
+      className={`group flex flex-col items-center gap-2 rounded-xl border p-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${
+        selected === true
+          ? "border-accent/70 bg-accent/[0.08]"
+          : "border-transparent hover:border-line hover:bg-white/[0.02]"
       }`}
     >
+      <span
+        className={`text-[12px] font-medium ${selected === true ? "text-text" : "text-secondary group-hover:text-text"}`}
+      >
+        {caption.name}
+      </span>
       <div
-        className="relative overflow-hidden rounded-xl bg-gradient-to-b from-[#2b3a55] via-[#1d2433] to-[#131313]"
+        className="relative overflow-hidden rounded-lg bg-gradient-to-b from-[#2b3a55] via-[#1d2433] to-[#131313]"
         style={{ height: BOX_H, width: (BOX_H * 9) / 16 }}
       >
         {hook !== undefined && (
@@ -65,7 +72,7 @@ export function CaptionLook({
               top: `${hook.positionY * 100}%`,
               transform: "translateY(-50%)",
               fontFamily: `"${hook.font}", system-ui, sans-serif`,
-              fontSize: Math.max(8, hook.sizePx * scale),
+              fontSize: 10,
               color: hook.color,
               textTransform: hook.uppercase ? "uppercase" : "none",
             }}
@@ -89,7 +96,7 @@ export function CaptionLook({
             transform: "translateY(-50%)",
             fontFamily,
             fontWeight: 800,
-            fontSize: Math.max(9, caption.sizePx * scale),
+            fontSize: 18,
             color: caption.color,
             textTransform: caption.uppercase ? "uppercase" : "none",
             textShadow: outline(
@@ -107,7 +114,6 @@ export function CaptionLook({
           ))}
         </span>
       </div>
-      <span className="text-[14px] text-secondary group-hover:text-text">{caption.name}</span>
     </button>
   );
 }

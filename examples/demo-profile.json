@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "name": "Hollow Peak Runs",
+  "streams": "Soulslike boss attempts, live, with chat backseating.",
+  "audience": "Players who like close calls and rare drops.",
+  "goodMoments": ["close-call", "skill", "funny", "story"],
+  "lengthMs": { "min": 15000, "max": 30000 },
+  "titleRules": "Short and loud. Say what happened, no clickbait.",
+  "exampleTitles": ["Parried the tail on one hit", "Chat was wrong again"],
+  "avoid": [],
+  "platforms": ["tiktok", "youtube-shorts", "reels"],
+  "captionPresetId": "bold-pop",
+  "hookPresetId": "hook-bold",
+  "style": {
+    "summary": "Fast openings: the first word lands right away. Big captions, two or three words a line. Keep the reaction after the payoff, cut the setup short.",
+    "sampleCount": 0
+  }
+}

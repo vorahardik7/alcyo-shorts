@@ -5,6 +5,8 @@
 // Electron-free, so it's tested with fakes.
 import { mkdir } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { RenderView as RenderViewSchema } from "@alcyo/ipc";
+import { z } from "zod";
 import type {
   EventName,
   EventPayload,
@@ -13,14 +15,23 @@ import type {
   RenderResult,
   RenderView,
 } from "@alcyo/ipc";
-import { DEFAULT_RENDER_PRESET, RENDER_PRESETS, buildAss, renderFileName } from "@alcyo/render";
 import {
-  BUILTIN_CAPTION_PRESETS,
-  BUILTIN_HOOK_PRESETS,
-  type ShortVersion,
-  type Source,
-} from "@alcyo/schema";
-import { type ProfileStore, type ProjectStore, StoreError, exists, newId } from "@alcyo/store";
+  DEFAULT_RENDER_PRESET,
+  RENDER_PRESETS,
+  buildAss,
+  renderFileName,
+  resolveShortStyles,
+} from "@alcyo/render";
+import { type ShortVersion, type Source } from "@alcyo/schema";
+import {
+  type ProfileStore,
+  ProjectStore,
+  StoreError,
+  exists,
+  newId,
+  readJson,
+  writeJsonAtomic,
+} from "@alcyo/store";
 import { playableFile, sourceUrl } from "./media-protocol";
 import type { StreamService } from "./streams";
 
@@ -41,7 +52,9 @@ export interface RenderWorker {
 }
 
 export interface RenderServiceDeps {
-  streams: Pick<StreamService, "forStream" | "post" | "touch">;
+  streams: Pick<StreamService, "forStream" | "post" | "touch"> &
+    Partial<Pick<StreamService, "list">>;
+  queuePath?: string;
   profiles: Pick<ProfileStore, "profile" | "presets">;
   worker: () => RenderWorker;
   tools: () => { ffmpeg: string; ffprobe: string; fontsDir: string };
@@ -64,6 +77,7 @@ interface Job {
   /** The stream store's renders folder, for the file name. */
   cancel: (() => void) | null;
   cancelled: boolean;
+  generation: number;
 }
 
 /** Progress events go out at most this often, in percent. */
@@ -78,12 +92,119 @@ export class RenderService {
   private jobs = new Map<string, Job>();
   private order: string[] = [];
   private chain: Promise<void> = Promise.resolve();
+  private persisting: Promise<void> = Promise.resolve();
+  private historyHydration: Promise<void> | null = null;
   private readonly now: () => Date;
   private readonly log: (line: string) => void;
 
   constructor(private readonly deps: RenderServiceDeps) {
     this.now = deps.now ?? (() => new Date());
     this.log = deps.log ?? ((line) => console.error(`[renders] ${line}`));
+  }
+
+  /** Only the durable queue is needed before opening the window. */
+  async restore(): Promise<void> {
+    if (this.deps.queuePath !== undefined) {
+      const file = await readJson(
+        this.deps.queuePath,
+        z.object({ renders: z.array(RenderViewSchema) }),
+      );
+      // persist() stores newest first; order is maintained oldest first.
+      for (const view of [...(file?.renders ?? [])].reverse()) {
+        const interrupted = view.state === "queued" || view.state === "running";
+        this.jobs.set(view.renderId, {
+          view: interrupted
+            ? { ...view, state: "failed", pct: 0, message: COPY.notFinished, file: null }
+            : view,
+          cancel: null,
+          cancelled: false,
+          generation: 0,
+        });
+        this.order.push(view.renderId);
+      }
+    }
+    await this.persist();
+  }
+
+  /** Older project/MCP history hydrates after the window opens, four projects at a time. */
+  hydrateHistory(): Promise<void> {
+    this.historyHydration ??= (async () => {
+      const entries = (await this.deps.streams.list?.()) ?? [];
+      let next = 0;
+      await Promise.all(
+        Array.from({ length: Math.min(4, entries.length) }, async () => {
+          for (;;) {
+            const entry = entries[next++];
+            if (entry === undefined) return;
+            if (entry.missing) continue;
+            try {
+              // The index entry already gives us the folder. Avoid rereading
+              // and sorting the full index for every cold forStream() call.
+              const store = await ProjectStore.open(entry.folder, this.now);
+              for (const record of await store.renders()) {
+                const existing = this.jobs.get(record.renderId);
+                const interrupted = () =>
+                  existing?.view.state === "failed" &&
+                  existing.view.message === COPY.notFinished &&
+                  existing.generation === 0;
+                if (existing !== undefined && !interrupted()) continue;
+                const title =
+                  existing?.view.title ??
+                  (await store
+                    .version(record.shortId, record.version)
+                    .then((v) => v.short.title)
+                    .catch(() => basename(record.file)));
+                // A retry or a new job may have changed state while reading.
+                if (this.jobs.get(record.renderId) !== existing) continue;
+                if (existing !== undefined && !interrupted()) continue;
+                const view: RenderView = {
+                  renderId: record.renderId,
+                  streamId: entry.streamId,
+                  shortId: record.shortId,
+                  version: record.version,
+                  presetId: record.presetId,
+                  title,
+                  state: "done",
+                  pct: 100,
+                  file: join(store.paths.renders, record.file),
+                  durationMs: record.probe.durationMs,
+                  message: null,
+                  createdAt: record.createdAt,
+                };
+                if (existing === undefined) this.order.push(view.renderId);
+                const job: Job = { view, cancel: null, cancelled: false, generation: 0 };
+                this.jobs.set(view.renderId, job);
+                this.changed(job);
+              }
+            } catch (error) {
+              this.log(`Couldn't restore render history: ${plain(error)}`);
+            }
+          }
+        }),
+      );
+      await this.persist();
+    })();
+    return this.historyHydration;
+  }
+
+  async relocate(streamId: string): Promise<void> {
+    const store = await this.deps.streams.forStream(streamId);
+    for (const job of this.jobs.values()) {
+      if (job.view.streamId !== streamId || job.view.file === null) continue;
+      job.view = { ...job.view, file: join(store.paths.renders, basename(job.view.file)) };
+      this.changed(job);
+    }
+    await this.persist();
+  }
+
+  private persist(): Promise<void> {
+    const path = this.deps.queuePath;
+    if (path === undefined) return Promise.resolve();
+    const renders = this.list();
+    this.persisting = this.persisting
+      .catch(() => undefined)
+      .then(() => writeJsonAtomic(path, { renders }));
+    return this.persisting;
   }
 
   list(): RenderView[] {
@@ -124,6 +245,7 @@ export class RenderService {
   private set(job: Job, patch: Partial<RenderView>): void {
     job.view = { ...job.view, ...patch };
     this.changed(job);
+    if (patch.state !== undefined) void this.persist().catch((e: unknown) => this.log(plain(e)));
   }
 
   /** Queues a render of a version (the head with no version) and posts its message. */
@@ -155,17 +277,23 @@ export class RenderService {
       },
       cancel: null,
       cancelled: false,
+      generation: 0,
     };
     this.jobs.set(renderId, job);
     this.order.push(renderId);
     this.changed(job);
+    await this.persist();
     await this.deps.streams.post(streamId, { kind: "render", renderId });
     this.schedule(job);
     return { renderId };
   }
 
   private schedule(job: Job): void {
-    const run = () => this.run(job).catch((error: unknown) => this.log(plain(error)));
+    const generation = job.generation;
+    const run = () =>
+      generation === job.generation
+        ? this.run(job, generation).catch((error: unknown) => this.log(plain(error)))
+        : Promise.resolve();
     this.chain = this.chain.then(run, run);
   }
 
@@ -179,11 +307,10 @@ export class RenderService {
   /** The presets and words a version renders with. The preview uses the same. */
   private async looks(store: ProjectStore, v: ShortVersion) {
     const presets = await this.deps.profiles.presets();
-    const caption =
-      presets.captionPresets.find((p) => p.id === v.short.captions.presetId) ??
-      BUILTIN_CAPTION_PRESETS[0]!;
-    const hook =
-      presets.hookPresets.find((p) => p.id === v.short.hook?.presetId) ?? BUILTIN_HOOK_PRESETS[0]!;
+    const styles =
+      v.short.styles ??
+      (await store.freezeStyles(v.shortId, v.version, resolveShortStyles(v.short, presets)));
+    const { caption, hook } = styles;
     const from = v.short.segments[0]!.srcIn;
     const to = v.short.segments.at(-1)!.srcOut;
     const words = await store
@@ -203,7 +330,10 @@ export class RenderService {
     const file = await playableFile(store, v.sourceId).catch(() => null);
     return {
       version: v,
-      src: file === null || video === null ? null : sourceUrl(streamId, v.sourceId),
+      src:
+        file === null || video === null
+          ? null
+          : sourceUrl(streamId, v.sourceId, source.mediaRevision),
       width: video?.width ?? 1920,
       height: video?.height ?? 1080,
       ass: buildAss({ short: v.short, words, caption, hook }),
@@ -222,8 +352,8 @@ export class RenderService {
     return path;
   }
 
-  private async run(job: Job): Promise<void> {
-    if (job.cancelled) return;
+  private async run(job: Job, generation: number): Promise<void> {
+    if (job.cancelled || generation !== job.generation) return;
     const { streamId, shortId, version, renderId } = job.view;
     try {
       const store = await this.deps.streams.forStream(streamId);
@@ -236,6 +366,8 @@ export class RenderService {
       const { caption, hook, words } = await this.looks(store, v);
       const outPath = await this.outPath(store, v.short.title, v.version);
       const tools = this.deps.tools();
+      // Cancel/retry may happen while the queued job is preparing files.
+      if (job.cancelled || generation !== job.generation) return;
       this.set(job, { state: "running", pct: 0, message: null, file: null });
       let last = 0;
       const handle = this.deps.worker().render(
@@ -306,6 +438,7 @@ export class RenderService {
     if (job === undefined) return;
     if (job.view.state === "queued") {
       job.cancelled = true;
+      job.generation++;
       this.set(job, { state: "cancelled" });
     } else if (job.view.state === "running") {
       job.cancelled = true;
@@ -318,6 +451,7 @@ export class RenderService {
     if (job === undefined) throw new StoreError("not-found", COPY.notFinished);
     if (job.view.state !== "failed" && job.view.state !== "cancelled") return;
     job.cancelled = false;
+    job.generation++;
     this.set(job, { state: "queued", pct: 0, message: null });
     this.schedule(job);
   }
@@ -338,5 +472,6 @@ export class RenderService {
       seen = this.chain;
       await seen;
     }
+    await this.persisting;
   }
 }

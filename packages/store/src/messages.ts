@@ -1,7 +1,7 @@
 // thread/messages.jsonl: append-only, one full line per write. Reading keeps
 // the highest rev per id, in the order each id first appeared, and drops a
 // torn last line from a crash mid-write.
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile } from "./access.ts";
 import { dirname } from "node:path";
 import { Message } from "@alcyo/schema";
 

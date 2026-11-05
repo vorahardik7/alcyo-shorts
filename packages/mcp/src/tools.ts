@@ -1,10 +1,16 @@
 // The seven tools (plan sections 23 spec 12 and 27). Plain async functions
 // with Zod inputs, so they're tested without a transport. Reads and writes
 // stay under the root; the recording a short uses must be inside it too.
-import { mkdir, readFile, readdir, realpath } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
+import { mkdir, readFile, readdir, withFileAccess } from "@alcyo/store/access";
 import { basename, join } from "node:path";
 import { type Runner, ffprobeArgs, parseFfprobe } from "@alcyo/media";
-import { DEFAULT_RENDER_PRESET, RENDER_PRESETS, renderFileName } from "@alcyo/render";
+import {
+  DEFAULT_RENDER_PRESET,
+  RENDER_PRESETS,
+  renderFileName,
+  resolveShortStyles,
+} from "@alcyo/render";
 import { renderShort } from "@alcyo/render/runner";
 import {
   BUILTIN_CAPTION_PRESETS,
@@ -13,11 +19,20 @@ import {
   type Issue,
   Ms,
   ShortVersion,
+  ShortStyles,
   checkVersion,
   shortDuration,
   zodIssues,
 } from "@alcyo/schema";
-import { ProjectStore, StoreError, exists, fingerprintKey, hashFile, newId } from "@alcyo/store";
+import {
+  ProjectStore,
+  StoreError,
+  exists,
+  fingerprintKey,
+  hashFile,
+  newId,
+  readJson,
+} from "@alcyo/store";
 import { z } from "zod";
 import { type Root, ToolError } from "./root.ts";
 
@@ -107,7 +122,7 @@ async function findStreams(dir: string, depth: number): Promise<string[]> {
   return out;
 }
 
-export async function probe_video(ctx: ToolContext, { path }: In<"probe_video">) {
+async function probe_videoImpl(ctx: ToolContext, { path }: In<"probe_video">) {
   const file = await ctx.root.resolveFile(path, "That video");
   const out = await ctx.run(ctx.ffprobe, ffprobeArgs(file), { collectStdout: true });
   if (out.code !== 0)
@@ -115,7 +130,7 @@ export async function probe_video(ctx: ToolContext, { path }: In<"probe_video">)
   return { path: await ctx.root.show(file), probe: parseFfprobe(out.stdout) };
 }
 
-export async function open_project(ctx: ToolContext, { folder }: In<"open_project">) {
+async function open_projectImpl(ctx: ToolContext, { folder }: In<"open_project">) {
   if (folder === undefined) {
     const found = await findStreams(await ctx.root.resolve(".", "The root folder"), 3);
     const streams = [];
@@ -175,7 +190,7 @@ export async function open_project(ctx: ToolContext, { folder }: In<"open_projec
   };
 }
 
-export async function list_shorts(ctx: ToolContext, { folder }: In<"list_shorts">) {
+async function list_shortsImpl(ctx: ToolContext, { folder }: In<"list_shorts">) {
   const store = await openStore(ctx, folder);
   const shorts = [];
   for (const { shortId } of (await store.project()).shorts) {
@@ -198,7 +213,7 @@ export async function list_shorts(ctx: ToolContext, { folder }: In<"list_shorts"
   return { shorts };
 }
 
-export async function get_transcript_window(ctx: ToolContext, args: In<"get_transcript_window">) {
+async function get_transcript_windowImpl(ctx: ToolContext, args: In<"get_transcript_window">) {
   const store = await openStore(ctx, args.folder);
   let sourceId = args.sourceId;
   if (sourceId === undefined) {
@@ -231,7 +246,7 @@ export async function get_transcript_window(ctx: ToolContext, args: In<"get_tran
   };
 }
 
-export async function get_thread(ctx: ToolContext, { folder, limit, before }: In<"get_thread">) {
+async function get_threadImpl(ctx: ToolContext, { folder, limit, before }: In<"get_thread">) {
   const store = await openStore(ctx, folder);
   const all = await store.messages();
   return { total: all.length, messages: await store.pageMessages(limit, before) };
@@ -249,7 +264,7 @@ async function readVersionFile(store: ProjectStore, shortId: string, version: nu
   return { n, file: join(store.paths.versions(shortId), name) };
 }
 
-export async function validate_version(ctx: ToolContext, args: In<"validate_version">) {
+async function validate_versionImpl(ctx: ToolContext, args: In<"validate_version">) {
   const store = await openStore(ctx, args.folder);
   const { n, file } = await readVersionFile(store, args.shortId, args.version);
   let raw: unknown;
@@ -268,6 +283,8 @@ export async function validate_version(ctx: ToolContext, args: In<"validate_vers
     return { valid: false, shortId: args.shortId, version: n, issues: zodIssues(parsed.error) };
   }
   const v = parsed.data;
+  const styles =
+    v.short.styles ?? (await readJson(store.paths.styles(args.shortId, n), ShortStyles));
   const source = await store.source(v.sourceId).catch(() => null);
   if (source === null) {
     return {
@@ -292,16 +309,18 @@ export async function validate_version(ctx: ToolContext, args: In<"validate_vers
   }
   const known = (list: readonly { id: string }[], id: string | undefined) =>
     id === undefined || list.some((p) => p.id === id);
-  if (!known(BUILTIN_CAPTION_PRESETS, v.short.captions.presetId)) {
+  if (
+    !known(styles == null ? BUILTIN_CAPTION_PRESETS : [styles.caption], v.short.captions.presetId)
+  ) {
     issues.push({
       path: "short.captions.presetId",
-      message: `${v.short.captions.presetId} isn't a built-in caption look; renders here use Bold pop instead.`,
+      message: `${v.short.captions.presetId} isn't available in this project. Import the template in the app first.`,
     });
   }
-  if (!known(BUILTIN_HOOK_PRESETS, v.short.hook?.presetId)) {
+  if (!known(styles == null ? BUILTIN_HOOK_PRESETS : [styles.hook], v.short.hook?.presetId)) {
     issues.push({
       path: "short.hook.presetId",
-      message: `${v.short.hook?.presetId} isn't a built-in hook look; renders here use Bold instead.`,
+      message: `${v.short.hook?.presetId} isn't available in this project. Import the template in the app first.`,
     });
   }
   return {
@@ -314,7 +333,7 @@ export async function validate_version(ctx: ToolContext, args: In<"validate_vers
   };
 }
 
-export async function render_short(ctx: ToolContext, args: In<"render_short">) {
+async function render_shortImpl(ctx: ToolContext, args: In<"render_short">) {
   const store = await openStore(ctx, args.folder);
   const v = await store.version(args.shortId, args.version).catch((e: unknown) => {
     throw new ToolError(e instanceof Error ? e.message : String(e));
@@ -338,11 +357,9 @@ export async function render_short(ctx: ToolContext, args: In<"render_short">) {
   const video = source.probe?.video ?? null;
   if (video === null) throw new ToolError("This recording has no video, so it can't be rendered.");
   const preset = RENDER_PRESETS.find((p) => p.id === args.presetId) ?? DEFAULT_RENDER_PRESET;
-  const caption =
-    BUILTIN_CAPTION_PRESETS.find((p) => p.id === v.short.captions.presetId) ??
-    BUILTIN_CAPTION_PRESETS[0]!;
-  const hook =
-    BUILTIN_HOOK_PRESETS.find((p) => p.id === v.short.hook?.presetId) ?? BUILTIN_HOOK_PRESETS[0]!;
+  const styles =
+    v.short.styles ?? (await store.freezeStyles(v.shortId, v.version, resolveShortStyles(v.short)));
+  const { caption, hook } = styles;
   const from = v.short.segments[0]!.srcIn;
   const to = v.short.segments.at(-1)!.srcOut;
   const words = await store
@@ -404,6 +421,22 @@ export async function render_short(ctx: ToolContext, args: In<"render_short">) {
     tookMs: Date.now() - started,
   };
 }
+
+function confined<A, R>(run: (ctx: ToolContext, args: A) => Promise<R>) {
+  return (ctx: ToolContext, args: A): Promise<R> =>
+    withFileAccess(
+      (path) => ctx.root.resolveAny(path),
+      () => run(ctx, args),
+    );
+}
+
+export const probe_video = confined(probe_videoImpl);
+export const open_project = confined(open_projectImpl);
+export const list_shorts = confined(list_shortsImpl);
+export const get_transcript_window = confined(get_transcript_windowImpl);
+export const get_thread = confined(get_threadImpl);
+export const validate_version = confined(validate_versionImpl);
+export const render_short = confined(render_shortImpl);
 
 export const tools = {
   probe_video,

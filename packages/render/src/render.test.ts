@@ -146,9 +146,11 @@ describe("frames and args", () => {
 
   it("keeps the source path as one argument and the graph free of paths", () => {
     const plan = renderPlan(input());
-    expect(plan.args.filter((a) => a === input().sourcePath)).toHaveLength(2);
+    expect(plan.args.filter((a) => a === "-i")).toHaveLength(1);
+    expect(plan.concat).toContain("inpoint 10.000000");
+    expect(plan.concat.split("\n").filter((line) => line.startsWith("file "))).toHaveLength(1);
     expect(plan.filter).not.toContain("/Users/");
-    expect(plan.filter).toContain("afade=t=in:d=0.010000");
+    expect(plan.filter).toContain("/0.010000,0,1)");
     expect(plan.filter).toContain("subtitles=filename=captions.ass:fontsdir=fonts");
   });
 
@@ -158,7 +160,7 @@ describe("frames and args", () => {
 
   it("fills silence when the source has no audio", () => {
     const plan = renderPlan({ ...input(), source: { ...input().source, hasAudio: false } });
-    expect(plan.filter).toContain("anullsrc=r=48000:cl=stereo,atrim=end=2.000000[a0]");
+    expect(plan.filter).toContain("anullsrc=r=48000:cl=stereo,atrim=duration=4.000000[a]");
     expect(plan.filter).not.toContain("[0:a]");
   });
 

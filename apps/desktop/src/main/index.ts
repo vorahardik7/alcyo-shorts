@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { availableParallelism } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { applyApiKey, CHANNELS, type SetupRequest, type WhisperModelName } from "@alcyo/ipc";
 import { probeAgent, providerForAgent, realSpawnDeps } from "@alcyo/planner";
 import { LINK_SCHEME, type LocalAgentId } from "@alcyo/schema";
@@ -12,6 +12,7 @@ import { app, BrowserWindow, dialog, Notification, protocol, safeStorage, shell 
 import pkg from "../../package.json";
 import { resolveBinDir } from "./bin";
 import { handle, handlePreload, sendEvent } from "./ipc";
+import { DEMO_COPY, openDemo } from "./demo";
 import { DropBox } from "./drops";
 import { EditorService } from "./editor";
 import { MEDIA_SCHEME, mediaHandler } from "./media-protocol";
@@ -122,7 +123,7 @@ function run(): void {
     });
   };
 
-  void app.whenReady().then(() => {
+  void app.whenReady().then(async () => {
     const platform = process.platform as "darwin" | "win32" | "linux";
     const userData = app.getPath("userData");
     const paths = {
@@ -202,14 +203,15 @@ function run(): void {
       };
     };
     // Made after the stream service, which tells it when a transcript is in.
-    const late: { planner?: PlannerService } = {};
+    const late: { planner?: PlannerService; renders?: RenderService } = {};
     const streamsIndex = new StreamsIndex(userData);
+    const defaultStreamsDir =
+      envPath("ALCYO_STREAMS_DIR") ?? join(app.getPath("videos"), "Alcyo Shorts");
     const drops = new DropBox();
     const streams = new StreamService({
       index: streamsIndex,
       settings,
-      defaultStreamsDir:
-        envPath("ALCYO_STREAMS_DIR") ?? join(app.getPath("videos"), "Alcyo Shorts"),
+      defaultStreamsDir,
       worker: () => worker.get(),
       analysisBase,
       chooseVideo: async () => {
@@ -230,8 +232,39 @@ function run(): void {
             : await dialog.showOpenDialog(win, options);
         return result.canceled ? null : (result.filePaths[0] ?? null);
       },
+      chooseCopy: async (path) => {
+        if (isHeadless()) return false;
+        const options: Electron.MessageBoxOptions = {
+          type: "question",
+          message: `Import ${basename(path)}?`,
+          detail:
+            "Keep the recording in its current location, or copy it into this project for portability.",
+          buttons: ["Import", "Cancel"],
+          defaultId: 0,
+          cancelId: 1,
+          checkboxLabel: "Copy into project",
+          checkboxChecked: false,
+        };
+        const result =
+          win === undefined || win.isDestroyed()
+            ? await dialog.showMessageBox(options)
+            : await dialog.showMessageBox(win, options);
+        return result.response === 1 ? null : result.checkboxChecked;
+      },
+      chooseFolder: async () => {
+        const options: Electron.OpenDialogOptions = {
+          title: "Locate this stream's .alcyo folder",
+          properties: ["openDirectory"],
+        };
+        const result =
+          win === undefined || win.isDestroyed()
+            ? await dialog.showOpenDialog(options)
+            : await dialog.showOpenDialog(win, options);
+        return result.canceled ? null : (result.filePaths[0] ?? null);
+      },
       importBase: async () => ({ ytDlp: await downloader.path(), ffmpegDir: paths.bin }),
       emit: (event, payload) => sendEvent(win, event, payload),
+      onLocated: (streamId) => late.renders?.relocate(streamId) ?? Promise.resolve(),
       onReady: (streamId, phase) => void late.planner?.ready(streamId, phase),
     });
 
@@ -246,6 +279,10 @@ function run(): void {
       setup: () => setup.get(),
       apiKey: () => apiKey.read(),
       model: async () => (await settings.read()).model,
+      agentModels: async () => {
+        const s = await settings.read();
+        return { grok: s.grokModel, codex: s.codexModel };
+      },
       spawn: realSpawnDeps(),
       override:
         isHeadless() && process.env["ALCYO_TEST_AGENT"] === "script" ? scriptedAgent() : null,
@@ -304,6 +341,7 @@ function run(): void {
       : join(mainDir, "..", "..", "resources", "fonts");
     const renders = new RenderService({
       streams,
+      queuePath: join(userData, "render-queue.json"),
       profiles: profileStore,
       worker: () => worker.get(),
       tools: () => ({ ffmpeg: exe("ffmpeg"), ffprobe: exe("ffprobe"), fontsDir }),
@@ -314,6 +352,7 @@ function run(): void {
       },
     });
 
+    late.renders = renders;
     const handlers = createHandlers({
       appInfo: () => ({
         // From package.json, so unpackaged runs (where Electron reports its
@@ -388,6 +427,27 @@ function run(): void {
         // The next check reports the new choice.
         await setup.get(true);
       },
+      agentSelection: async () => {
+        const s = await settings.read();
+        return {
+          provider: s.provider,
+          models: {
+            claude: s.model,
+            grok: s.grokModel ?? "default",
+            codex: s.codexModel ?? "default",
+          },
+        };
+      },
+      setAgentModel: async (agent, model) => {
+        const value = model === "default" ? null : model;
+        await settings.patch(
+          agent === "claude"
+            ? { model }
+            : agent === "grok"
+              ? { grokModel: value }
+              : { codexModel: value },
+        );
+      },
       setApiKey: async (key) => {
         if (!safeStorage.isEncryptionAvailable()) {
           throw new Error("This computer can't store a key safely.");
@@ -404,6 +464,23 @@ function run(): void {
       drops,
       editor: new EditorService({ streams, profiles: profileStore }),
       reveal: (path) => shell.showItemInFolder(path),
+      openDemo: async () => {
+        const { streamId, created } = await openDemo({
+          // examples/ in a checkout; electron-builder copies it to resources/demo.
+          root: app.isPackaged
+            ? join(process.resourcesPath, "demo")
+            : join(mainDir, "..", "..", "..", "..", "examples"),
+          streamsDir: async () => (await settings.read()).streamsDir ?? defaultStreamsDir,
+          index: streamsIndex,
+          profiles: profileStore,
+        });
+        if (created) {
+          await streams.post(streamId, { kind: "text", text: DEMO_COPY.opened });
+          sendEvent(win, "streams:changed", {});
+          sendEvent(win, "profile:changed", {});
+        }
+        return streamId;
+      },
       now: () => performance.now(),
       streams,
     });
@@ -429,10 +506,14 @@ function run(): void {
       handle(channel, handlers[channel] as never, appUrl);
     }
 
+    await renders.restore();
     worker.start();
     // Start the first check now, so the window rarely has to wait for it.
     setup.get().catch(() => undefined);
     openWindow();
+    void renders.hydrateHistory().catch((error: unknown) => {
+      console.error("Couldn't restore older render history", error);
+    });
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) openWindow();

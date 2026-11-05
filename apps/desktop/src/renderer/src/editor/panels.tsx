@@ -17,11 +17,12 @@ import {
   deleteCropKey,
   shortDuration,
   sourceToShort,
+  shortToSource,
   NUDGE_LARGE_MS,
   NUDGE_SMALL_MS,
 } from "@alcyo/schema";
 import { cropFraction, cropSize } from "@alcyo/render";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/Button";
 import { fmtTime } from "../streams/player";
 import { current, useEditor } from "./store";
@@ -65,78 +66,144 @@ export function cutOrRestoreSelection(): boolean {
 export function TranscriptPanel() {
   const view = useEditor((s) => s.view)!;
   const short = useEditor((s) => s.history.present.value);
-  const t = useEditor((s) => s.t);
+  // Subscribe to word changes, not every animation-frame tick.
+  const activeWord = useEditor((s) => {
+    const src = shortToSource(s.history.present.value.segments, s.t);
+    if (src === null) return null;
+    let lo = 0;
+    let hi = view.words.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (view.words[mid]!.startMs <= src) lo = mid + 1;
+      else hi = mid;
+    }
+    const word = view.words[lo - 1];
+    return word !== undefined && src < word.endMs ? word.id : null;
+  });
   const words = useEditor((s) => s.words);
   const set = useEditor((s) => s.set);
   const seek = useEditor((s) => s.seek);
   const box = useRef<HTMLDivElement>(null);
-  const byId = new Map(view.words.map((w, i) => [w.id, i]));
+  const byId = useMemo(() => new Map(view.words.map((w, i) => [w.id, i])), [view.words]);
   const range = ((): [number, number] | null => {
     if (words === null) return null;
     const a = byId.get(words.anchor);
     const b = byId.get(words.focus);
     return a === undefined || b === undefined ? null : a <= b ? [a, b] : [b, a];
   })();
-  const nowSrc = (() => {
-    let acc = 0;
-    for (const s of short.segments) {
-      if (t < acc + (s.srcOut - s.srcIn)) return s.srcIn + (t - acc);
-      acc += s.srcOut - s.srcIn;
-    }
-    return -1;
-  })();
   const first = short.segments[0]!.srcIn;
   const last = short.segments.at(-1)!.srcOut;
   // Only lines near the short: 15 s each side.
-  const lines = view.lines.filter((l) => l.endMs > first - 15_000 && l.startMs < last + 15_000);
+  const lines = useMemo(
+    () => view.lines.filter((l) => l.endMs > first - 15_000 && l.startMs < last + 15_000),
+    [view.lines, first, last],
+  );
+
+  // Runs of lines that are cut in full fold into one "removed passage" row,
+  // unless the selection is in them. Keyed by the run's first line index.
+  const [shown, setShown] = useState<Set<number>>(new Set());
+  const runs = useMemo(() => {
+    const out: ({ start: number; words: number } | undefined)[] = [];
+    let current: { start: number; words: number } | undefined;
+    lines.forEach((line, n) => {
+      const idx = line.wordIds.flatMap((id) => {
+        const i = byId.get(id);
+        return i === undefined ? [] : [i];
+      });
+      const cut =
+        idx.length > 0 &&
+        idx.every((i) => !isWordKept(short, view.words[i]!)) &&
+        !idx.some((i) => range !== null && i >= range[0] && i <= range[1]);
+      if (!cut) {
+        current = undefined;
+        out.push(undefined);
+        return;
+      }
+      current ??= { start: n, words: 0 };
+      current.words += idx.length;
+      out.push(current);
+    });
+    return out;
+  }, [lines, byId, short, view.words, range]);
 
   // The current word stays in view while playing.
   useEffect(() => {
     box.current
       ?.querySelector('[data-now="true"]')
       ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [nowSrc]);
+  }, [activeWord]);
 
   return (
-    <div ref={box} data-testid="transcript-panel" className="space-y-2 text-[15px] leading-7">
-      <p className="text-[12px] leading-snug text-tertiary">
-        Click a word to jump there. Shift-click to select more, then Delete to cut. Cut words stay
-        crossed out; select them and press Delete again to put them back.
+    <div
+      ref={box}
+      data-testid="transcript-panel"
+      className="max-w-[720px] space-y-1.5 text-[15px] leading-[26px]"
+    >
+      <p
+        className="pb-1 text-[12px] leading-snug text-tertiary"
+        title="Shift-click to select more. Select cut words and press Delete again to put them back."
+      >
+        Click a word to jump there. Select words, then press Delete to cut.
       </p>
-      {lines.map((line) => (
-        <p key={line.id} className="select-none">
-          {line.wordIds.map((id) => {
-            const i = byId.get(id);
-            if (i === undefined) return null;
-            const w = view.words[i]!;
-            const kept = isWordKept(short, w);
-            const picked = range !== null && i >= range[0] && i <= range[1];
-            const now = kept && nowSrc >= w.startMs && nowSrc < w.endMs;
-            return (
-              <span key={id}>
-                <button
-                  type="button"
-                  data-testid="word"
-                  data-word={id}
-                  data-kept={kept}
-                  data-now={now}
-                  onClick={(e) => {
-                    if (e.shiftKey && words !== null) set({ words: { ...words, focus: id } });
-                    else set({ words: { anchor: id, focus: id } });
-                    const st = sourceToShort(short.segments, w.startMs);
-                    if (st !== null) seek(st);
-                  }}
-                  className={`rounded px-0.5 outline-none focus-visible:ring-2 focus-visible:ring-unread ${
-                    picked ? "bg-unread/30 text-text" : now ? "bg-white/15 text-text" : ""
-                  } ${kept ? "text-text" : "text-tertiary line-through decoration-tertiary/70"}`}
-                >
-                  {w.text}
-                </button>{" "}
-              </span>
-            );
-          })}
-        </p>
-      ))}
+      {lines.map((line, n) => {
+        const run = runs[n];
+        const folded = run !== undefined && !shown.has(run.start);
+        return (
+          <Fragment key={line.id}>
+            {run !== undefined && run.start === n && (
+              <button
+                type="button"
+                data-testid="removed-run"
+                onClick={() =>
+                  setShown((s) => {
+                    const next = new Set(s);
+                    if (next.has(run.start)) next.delete(run.start);
+                    else next.add(run.start);
+                    return next;
+                  })
+                }
+                className="flex items-center gap-2 rounded-md py-0.5 text-[12px] text-tertiary outline-none hover:text-secondary focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <span aria-hidden className="h-px w-4 bg-line-strong" />
+                {folded ? "Show" : "Hide"} removed passage · {run.words}{" "}
+                {run.words === 1 ? "word" : "words"}
+              </button>
+            )}
+            <p className={`select-none ${folded ? "hidden" : ""}`}>
+              {line.wordIds.map((id) => {
+                const i = byId.get(id);
+                if (i === undefined) return null;
+                const w = view.words[i]!;
+                const kept = isWordKept(short, w);
+                const picked = range !== null && i >= range[0] && i <= range[1];
+                const now = kept && activeWord === w.id;
+                return (
+                  <span key={id}>
+                    <button
+                      type="button"
+                      data-testid="word"
+                      data-word={id}
+                      data-kept={kept}
+                      data-now={now}
+                      onClick={(e) => {
+                        if (e.shiftKey && words !== null) set({ words: { ...words, focus: id } });
+                        else set({ words: { anchor: id, focus: id } });
+                        const st = sourceToShort(short.segments, w.startMs);
+                        if (st !== null) seek(st);
+                      }}
+                      className={`rounded-[4px] px-px outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                        picked ? "bg-accent/30 text-text" : now ? "bg-white/15 text-text" : ""
+                      } ${kept ? "text-[#e4e5e8] hover:bg-white/[0.06]" : "text-[#5d616a] line-through decoration-[#5d616a]"}`}
+                    >
+                      {w.text}
+                    </button>{" "}
+                  </span>
+                );
+              })}
+            </p>
+          </Fragment>
+        );
+      })}
       {lines.length === 0 && (
         <p className="text-[13px] text-tertiary">There&apos;s no transcript for this part.</p>
       )}
@@ -321,10 +388,19 @@ export function ReframePanel() {
   // Draws the source frame from the playing video, so it stays in sync.
   useEffect(() => {
     let id = 0;
+    let lastVideo: HTMLVideoElement | null = null;
+    let lastTime = -1;
     const paint = () => {
       const c = canvas.current;
       const v = player?.activeVideo() ?? null;
-      if (c !== null && v !== null && v.readyState >= 2) {
+      if (
+        c !== null &&
+        v !== null &&
+        v.readyState >= 2 &&
+        (v !== lastVideo || v.currentTime !== lastTime)
+      ) {
+        lastVideo = v;
+        lastTime = v.currentTime;
         c.getContext("2d")?.drawImage(v, 0, 0, c.width, c.height);
       }
       id = requestAnimationFrame(paint);

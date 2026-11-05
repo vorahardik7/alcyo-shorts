@@ -2,14 +2,8 @@
 // history of the short, the playhead, the selection, and zoom. Edits go
 // through apply(), so every one is undoable. Main owns saving.
 import type { EditorView } from "@alcyo/ipc";
-import { buildAss } from "@alcyo/render";
-import {
-  BUILTIN_CAPTION_PRESETS,
-  BUILTIN_HOOK_PRESETS,
-  type Result,
-  type Short,
-  shortDuration,
-} from "@alcyo/schema";
+import { buildAss, resolveShortStyles, snapshotShortStyles } from "@alcyo/render";
+import { type Result, type Short, shortDuration } from "@alcyo/schema";
 import { create } from "zustand";
 import type { PlayerHandle } from "../streams/player";
 import { toast } from "../ui/toast";
@@ -30,6 +24,7 @@ export type Panel = "transcript" | "captions" | "reframe" | "hook";
 
 interface EditorState {
   view: EditorView | null;
+  session: number;
   streamId: string;
   shortId: string;
   /** The version edits branch from; saving records it as the parent. */
@@ -63,6 +58,7 @@ interface EditorState {
 
 export const useEditor = create<EditorState>((set, get) => ({
   view: null,
+  session: 0,
   streamId: "",
   shortId: "",
   base: 1,
@@ -83,6 +79,7 @@ export const useEditor = create<EditorState>((set, get) => ({
     const short = useDraft && view.draft !== null ? view.draft.short : view.version.short;
     set({
       view,
+      session: get().session + 1,
       streamId,
       shortId: view.version.shortId,
       base: view.version.version,
@@ -105,10 +102,10 @@ export const useEditor = create<EditorState>((set, get) => ({
         toast("Can't do that", r.reason);
         return false;
       }
-      set({ history: push(get().history, r.value, label) });
+      set({ history: push(get().history, snapshotShortStyles(r.value, get().view!), label) });
       return true;
     }
-    set({ history: push(get().history, out, label) });
+    set({ history: push(get().history, snapshotShortStyles(out, get().view!), label) });
     return true;
   },
 
@@ -151,10 +148,6 @@ export function useDirty(): boolean {
 
 /** The .ass for the current short: the same builder and presets the render uses. */
 export function assFor(view: EditorView, short: Short): string {
-  const caption =
-    view.captionPresets.find((p) => p.id === short.captions.presetId) ??
-    BUILTIN_CAPTION_PRESETS[0]!;
-  const hook =
-    view.hookPresets.find((p) => p.id === short.hook?.presetId) ?? BUILTIN_HOOK_PRESETS[0]!;
+  const { caption, hook } = resolveShortStyles(short, view);
   return buildAss({ short, words: view.words, caption, hook });
 }

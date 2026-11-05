@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "shortId": "sh_5ec9m3i1jq",
+  "version": 1,
+  "parent": null,
+  "createdBy": "claude",
+  "createdAt": "2026-11-04T04:29:21.867Z",
+  "fromMessageId": null,
+  "note": "Proposed",
+  "sourceId": "src_sky4lxhzys",
+  "sourceFingerprint": "3010775:e603cf4584dfe539bcaa884f3edf61d6b3d2b029da69d1a05104962f87454ce7:e603cf4584dfe539bcaa884f3edf61d6b3d2b029da69d1a05104962f87454ce7",
+  "short": {
+    "title": "Ember Blade dropped, 1 in 200",
+    "reason": "The boss loot hits the one-in-two-hundred Ember Blade and he tells chat to clip it before he will ever take it off.",
+    "segments": [
+      {
+        "srcIn": 81032,
+        "srcOut": 100967
+      }
+    ],
+    "crop": {
+      "keys": [
+        {
+          "t": 158,
+          "x": 0.5,
+          "ease": "hold"
+        }
+      ]
+    },
+    "captions": {
+      "presetId": "bold-pop",
+      "wordsPerLine": 3,
+      "overrides": []
+    },
+    "hook": {
+      "text": "A cursed ring, and wait",
+      "start": 158,
+      "end": 3158,
+      "presetId": "hook-bold"
+    },
+    "styles": {
+      "caption": {
+        "id": "bold-pop",
+        "name": "Bold pop",
+        "font": "Inter Black",
+        "sizePx": 88,
+        "color": "#FFFFFF",
+        "highlightColor": "#FACC15",
+        "outlineColor": "#000000",
+        "outlinePx": 6,
+        "shadowPx": 0,
+        "uppercase": true,
+        "positionY": 0.72,
+        "wordsPerLine": 3,
+        "origin": "builtin"
+      },
+      "hook": {
+        "id": "hook-bold",
+        "name": "Bold",
+        "font": "Inter Black",
+        "sizePx": 72,
+        "color": "#000000",
+        "background": "#FFFFFF",
+        "uppercase": true,
+        "positionY": 0.18,
+        "origin": "builtin"
+      }
+    }
+  }
+}

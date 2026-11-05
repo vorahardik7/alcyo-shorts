@@ -551,7 +551,7 @@ My Stream.alcyo/
     media.mp4             downloaded clip
   shorts/<shortId>/
     short.json            status, head version
-    draft.json            autosaved working copy
+    draft-v0001.json      autosaved working copy for that edit parent (legacy draft.json is read)
     versions/
       0001.claude.json    Claude's proposal, kept forever
       0002.claude.json    "make it punchier", with the message id that asked for it
@@ -574,7 +574,7 @@ userData/
 - Atomic writes: temp file in the same folder, fsync, rename. On Windows, retry the rename on `EPERM`/`EBUSY` for up to 2 s. `messages.jsonl` is append-only, with a full line per write, and a torn last line is dropped on read.
 - Every read is parsed with Zod. A bad file is kept as `.bad` and the app says which file and why.
 - Fingerprint: size, first and last 4 MB, ffprobe duration and stream layout.
-- Autosave writes `draft.json` within 1 s of an edit; reopening after a crash restores it.
+- Autosave writes a version-owned `draft-vNNNN.json` within 1 s of an edit, including historical branches; reopening that version restores it. Pending saves are cancelled on undo to a clean state, and failed writes can retry without replaying older edits.
 - Versions are immutable and record their parent, who made them, and the message id for chat edits.
 - Past-short videos are never copied; only their analysis is kept.
 
@@ -1037,7 +1037,7 @@ Build in the Kiro IDE for its spec Correctness feature (IDE-only today).
 - THE store SHALL keep `streams.json` in userData with id, folder, name, thumbnail, last activity and unread state.
 - `messages.jsonl` SHALL be append-only; reading SHALL keep the highest `rev` per message id and drop a torn last line (test).
 - WHEN a source is imported from a file, THE store SHALL keep its path and fingerprint and SHALL NOT copy it unless asked; IF it's missing, Locate file SHALL accept only a matching fingerprint.
-- THE store SHALL write `draft.json` within 1 s of an edit and restore it after a crash.
+- THE store SHALL write a version-owned draft within 1 s of an edit and restore it after a crash.
 - THE store SHALL never overwrite a version file; each version SHALL record parent, author and `fromMessageId`.
 - `transcript:window` and `transcript:search` SHALL return only what's asked.
 
@@ -1084,7 +1084,7 @@ Build in the Kiro IDE for its spec Correctness feature (IDE-only today).
 
 - `cropWindow` and `buildAss` SHALL be pure, Node-free and importable by the renderer.
 - The version-and-preset-to-args function SHALL be pure, with snapshot tests for multiple segments, crop keyframes (including 200 keys), captions and hook.
-- Segment edges SHALL snap to source frames, with a 10 ms audio fade at each cut.
+- Saved segment milliseconds SHALL remain the canonical edit clock. Video frames SHALL be sampled once at output, without accumulating per-cut rounding; audio SHALL retain a 10 ms fade at each cut.
 - ffprobe on an output SHALL show the preset's size, H.264, AAC, and a length within 100 ms of the kept segments.
 - Captions SHALL use only kept words with overrides, shifted to short time, with the spoken word highlighted, using bundled fonts.
 - The same version rendered twice SHALL give identical args and caption files.
@@ -1685,7 +1685,7 @@ These are checks the build itself answers, plus two decisions only you can make.
 
 ## 36. Current status
 
-As of Nov 2, local `main` only (no GitHub repo yet).
+As of Nov 3, local `main` only (no GitHub repo yet).
 
 | Spec | State | Notes |
 |---|---|---|
@@ -1698,11 +1698,11 @@ As of Nov 2, local `main` only (no GitHub repo yet).
 | 6 `import-and-clips` | Done | `@alcyo/import`: yt-dlp info then download into the project, cancel removes the folder, Update downloader with SHA-256 check, viewer clips from links or files, quick analysis, transcript then audio matching (within 100 ms on generated audio), Place by hand. The format uses `<=?1080` so plain file links work. Dropped files still show a note: the preload doesn't expose file paths. See `.kiro/specs/import-and-clips/`. |
 | 7 `creator-profile` | Done | `@alcyo/profile`: interview through the signed-in agent (up to 8 questions, skips use defaults, checked with one retry), four built-in caption looks, past shorts measured in place (not copied), style summary written by the agent with measured targets, `.ass` and Alcyo template import, export. Checked live with Grok in the app. Jump cuts aren't counted; scene cuts only. See `.kiro/specs/creator-profile/`. |
 | 8 `planner` | Done | Find shorts from numbered lines with `[pause]` and `[clipped xN]`, mapped to word edges, snapped, checked for length, overlap and count, with one retry; windows for long streams; runs by itself once when the transcript is in. Chat: one checked `ChatAction` per message, replies target their card, new versions record the message id. Simple cards in the thread; playback is spec 10. Checked live with Grok on a 4.7-hour VOD (about 90 s per Find shorts) and in the app. `[loud]` and `[scene]` (P1) not done. See `.kiro/specs/planner/`. |
-| 9 `render-engine` | Done | `@alcyo/render`: one crop function (ffmpeg expression matches it at every frame for 200 keys), one `.ass` builder (kept words, overrides, highlighted word, hook), pure args with frame-snapped segments and 10 ms fades, ffprobe-checked output, no file left on cancel. Bundled OFL fonts. One render at a time with progress, cancel, retry, notification, a thread message and `renders/index.json`; background analysis waits. Also a UI pass after T3 Code: new icon, sidebar, home, Settings with an Agents list and detail, paths only on request. See `.kiro/specs/render-engine/`. |
+| 9 `render-engine` | Done | `@alcyo/render`: one crop function (ffmpeg expression matches it at every frame for 200 keys), one `.ass` builder (kept words, overrides, highlighted word, hook), pure args with one sequential decoder, saved-millisecond timing and 10 ms fades, ffprobe-checked output, no file left on cancel. Bundled OFL fonts. One render at a time with progress, cancel, retry, notification, a thread message and `renders/index.json`; background analysis waits. Also a UI pass after T3 Code: new icon, sidebar, home, Settings with an Agents list and detail, paths only on request. See `.kiro/specs/render-engine/`. |
 | 10 `chat-shell` | Done | Cards play inline through `alcyo-media://` (ids only, Range) with the render's crop function and `.ass` drawn by JASSUB, two videos across cuts, one at a time, lazy. Edit, Render, Copy link (`alcyo://`), Reply; version chips are links. Short, version, edit and message routes and links. Older messages on scroll. Dropped files work through the preload without the page seeing a path. Sidebar thumbnails. The editing tools are spec 11; the edit route shows the version large. See `.kiro/specs/chat-shell/`. |
 | 11 `editor` | Done | Full-window editor: preview (the render's crop and `.ass`, built live), transcript cut and restore, captions (text, hide, 10/100 ms nudge, words per line, look), reframe (drag the window, hold or linear keys), hook and safe areas, a timeline with trims, split, I/O selection, ripple delete, zoom and snapping, 500-step undo, versions (open, branch, restore), autosave, the chat drawer, and section 6's shortcuts. ffmpeg's crop matches `cropWindow` within 1 px; a JASSUB frame matches ffmpeg's on 326 of 327 grid cells. P1 tools not done. See `.kiro/specs/editor/`. |
 | 12 `mcp-server` | Done | `@alcyo/mcp`: the seven tools with Zod inputs over stdio, bundled to `packages/mcp/dist/index.js` without Electron. Every path resolves through symlinks inside `--root`; a recording outside it isn't read. `render_short` renders with the render engine and returns the file and ffprobe summary. `.kiro/settings/mcp.json` auto-approves the six read-only tools. Checked from Kiro's own MCP client. See `.kiro/specs/mcp-server/`. |
-| 13 | Not started | |
+| 13 `demo-and-docs` | Done, with stand-in footage | `examples/demo.alcyo` built by `pnpm demo:build` with the app's services: analysis, two clips placed at their true offsets, Grok's three proposals, a chat revision and an editor version; media paths relative to the project. The footage is a 112 s synthetic-voice stand-in until Hardik records the real clip (section 33). Open the demo stream copies it with its media into the streams folder, needs no agent, key, network or model, and installs the demo profile only when there's none. Playwright opens it with no agent, renders short 1 and checks it with ffprobe. README, KIRO.md and `.kiro/agents/reviewer.json`. See `.kiro/specs/demo-and-docs/`. |
 
 Answers recorded so far:
 
@@ -1752,3 +1752,75 @@ Waiting on Hardik: signing; and the go-ahead to create the GitHub repo.
 - [Electron protocol API](https://www.electronjs.org/docs/latest/api/protocol), [electron-builder notarization](https://www.electron.build/docs/notarization), [electron-builder Windows](https://www.electron.build/docs/win)
 - whisper.cpp: [repo and VAD](https://github.com/ggml-org/whisper.cpp), [releases](https://github.com/ggml-org/whisper.cpp/releases), [models](https://github.com/ggml-org/whisper.cpp/blob/master/models/README.md), [whisper-cli options](https://github.com/ggml-org/whisper.cpp/blob/master/examples/cli/cli.cpp)
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp), [JASSUB](https://github.com/ThaUnknown/jassub)
+
+
+## Audit fixes (Nov 3)
+
+The implementation review through spec 12 led to these changes. Existing
+features remain in scope; lazy card players, cached analysis, transcript
+windows, background work, one-at-a-time renders, shared ASS/crop code,
+1080p H.264/AAC output and 500-step undo remain.
+
+- Drafts are owned by their explicit edit parent, including older branches.
+  Undo cancels pending drafts; a failed save is retryable without replaying
+  an older value over a newer one. Async saves are scoped to the editor session.
+- Seeking keeps the active video across cuts. Ready/relinked media refreshes
+  mounted previews; relinking changes the media URL revision. Background
+  waveform/thumbnail completion refreshes editor metadata.
+- Render input uses a sequential ffconcat cut list. Nearby cuts decode as a
+  bounded group to avoid seeking and decoding the same GOP repeatedly.
+  A balanced selection/time-map expression removes gaps and preserves the
+  saved millisecond clock; output frame sampling happens once. Quality,
+  crop, captions, hook, audio fades, cancellation and output checks stay intact.
+- Saved versions carry caption/hook snapshots. A legacy version's first
+  resolved look is frozen in a sidecar without rewriting its version file.
+  Desktop and MCP resolve these snapshots identically; unavailable custom
+  looks ask for the template instead of silently substituting a built-in.
+- Analysis statuses record their target and kind. Reopening reconciles
+  interrupted jobs, hydrates completed probe metadata, and offers Resume.
+  Downloading a model leaves an Analyze action for the existing recording.
+- Render history and interrupted jobs persist in userData/render-queue.json.
+  Finished project render indexes also hydrate the queue. Interrupted work
+  becomes a retryable failure; queued cancellations cannot run twice on retry.
+- Replies use the addressed version as parent. Restores publish cards and
+  activity. Old links resolve one addressed message/version independently of
+  the current history page, with explicit older-page loading on linked views.
+- Editor links can change versions while the same short stays open. Trims
+  expand the transcript window only as needed. Transcript highlighting updates
+  on word changes; frame ticks update the playhead independently of static
+  word/timeline content.
+- Locate project verifies the stream id, rebases only project-owned media
+  and thumbnails, and refreshes saved render paths. Imports (including a
+  dropped recording) offer a native Copy into project checkbox.
+
+Regression coverage is in e2e/audit.spec.ts, the existing editor/planner/
+stream tests, store draft tests, MCP boundary tests, style snapshot tests,
+and real render tests with 30 cuts on a 24 fps source. Windows and signed-in
+provider execution remain separate environment checks.
+
+### Follow-up audit fixes
+
+- Save version flushes a recoverable draft before attempting the version
+  write, including when that write fails. Completing a restore only changes
+  the editor if its session, version and edit history still match.
+- Partial analysis failures remain retryable while a completed transcript
+  keeps Find shorts available. Older statuses marked "done, with problems"
+  are reconciled to a retryable failure when opened.
+- Demo option parsing validates the selected agent and flags before work.
+  Rebuilding keeps the existing recording; `--new-clip` requires one.
+  `--generate-stand-in` only generates missing input, with exclusive creation
+  protecting footage that appears during generation. Replacement footage
+  retains its proposed crop; the builder's two narration cues are documented.
+- Only the durable render queue restores before the first window opens.
+  Older project/MCP history hydrates afterward, four projects at a time,
+  using the already loaded index entries. Completion events update the queue,
+  and a concurrent retry cannot be overwritten by background hydration.
+
+Coverage includes failed-save/reopen, delayed restore/navigation and edits,
+partial-analysis recovery, demo input bytes and concurrent creation, CLI
+errors, and bounded background render-history loading.
+
+Verified on macOS: desktop lint/typecheck/build, 157 desktop unit tests,
+15 audit/demo Electron tests, 18 navigation Electron tests, project-file
+validation and a clean whitespace diff. The demo export remains checked at
+1080 × 1920 H.264/AAC. Windows and live-provider execution were not rerun.

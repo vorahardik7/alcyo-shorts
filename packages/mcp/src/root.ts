@@ -1,8 +1,8 @@
 // The one folder the server may touch (plan section 23, spec 12). Every path
 // a tool takes is resolved here, through symlinks, and refused if it lands
 // outside the root.
-import { realpath, stat } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
+import { lstat, realpath, stat } from "node:fs/promises";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 export class ToolError extends Error {
   override name = "ToolError";
@@ -22,31 +22,56 @@ export class Root {
     return this.real;
   }
 
-  /** True when p is the root or inside it, after symlinks (when p exists). */
-  async contains(p: string): Promise<boolean> {
-    const base = await this.base();
-    const real = await realpath(p).catch(() => p);
-    const rel = relative(base, real);
-    return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  private inside(base: string, path: string): boolean {
+    const rel = relative(base, path);
+    return rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
   }
 
-  /**
-   * A path relative to the root (or absolute inside it) -> its real path.
-   * It must exist, and must still be inside the root after symlinks.
-   */
-  async resolve(p: string, what = "That path"): Promise<string> {
+  /** Resolve new files through their closest existing ancestor as well. */
+  async resolveAny(p: string, what = "That path"): Promise<string> {
     const base = await this.base();
-    const abs = isAbsolute(p) ? p : resolve(base, p);
-    let real: string;
+    const abs = isAbsolute(p) ? resolve(p) : resolve(base, p);
+    let ancestor = abs;
+    let canonical: string;
+    for (;;) {
+      try {
+        const real = await realpath(ancestor);
+        canonical = resolve(real, relative(ancestor, abs));
+        break;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        const entry = await lstat(ancestor).catch((e: unknown) => {
+          if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+          return null;
+        });
+        if (entry?.isSymbolicLink()) throw new ToolError(`${what} has an unresolved link: ${p}`);
+        const parent = dirname(ancestor);
+        if (parent === ancestor) throw new ToolError(`${what} can't be resolved: ${p}`);
+        ancestor = parent;
+      }
+    }
+    if (!this.inside(base, canonical)) {
+      throw new ToolError(`${what} is outside the root folder, so it can't be used: ${p}`);
+    }
+    return canonical;
+  }
+
+  async contains(p: string): Promise<boolean> {
     try {
-      real = await realpath(abs);
+      await this.resolveAny(p);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async resolve(p: string, what = "That path"): Promise<string> {
+    const path = await this.resolveAny(p, what);
+    try {
+      return await realpath(path);
     } catch {
       throw new ToolError(`${what} doesn't exist: ${p}`);
     }
-    if (!(await this.contains(real))) {
-      throw new ToolError(`${what} is outside the root folder, so it can't be used: ${p}`);
-    }
-    return real;
   }
 
   async resolveFile(p: string, what = "That file"): Promise<string> {

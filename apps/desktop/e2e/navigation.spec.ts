@@ -263,8 +263,8 @@ test.describe("with setup complete", () => {
     await page.getByTestId("choose-file").click();
     await page.waitForTimeout(200);
     await expect.poll(hash).toBe("#/");
-    await page.getByTestId("open-demo").click();
-    await expect(page.getByTestId("toast")).toContainText("spec 13");
+    // Open the demo stream has its own launch in demo.spec.ts.
+    await expect(page.getByTestId("open-demo")).toBeEnabled();
     await page.getByTestId("new-stream").click();
     await expect(page.getByTestId("composer-input")).toBeFocused();
     await page.getByTestId("attach").click();

@@ -57,7 +57,7 @@ specs 9 and 10.
 2. Saving SHALL make a user version and post a version message. Editing an
    older version and saving branches from it (its parent). Any version can
    be opened and restored.
-3. Edits to the latest version autosave as a draft and come back after a
+3. Edits to every version autosave as a version-owned draft and come back after a
    restart.
 4. Render saves unsaved edits as a version first.
 

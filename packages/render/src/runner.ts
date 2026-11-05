@@ -2,7 +2,8 @@
 // filter graph into a work folder with copies of the bundled fonts, runs
 // ffmpeg there, checks the output with ffprobe, and only then moves it into
 // place. A cancel or failure leaves no file behind.
-import { copyFile, mkdir, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { copyFile, readdir } from "node:fs/promises";
+import { mkdir, rename, rm, writeFile, resolveFileAccess } from "@alcyo/store/access";
 import { join } from "node:path";
 import { MediaError, type Runner, ffmpegProgress, ffprobeArgs, parseFfprobe } from "@alcyo/media";
 import type { CaptionPreset, HookPreset, Short, Word } from "@alcyo/schema";
@@ -45,15 +46,31 @@ export async function renderShort(
   onProgress: (pct: number) => void,
   signal: AbortSignal,
 ): Promise<RenderOutput> {
+  // Resolve before passing project paths to ffmpeg or recursive cleanup.
+  job = {
+    ...job,
+    workDir: await resolveFileAccess(job.workDir),
+    outPath: await resolveFileAccess(job.outPath),
+    sourcePath: await resolveFileAccess(job.sourcePath),
+  };
+  await resolveFileAccess(`${job.outPath}.part.mp4`);
   await rm(job.workDir, { recursive: true, force: true });
   await mkdir(join(job.workDir, "fonts"), { recursive: true });
   const part = `${job.outPath}.part.mp4`;
   try {
     for (const f of await readdir(job.fontsDir)) {
       if (/\.(ttf|otf)$/i.test(f))
-        await copyFile(join(job.fontsDir, f), join(job.workDir, "fonts", f));
+        await copyFile(
+          join(job.fontsDir, f),
+          await resolveFileAccess(join(job.workDir, "fonts", f)),
+        );
     }
-    const files = { filter: "filter.txt", ass: "captions.ass", fonts: "fonts" };
+    const files = {
+      filter: "filter.txt",
+      ass: "captions.ass",
+      fonts: "fonts",
+      concat: "input.ffconcat",
+    };
     const plan = renderPlan({
       sourcePath: job.sourcePath,
       source: job.source,
@@ -63,6 +80,7 @@ export async function renderShort(
       files,
     });
     await writeFile(join(job.workDir, files.filter), plan.filter, "utf8");
+    await writeFile(join(job.workDir, files.concat), plan.concat, "utf8");
     await writeFile(
       join(job.workDir, files.ass),
       buildAss({ short: job.short, words: job.words, caption: job.caption, hook: job.hook }),

@@ -1,0 +1,16 @@
+{
+  "clipId": "clip_i9orvmi8hp",
+  "origin": {
+    "kind": "file",
+    "path": "../demo/clip-parry.mp4"
+  },
+  "title": "PARRIED THE TAIL",
+  "durationMs": 10000,
+  "match": {
+    "srcIn": 47700,
+    "srcOut": 57700,
+    "confidence": 1,
+    "method": "transcript"
+  },
+  "schemaVersion": 1
+}

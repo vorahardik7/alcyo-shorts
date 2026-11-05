@@ -10,9 +10,15 @@ import {
   withAgentDir,
 } from "./provider";
 
-export function codexArgs(schemaFile: string, lastMessage: string, cwd: string): string[] {
+export function codexArgs(
+  schemaFile: string,
+  lastMessage: string,
+  cwd: string,
+  opts: { model?: string } = {},
+): string[] {
   return [
     "exec",
+    ...(opts.model === undefined ? [] : ["-m", opts.model]),
     "--ephemeral",
     "--skip-git-repo-check",
     "--ignore-user-config",
@@ -40,7 +46,11 @@ export function scrubCodexEnv(
   return copy;
 }
 
-export function codexProvider(path: string, deps: SpawnDeps): LlmProvider {
+export function codexProvider(
+  path: string,
+  deps: SpawnDeps,
+  opts: { model?: string } = {},
+): LlmProvider {
   return {
     name: "codex-cli",
     async complete(req) {
@@ -50,7 +60,7 @@ export function codexProvider(path: string, deps: SpawnDeps): LlmProvider {
       const lastMessage = join(cwd, "last.txt");
       try {
         await deps.writeFile(schemaFile, JSON.stringify(req.jsonSchema));
-        const result = await deps.spawn(path, codexArgs(schemaFile, lastMessage, cwd), {
+        const result = await deps.spawn(path, codexArgs(schemaFile, lastMessage, cwd, opts), {
           cwd,
           env: withAgentDir(scrubCodexEnv(deps.env), path),
           input: `${req.instruction}\n\n${req.input}\n`,

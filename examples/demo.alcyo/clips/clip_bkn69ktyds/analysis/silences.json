@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "clip_bkn69ktyds",
+  "silences": [
+    {
+      "startMs": 556,
+      "endMs": 956
+    },
+    {
+      "startMs": 1347,
+      "endMs": 1745
+    },
+    {
+      "startMs": 3029,
+      "endMs": 3530
+    },
+    {
+      "startMs": 5399,
+      "endMs": 5891
+    },
+    {
+      "startMs": 7665,
+      "endMs": 8170
+    },
+    {
+      "startMs": 9429,
+      "endMs": 9832
+    }
+  ]
+}

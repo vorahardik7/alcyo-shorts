@@ -405,6 +405,9 @@ export function applyChatAction(
         const s = v.short;
         const short: Short = {
           ...s,
+          ...(s.styles === undefined
+            ? {}
+            : { styles: { caption: caption ?? s.styles.caption, hook: hook ?? s.styles.hook } }),
           captions:
             caption === undefined
               ? s.captions

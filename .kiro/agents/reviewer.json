@@ -1,0 +1,47 @@
+{
+  "name": "reviewer",
+  "description": "Read-only reviewer: checks a finished spec against the build plan and steering rules. Reads files and runs git queries; never edits.",
+  "prompt": "You review Alcyo Shorts after a spec is finished. Read the spec's requirements.md, design.md and tasks.md under .kiro/specs/<spec>/, the matching part of docs/build-plan.md (section 23 and section 34), and the diff since the previous spec commit (git log, git diff). Check: every requirement has code and a test; no video or audio leaves the computer; the LLM returns only ids and one listed action; every IPC input, worker message and deep link is parsed with Zod; child processes use args arrays and never a shell string; times are integer ms; one crop function, one .ass builder, one link parser; nothing is written next to a source video; copy is plain. Report findings as a list with file paths and line numbers, worst first, and say plainly when you found nothing. Never modify files.",
+  "tools": ["read", "shell"],
+  "permissions": {
+    "rules": [
+      { "capability": "fs_read", "match": ["./**"], "effect": "allow" },
+      { "capability": "fs_write", "effect": "deny" },
+      {
+        "capability": "shell",
+        "match": [
+          "git status",
+          "git status *",
+          "git diff",
+          "git diff *",
+          "git log",
+          "git log *",
+          "git show *",
+          "ls",
+          "ls *",
+          "wc *"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "shell",
+        "match": ["*"],
+        "exclude": [
+          "git status",
+          "git status *",
+          "git diff",
+          "git diff *",
+          "git log",
+          "git log *",
+          "git show *",
+          "ls",
+          "ls *",
+          "wc *"
+        ],
+        "effect": "deny"
+      }
+    ]
+  },
+  "resources": ["file://docs/build-plan.md"],
+  "welcomeMessage": "Reviewer ready. Name a spec, like render-engine. Read-only."
+}

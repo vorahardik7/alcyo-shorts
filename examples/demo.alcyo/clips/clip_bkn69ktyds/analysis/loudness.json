@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "clip_bkn69ktyds",
+  "integratedLufs": -24.8,
+  "momentary": [
+    {
+      "tMs": 0,
+      "lufs": -22.8
+    },
+    {
+      "tMs": 1000,
+      "lufs": -22.7
+    },
+    {
+      "tMs": 2000,
+      "lufs": -21.8
+    },
+    {
+      "tMs": 3000,
+      "lufs": -22.3
+    },
+    {
+      "tMs": 4000,
+      "lufs": -23.6
+    },
+    {
+      "tMs": 5000,
+      "lufs": -24.3
+    },
+    {
+      "tMs": 6000,
+      "lufs": -22.9
+    },
+    {
+      "tMs": 7000,
+      "lufs": -20.2
+    },
+    {
+      "tMs": 8000,
+      "lufs": -24
+    },
+    {
+      "tMs": 9000,
+      "lufs": -24.8
+    }
+  ]
+}

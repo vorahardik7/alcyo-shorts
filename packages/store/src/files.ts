@@ -1,6 +1,6 @@
 // Atomic writes (temp in the same folder, fsync, rename) and checked reads.
 import { randomBytes } from "node:crypto";
-import { link, mkdir, open, readFile, rename, rm, stat } from "node:fs/promises";
+import { link, mkdir, open, readFile, rename, rm, stat } from "./access.ts";
 import { basename, dirname, join } from "node:path";
 import { type ProjectFileKind, parseProjectFile } from "@alcyo/schema";
 import type { z } from "zod";

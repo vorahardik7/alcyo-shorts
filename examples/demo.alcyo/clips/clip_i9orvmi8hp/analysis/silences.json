@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "clip_i9orvmi8hp",
+  "silences": [
+    {
+      "startMs": 766,
+      "endMs": 1206
+    },
+    {
+      "startMs": 1616,
+      "endMs": 2054
+    },
+    {
+      "startMs": 2462,
+      "endMs": 2897
+    },
+    {
+      "startMs": 3455,
+      "endMs": 3881
+    },
+    {
+      "startMs": 5765,
+      "endMs": 6233
+    },
+    {
+      "startMs": 7172,
+      "endMs": 7629
+    },
+    {
+      "startMs": 8497,
+      "endMs": 8819
+    },
+    {
+      "startMs": 9614,
+      "endMs": 10000
+    }
+  ]
+}

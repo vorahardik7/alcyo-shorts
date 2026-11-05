@@ -2,6 +2,7 @@
 // everything the editor shows, and saving an edit as a user version with a
 // version message in the thread. Electron-free.
 import type { EditorView } from "@alcyo/ipc";
+import { resolveShortStyles, snapshotShortStyles } from "@alcyo/render";
 import { THUMB_EVERY_MS } from "@alcyo/media";
 import { Silences, type Short, type ShortVersion } from "@alcyo/schema";
 import { type ProfileStore, exists, readJson } from "@alcyo/store";
@@ -20,15 +21,33 @@ export interface EditorDeps {
 export class EditorService {
   constructor(private readonly deps: EditorDeps) {}
 
-  async open(streamId: string, shortId: string, version?: number): Promise<EditorView> {
+  async open(
+    streamId: string,
+    shortId: string,
+    version?: number,
+    range?: { fromMs: number; toMs: number },
+  ): Promise<EditorView> {
     const store = await this.deps.streams.forStream(streamId);
     const file = await store.shortFile(shortId);
-    const v = await store.version(shortId, version);
+    let v = await store.version(shortId, version);
+    const presets = await this.deps.profiles.presets();
+    const styles =
+      v.short.styles ??
+      (await store.freezeStyles(shortId, v.version, resolveShortStyles(v.short, presets)));
+    v = { ...v, short: { ...v.short, styles } };
+    const draft = await store.draft(shortId, v.version);
+    const working = draft?.short ?? v.short;
     const source = await store.source(v.sourceId);
     const video = source.probe?.video ?? null;
     const durationMs = source.probe?.durationMs ?? v.short.segments.at(-1)!.srcOut;
-    const from = Math.max(0, v.short.segments[0]!.srcIn - WINDOW_PAD_MS);
-    const to = Math.min(durationMs, v.short.segments.at(-1)!.srcOut + WINDOW_PAD_MS);
+    const from = Math.max(
+      0,
+      Math.min(working.segments[0]!.srcIn, range?.fromMs ?? Infinity) - WINDOW_PAD_MS,
+    );
+    const to = Math.min(
+      durationMs,
+      Math.max(working.segments.at(-1)!.srcOut, range?.toMs ?? 0) + WINDOW_PAD_MS,
+    );
     const win = await store
       .transcriptWindow(v.sourceId, from, to)
       .catch(() => ({ words: [], lines: [] }));
@@ -40,14 +59,12 @@ export class EditorService {
     const names = await readdir(cache).catch(() => [] as string[]);
     const thumbs = names.filter((n) => /^thumbs-\d{3,}\.jpg$/.test(n)).length;
     const playable = await playableFile(store, v.sourceId).catch(() => null);
-    const [presets, profile, versions, messages] = await Promise.all([
-      this.deps.profiles.presets(),
+    const [profile, versions, messages] = await Promise.all([
       this.deps.profiles.profile(),
       store.versions(shortId),
       store.messages(),
     ]);
     const asked = v.fromMessageId === null ? null : messages.find((m) => m.id === v.fromMessageId);
-    const draft = v.version === file.head ? await store.draft(shortId) : null;
     return {
       version: v,
       head: file.head,
@@ -55,7 +72,10 @@ export class EditorService {
       versions,
       fromMessage: asked?.body.kind === "text" ? asked.body.text : null,
       source: {
-        src: playable === null || video === null ? null : sourceUrl(streamId, v.sourceId),
+        src:
+          playable === null || video === null
+            ? null
+            : sourceUrl(streamId, v.sourceId, source.mediaRevision),
         width: video?.width ?? 1920,
         height: video?.height ?? 1080,
         fpsNum: video?.fpsNum ?? 30,
@@ -74,10 +94,22 @@ export class EditorService {
       words: win.words,
       lines: win.lines,
       silences,
-      captionPresets: presets.captionPresets,
-      hookPresets: presets.hookPresets,
+      captionPresets: [
+        ...presets.captionPresets.filter((p) => p.id !== styles.caption.id),
+        styles.caption,
+      ],
+      hookPresets: [...presets.hookPresets.filter((p) => p.id !== styles.hook.id), styles.hook],
       platforms: profile?.platforms ?? ["tiktok", "youtube-shorts", "reels"],
     };
+  }
+
+  async restore(streamId: string, shortId: string, version: number): Promise<ShortVersion> {
+    const old = await (await this.deps.streams.forStream(streamId)).version(shortId, version);
+    return this.save(streamId, shortId, {
+      short: old.short,
+      note: `Restored v${version}`,
+      parent: version,
+    });
   }
 
   /** Saves the creator's edit as a new version, and says so in the thread. */
@@ -88,7 +120,7 @@ export class EditorService {
   ): Promise<ShortVersion> {
     const store = await this.deps.streams.forStream(streamId);
     const v = await store.saveVersion(shortId, {
-      short: opts.short,
+      short: snapshotShortStyles(opts.short, await this.deps.profiles.presets()),
       createdBy: "user",
       note: opts.note.trim().slice(0, 200) || "Edited",
       fromMessageId: null,

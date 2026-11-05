@@ -218,6 +218,23 @@ describe("a stream folder", () => {
     expect(await readdir(join(root, "Videos 名前"))).toEqual(["soul47 stream.mp4"]);
   });
 
+  it("resolves media paths stored relative to the stream folder", async () => {
+    const source = await store.addFileSource(video);
+    const file = store.paths.source(source.sourceId);
+    const saved = JSON.parse(await readFile(file, "utf8")) as { origin: { path: string } };
+    saved.origin.path = "../../Videos 名前/soul47 stream.mp4";
+    await writeFile(file, JSON.stringify(saved));
+    expect((await store.source(source.sourceId)).origin.path).toBe(video);
+    expect((await store.sources())[0]?.missing).toBe(false);
+
+    await store.addClip({
+      clipId: "clip_r",
+      origin: { kind: "file", path: "../../Videos 名前/soul47 stream.mp4" },
+      durationMs: 0,
+    });
+    expect((await store.clip("clip_r")).origin.path).toBe(video);
+  });
+
   it("relinks a moved source only to the same file", async () => {
     const source = await store.addFileSource(video);
     const moved = join(root, "moved.mp4");
@@ -399,6 +416,55 @@ describe("a stream folder", () => {
       ).rejects.toThrow("past the end of the source");
     });
 
+    it("freezes legacy version styles once without rewriting its immutable file", async () => {
+      const v = await store.createShort({
+        sourceId,
+        short: F.short,
+        createdBy: "claude",
+        note: "",
+        fromMessageId: null,
+      });
+      const path = store.paths.version(v.shortId, 1, "claude");
+      const before = await readFile(path, "utf8");
+      const styles = { caption: F.presets.captionPresets[0]!, hook: F.presets.hookPresets[0]! };
+      await store.freezeStyles(v.shortId, 1, styles);
+      await store.freezeStyles(v.shortId, 1, {
+        ...styles,
+        caption: { ...styles.caption, sizePx: 150 },
+      });
+      expect((await store.version(v.shortId, 1)).short.styles).toEqual(styles);
+      expect(await readFile(path, "utf8")).toBe(before);
+    });
+
+    it("keeps stale and historical drafts on their actual branch", async () => {
+      const v1 = await store.createShort({
+        sourceId,
+        short: F.short,
+        createdBy: "claude",
+        note: "",
+        fromMessageId: null,
+      });
+      await store.saveVersion(v1.shortId, {
+        short: edit("Agent revision"),
+        createdBy: "claude",
+        note: "",
+        fromMessageId: null,
+      });
+      await store.saveDraft(v1.shortId, edit("Old pending edit"), 1);
+      expect(await store.draft(v1.shortId)).toBeNull();
+      expect(await store.draft(v1.shortId, 1)).toMatchObject({
+        baseVersion: 1,
+        short: { title: "Old pending edit" },
+      });
+      await store.clearDraft(v1.shortId, 2);
+      expect(await store.draft(v1.shortId, 1)).not.toBeNull();
+      await store.clearDraft(v1.shortId, 1);
+      expect(await store.draft(v1.shortId, 1)).toBeNull();
+      await expect(store.saveDraft(v1.shortId, edit("Invalid base"), 99)).rejects.toThrow(
+        "doesn't exist",
+      );
+    });
+
     it("returns a draft newer than the head, and drops it when a version is saved", async () => {
       const v1 = await store.createShort({
         sourceId,
@@ -408,7 +474,7 @@ describe("a stream folder", () => {
         fromMessageId: null,
       });
       expect(await store.draft(v1.shortId)).toBeNull();
-      await store.saveDraft(v1.shortId, edit("Draft"));
+      await store.saveDraft(v1.shortId, edit("Draft"), 1);
       expect((await store.draft(v1.shortId))?.short.title).toBe("Draft");
       await store.saveVersion(v1.shortId, {
         short: edit("Saved"),
@@ -503,6 +569,62 @@ describe("draft saver", () => {
     expect(saved.length).toBeGreaterThanOrEqual(2);
     expect(saved[0]!.at - start).toBeLessThanOrEqual(MAX_WAIT_MS);
     expect(saved.at(-1)!.value).toBe(19);
+  });
+
+  it("cancels queued edits when undo returns to the saved value", async () => {
+    vi.useFakeTimers();
+    const save = vi.fn((_value: number) => Promise.resolve());
+    const saver = new DraftSaver(save);
+    saver.edit(1);
+    saver.cancel();
+    await vi.advanceTimersByTimeAsync(1000);
+    await saver.flush();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("retains failed edits for retry and recovers the save chain", async () => {
+    const save = vi
+      .fn((_value: number) => Promise.resolve())
+      .mockRejectedValueOnce(new Error("disk full"));
+    const error = vi.fn();
+    const saver = new DraftSaver(save, Date.now, error);
+    saver.edit(1);
+    await expect(saver.flush()).rejects.toThrow("disk full");
+    await saver.flush();
+    saver.edit(2);
+    await saver.flush();
+    expect(save.mock.calls.map(([value]) => value)).toEqual([1, 1, 2]);
+    expect(error).toHaveBeenCalledOnce();
+  });
+
+  it("never replays a failed old value after a newer queued save succeeds", async () => {
+    let started!: () => void;
+    let fail!: (error: Error) => void;
+    const entered = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const blocked = new Promise<void>((_resolve, reject) => {
+      fail = reject;
+    });
+    const values: number[] = [];
+    const saver = new DraftSaver<number>((value) => {
+      values.push(value);
+      if (values.length === 1) {
+        started();
+        return blocked;
+      }
+      return Promise.resolve();
+    });
+    saver.edit(1);
+    const first = saver.flush();
+    await entered;
+    saver.edit(2);
+    const second = saver.flush();
+    fail(new Error("transient failure"));
+    await expect(first).rejects.toThrow("transient failure");
+    await second;
+    await saver.flush();
+    expect(values).toEqual([1, 2]);
   });
 
   it("flushes now, once", async () => {

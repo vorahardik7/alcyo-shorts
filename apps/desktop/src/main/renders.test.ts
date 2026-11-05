@@ -1,18 +1,18 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { EventName, RenderEvent, RenderRequest, RenderResult } from "@alcyo/ipc";
 import * as F from "@alcyo/schema/testing";
 import {
   ProfileStore,
-  type ProjectStore,
+  ProjectStore,
   SettingsFile,
   StreamsIndex,
   createStream,
   writeJsonAtomic,
 } from "@alcyo/store";
-import { beforeEach, describe, expect, it } from "vitest";
-import { COPY, RenderService } from "./renders";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { COPY, RenderService, type RenderServiceDeps } from "./renders";
 import { StreamService } from "./streams";
 
 /** A worker whose renders the test finishes, fails or watches being cancelled. */
@@ -68,6 +68,7 @@ let notes: string[];
 let events: Array<{ event: EventName; payload: unknown }>;
 let shortId: string;
 let media: string;
+let renderDeps: RenderServiceDeps;
 
 const tick = () => new Promise((r) => setTimeout(r, 10));
 async function until(ok: () => boolean): Promise<void> {
@@ -124,7 +125,8 @@ beforeEach(async () => {
   });
   shortId = v.shortId;
   worker = new FakeWorker();
-  renders = new RenderService({
+  renderDeps = {
+    queuePath: join(root, "render-queue.json"),
     streams,
     profiles: new ProfileStore(root),
     worker: () => worker,
@@ -132,7 +134,8 @@ beforeEach(async () => {
     emit: (event, payload) => events.push({ event, payload }),
     notify: (title, body) => notes.push(`${title}: ${body}`),
     log: () => undefined,
-  });
+  };
+  renders = new RenderService(renderDeps);
 });
 
 describe("the render queue", () => {
@@ -238,4 +241,192 @@ describe("the render queue", () => {
     });
     expect(await fresh.get(streamId, "r_unknown")).toBeNull();
   });
+});
+
+it("restores durable finished history and makes interrupted jobs retryable", async () => {
+  const first = await renders.enqueue(streamId, shortId);
+  await until(() => worker.jobs.length === 1);
+  await worker.jobs[0]!.finish();
+  await renders.idle();
+  const next = new RenderService(renderDeps);
+  await next.restore();
+  expect(next.list()).toMatchObject([{ renderId: first.renderId, state: "done" }]);
+  const second = await next.enqueue(streamId, shortId);
+  await until(() => worker.jobs.length === 2);
+  await expect
+    .poll(async () => {
+      const file = JSON.parse(await readFile(renderDeps.queuePath!, "utf8")) as {
+        renders: { renderId: string; state: string }[];
+      };
+      return file.renders.find((r) => r.renderId === second.renderId)?.state;
+    })
+    .toBe("running");
+  const restarted = new RenderService(renderDeps);
+  await restarted.restore();
+  expect(restarted.list().find((r) => r.renderId === second.renderId)).toMatchObject({
+    state: "failed",
+    message: COPY.notFinished,
+  });
+  next.cancel(second.renderId);
+  await next.idle();
+});
+
+it("restores the durable queue without accessing project drives", async () => {
+  const list = vi.fn(() => Promise.reject(new Error("drive unavailable")));
+  const fresh = new RenderService({
+    ...renderDeps,
+    streams: {
+      ...renderDeps.streams,
+      forStream: () => Promise.resolve(store),
+      post: () => Promise.reject(new Error()),
+      touch: () => Promise.resolve(),
+      list,
+    },
+  });
+  await fresh.restore();
+  expect(list).not.toHaveBeenCalled();
+  expect(fresh.list()).toEqual([]);
+});
+
+it("hydrates older history in bounded parallel work, emits it and reads the index only once", async () => {
+  const record = {
+    renderId: "r_external",
+    shortId,
+    version: 1,
+    presetId: "1080p30",
+    file: "external.mp4",
+    createdAt: F.AT,
+    probe: { width: 1080, height: 1920, durationMs: 4000, videoCodec: "h264", audioCodec: "aac" },
+  };
+  await store.addRender(record);
+  const entry = (await renderDeps.streams.list!())[0]!;
+  const list = vi.fn(() => Promise.resolve(Array.from({ length: 9 }, () => entry)));
+  const forStream = vi.fn(() => Promise.reject(new Error("must reuse the loaded index entry")));
+  const fresh = new RenderService({
+    ...renderDeps,
+    streams: {
+      ...renderDeps.streams,
+      forStream,
+      post: () => Promise.reject(new Error()),
+      touch: () => Promise.resolve(),
+      list,
+    },
+  });
+  let active = 0;
+  let peak = 0;
+  let release!: () => void;
+  const barrier = new Promise<void>((r) => {
+    release = r;
+  });
+  const open = ProjectStore.open.bind(ProjectStore);
+  const spy = vi.spyOn(ProjectStore, "open").mockImplementation(async (...args) => {
+    active++;
+    peak = Math.max(peak, active);
+    try {
+      await barrier;
+      return await open(...args);
+    } finally {
+      active--;
+    }
+  });
+  try {
+    await fresh.restore();
+    expect(spy).not.toHaveBeenCalled();
+    const loading = fresh.hydrateHistory();
+    expect(fresh.hydrateHistory()).toBe(loading);
+    await until(() => active === 4);
+    release();
+    await loading;
+    expect(peak).toBe(4);
+    expect(list).toHaveBeenCalledTimes(1);
+    expect(forStream).not.toHaveBeenCalled();
+    expect(fresh.list()).toMatchObject([{ renderId: "r_external", state: "done" }]);
+    expect(events.some((e) => e.event === "render:changed")).toBe(true);
+  } finally {
+    release();
+    spy.mockRestore();
+  }
+});
+
+it("does not execute a cancelled queued render twice when retried before its turn", async () => {
+  await renders.enqueue(streamId, shortId);
+  await until(() => worker.jobs.length === 1);
+  const queued = await renders.enqueue(streamId, shortId);
+  renders.cancel(queued.renderId);
+  renders.retry(queued.renderId);
+  await worker.jobs[0]!.finish();
+  await until(() => worker.jobs.length === 2);
+  await worker.jobs[1]!.finish();
+  await renders.idle();
+  expect(worker.jobs).toHaveLength(2);
+});
+
+it("does not replace a retried job with older history arriving in the background", async () => {
+  const first = await renders.enqueue(streamId, shortId);
+  await until(() => worker.jobs.length === 1);
+  await worker.jobs[0]!.finish();
+  await renders.idle();
+  const saved = renders.list()[0]!;
+  await writeJsonAtomic(renderDeps.queuePath!, {
+    renders: [{ ...saved, state: "running", file: null, pct: 50 }],
+  });
+  const fresh = new RenderService(renderDeps);
+  await fresh.restore();
+  let enter!: () => void;
+  let release!: () => void;
+  const entered = new Promise<void>((r) => {
+    enter = r;
+  });
+  const barrier = new Promise<void>((r) => {
+    release = r;
+  });
+  const read = store.renders.bind(store);
+  const spy = vi.spyOn(ProjectStore.prototype, "renders").mockImplementation(async () => {
+    enter();
+    await barrier;
+    return read();
+  });
+  try {
+    const history = fresh.hydrateHistory();
+    await entered;
+    fresh.retry(first.renderId);
+    await until(() => worker.jobs.length === 2);
+    release();
+    await history;
+    expect(await fresh.get(streamId, first.renderId)).toMatchObject({ state: "running" });
+    await worker.jobs[1]!.finish();
+    await fresh.idle();
+  } finally {
+    release();
+    spy.mockRestore();
+  }
+});
+
+it("does not run an invalidated render that was still preparing when cancelled and retried", async () => {
+  let enter!: () => void;
+  let release!: () => void;
+  const preparing = new Promise<void>((resolve) => {
+    enter = resolve;
+  });
+  const barrier = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const version = store.version.bind(store);
+  let calls = 0;
+  vi.spyOn(store, "version").mockImplementation(async (...args) => {
+    if (++calls === 2) {
+      enter();
+      await barrier;
+    }
+    return version(...args);
+  });
+  const job = await renders.enqueue(streamId, shortId);
+  await preparing;
+  renders.cancel(job.renderId);
+  renders.retry(job.renderId);
+  release();
+  await until(() => worker.jobs.length === 1);
+  await worker.jobs[0]!.finish();
+  await renders.idle();
+  expect(worker.jobs).toHaveLength(1);
 });

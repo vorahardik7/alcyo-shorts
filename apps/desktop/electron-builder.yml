@@ -25,6 +25,16 @@ extraResources:
   # OFL fonts for captions; the licenses ship next to them.
   - from: resources/fonts
     to: fonts
+  # Open the demo stream (spec 13): the project, its footage and profile.
+  # Renders and audio made by MCP or a rebuild stay out.
+  - from: ../../examples
+    to: demo
+    filter:
+      - demo.alcyo/**
+      - "!demo.alcyo/renders/**"
+      - "!**/*.wav"
+      - demo/*.mp4
+      - demo-profile.json
   - from: ../../LICENSE
     to: LICENSE
   - from: ../../THIRD_PARTY_NOTICES.md

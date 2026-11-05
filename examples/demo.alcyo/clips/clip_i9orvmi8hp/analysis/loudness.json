@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "clip_i9orvmi8hp",
+  "integratedLufs": -23.4,
+  "momentary": [
+    {
+      "tMs": 0,
+      "lufs": -20.9
+    },
+    {
+      "tMs": 1000,
+      "lufs": -21.7
+    },
+    {
+      "tMs": 2000,
+      "lufs": -21.6
+    },
+    {
+      "tMs": 3000,
+      "lufs": -19.1
+    },
+    {
+      "tMs": 4000,
+      "lufs": -19.2
+    },
+    {
+      "tMs": 5000,
+      "lufs": -21.9
+    },
+    {
+      "tMs": 6000,
+      "lufs": -22.4
+    },
+    {
+      "tMs": 7000,
+      "lufs": -24.3
+    },
+    {
+      "tMs": 8000,
+      "lufs": -22.2
+    },
+    {
+      "tMs": 9000,
+      "lufs": -19.7
+    }
+  ]
+}

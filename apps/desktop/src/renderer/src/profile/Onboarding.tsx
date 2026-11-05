@@ -5,7 +5,7 @@ import type { InterviewState } from "@alcyo/ipc";
 import { HOOK_FOR_CAPTION } from "@alcyo/schema";
 import { useEffect, useRef, useState } from "react";
 import { usePageTitle } from "../nav/navigation";
-import { HeaderPill } from "../shell/pages";
+import { ThreadHeader } from "../shell/pages";
 import { plainError } from "../streams/store";
 import { Button, ButtonLink } from "../ui/Button";
 import { ArrowUpIcon } from "../ui/icons";
@@ -28,8 +28,10 @@ function Bubble({
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"}`} data-testid={testId}>
       <div
-        className={`max-w-[75%] rounded-bubble px-5 py-3 text-[15px] leading-relaxed select-text ${
-          mine ? "bg-bubble-user" : "bg-bubble-claude"
+        className={`text-[15px] select-text ${
+          mine
+            ? "max-w-[75%] rounded-[18px] rounded-br-md bg-raised px-4 py-2.5 leading-6"
+            : "max-w-[680px] leading-[1.65]"
         }`}
       >
         {children}
@@ -105,27 +107,28 @@ export function Onboarding() {
 
   return (
     <section data-testid="onboarding" className="relative flex h-full flex-col">
-      <div className="drag absolute inset-x-0 top-0 h-12" aria-hidden />
-      <HeaderPill label="Creator profile" />
-      <div className="min-h-0 flex-1 overflow-y-auto px-8 pt-20 pb-4">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
-          <Bubble>
-            A few questions about your streams and your shorts.{" "}
-            {agent === "the agent" ? "The agent" : agent} asks them; the answers become your
-            profile, which goes into every request as text. Skip anything you like.
-          </Bubble>
-          {phase === "start" && busy === null && (
-            <div className="flex gap-2 pl-1">
+      <ThreadHeader label="Creator profile" />
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-8 pt-8 pb-4">
+        {phase === "start" && busy === null ? (
+          // Before the first question: one clear start, centered, no empty chat.
+          <div className="m-auto w-full max-w-[480px] -translate-y-[4vh] px-6 text-center">
+            <h1 className="text-[24px] leading-[30px] font-semibold tracking-[-0.02em]">
+              Set up your creator profile
+            </h1>
+            <p className="mt-2 text-[14px] leading-[22px] text-secondary">
+              {agent === "the agent" ? "The agent" : agent} asks a few questions about your streams
+              and the moments you want. The answers go into every request as text. You can skip any
+              question.
+            </p>
+            <div className="mt-6 flex justify-center gap-2">
               <Button
                 variant="primary"
-                size="sm"
                 data-testid="interview-start"
                 onClick={() => run({ kind: "start" })}
               >
-                Start
+                Start profile
               </Button>
               <Button
-                size="sm"
                 variant="ghost"
                 data-testid="interview-skip-all"
                 onClick={() => setSkippedAll(true)}
@@ -133,7 +136,16 @@ export function Onboarding() {
                 Skip the interview
               </Button>
             </div>
-          )}
+          </div>
+        ) : null}
+        <div
+          className={`mx-auto w-full max-w-[880px] flex-col gap-4 ${phase === "start" && busy === null ? "hidden" : "flex"}`}
+        >
+          <Bubble>
+            A few questions about your streams and your shorts.{" "}
+            {agent === "the agent" ? "The agent" : agent} asks them; the answers become your
+            profile, which goes into every request as text. Skip anything you like.
+          </Bubble>
           {state?.turns.map((t, i) => (
             <div key={i} className="flex flex-col gap-3">
               <Bubble>{t.question}</Bubble>
@@ -146,7 +158,7 @@ export function Onboarding() {
             <div className="flex flex-col gap-2">
               <Bubble testId="interview-question">{state.question.text}</Bubble>
               {busy === null && (
-                <div className="flex flex-wrap gap-2 pl-1">
+                <div className="flex flex-wrap gap-2">
                   {state.question.chips.map((chip) => (
                     <Button
                       key={chip}
@@ -203,7 +215,7 @@ export function Onboarding() {
           )}
           {failed !== null && busy === null && state?.error != null && (
             <div
-              className="flex items-center gap-3 rounded-bubble bg-bad/8 px-5 py-3 ring-1 ring-bad/20"
+              className="flex items-center gap-3 rounded-xl border border-bad/25 bg-bad/[0.06] px-4 py-3"
               data-testid="interview-error"
             >
               <p className="min-w-0 flex-1 text-[14px]">{state.error}</p>
@@ -239,7 +251,7 @@ export function Onboarding() {
                 Your profile is saved. Add a few shorts you&apos;ve posted so new ones match your
                 style. Only their measurements are kept.
               </Bubble>
-              <div className="flex flex-wrap gap-2 pl-1">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   variant="primary"
@@ -279,9 +291,9 @@ export function Onboarding() {
           <div ref={end} />
         </div>
       </div>
-      <div className="px-6">
+      <div className={`px-8 ${phase === "asking" ? "" : "hidden"}`}>
         <form
-          className="mx-auto mb-6 flex w-full max-w-3xl items-center gap-2 rounded-full bg-bubble-claude py-2 pr-2 pl-5 ring-1 ring-hairline focus-within:ring-[#ffffff2e]"
+          className="mx-auto mb-5 flex w-full max-w-[880px] items-center gap-2 rounded-[20px] border border-line-strong bg-surface py-2 pr-2 pl-4 focus-within:border-[#4a4e57]"
           onSubmit={(e) => {
             e.preventDefault();
             send();
@@ -295,7 +307,7 @@ export function Onboarding() {
             value={text}
             maxLength={1000}
             onChange={(e) => setText(e.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-tertiary disabled:opacity-50"
+            className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-tertiary disabled:opacity-50"
           />
           <button
             type="submit"
@@ -303,9 +315,9 @@ export function Onboarding() {
             title="Send"
             data-testid="interview-send"
             disabled={!asking || text.trim().length === 0}
-            className="grid size-9 place-items-center rounded-full bg-text text-bg outline-none focus-visible:ring-2 focus-visible:ring-unread disabled:opacity-25"
+            className="grid size-8 place-items-center rounded-full bg-text text-[#111214] outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:bg-raised disabled:text-tertiary"
           >
-            <ArrowUpIcon size={18} strokeWidth={2.2} />
+            <ArrowUpIcon size={16} strokeWidth={2.4} />
           </button>
         </form>
       </div>

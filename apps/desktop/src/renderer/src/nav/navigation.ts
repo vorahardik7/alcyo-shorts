@@ -114,6 +114,12 @@ export function useNavShortcuts(): void {
       if (mod && (e.key === "f" || e.key === "F") && !e.shiftKey) {
         e.preventDefault();
         useUi.getState().setSearch(true);
+        return;
+      }
+      if (mod && (e.key === "n" || e.key === "N") && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        if (router.state.location.pathname !== "/") void router.navigate({ to: "/" });
+        useUi.getState().focusComposer();
       }
     };
 

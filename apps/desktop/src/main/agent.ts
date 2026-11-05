@@ -25,6 +25,8 @@ export interface AgentDeps {
   setup: () => Promise<SetupReport>;
   apiKey: () => Promise<string | null>;
   model: () => Promise<string>;
+  /** Grok's and Codex's picked models. Null: the agent's own default. */
+  agentModels?: () => Promise<{ grok: string | null; codex: string | null }>;
   spawn: SpawnDeps;
   fetch?: typeof fetch;
   /** Headless tests only: a scripted agent. */
@@ -47,13 +49,21 @@ export class AgentService {
     const report = await this.deps.setup();
     const chosen = report.chosen;
     if (chosen !== null) {
+      const picked = (await this.deps.agentModels?.()) ?? { grok: null, codex: null };
       switch (chosen.id) {
         case "claude":
           return claudeProvider(chosen.path, this.deps.spawn);
         case "grok":
-          return grokProvider(chosen.path, this.deps.spawn, GROK_OPTIONS);
+          return grokProvider(chosen.path, this.deps.spawn, {
+            ...GROK_OPTIONS,
+            ...(picked.grok === null ? {} : { model: picked.grok }),
+          });
         case "codex":
-          return codexProvider(chosen.path, this.deps.spawn);
+          return codexProvider(
+            chosen.path,
+            this.deps.spawn,
+            picked.codex === null ? {} : { model: picked.codex },
+          );
       }
     }
     const key = await this.deps.apiKey();

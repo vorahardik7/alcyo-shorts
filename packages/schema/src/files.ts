@@ -41,6 +41,7 @@ const BY_NAME: Record<string, FileKind> = {
 export function fileKindOf(path: string): ProjectFileKind | null {
   const parts = path.split(/[\\/]/);
   const name = parts.at(-1) ?? "";
+  if (/^draft-v\d{4,}\.json$/.test(name)) return "draft";
   if (name === "messages.jsonl") return "messages";
   if (/^\d{4}\.(claude|user)\.json$/.test(name)) return "version";
   if (name.endsWith(".alcyo-template.json")) return "template";

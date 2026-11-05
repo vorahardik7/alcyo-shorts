@@ -1,7 +1,7 @@
 // One stream folder (plan section 15): the project, its sources, thread,
 // shorts and transcript reads. Writes are serialized per folder.
-import { copyFile, mkdir, readdir, stat } from "node:fs/promises";
-import { extname, join } from "node:path";
+import { canAccessFile, copyFile, mkdir, readdir, stat } from "./access.ts";
+import { extname, join, isAbsolute, relative, resolve, sep } from "node:path";
 import {
   type Clip,
   type ClipFile,
@@ -28,11 +28,13 @@ import {
   ShortVersion as ShortVersionSchema,
   Source as SourceSchema,
   checkShort,
+  ShortStyles,
 } from "@alcyo/schema";
 import {
   StoreError,
   exists,
   readProjectFile,
+  readJson,
   removeQuietly,
   writeJsonAtomic,
   writeNewFileAtomic,
@@ -153,6 +155,45 @@ export class ProjectStore {
     });
   }
 
+  setCopyIntoProject(copy: boolean): Promise<Project> {
+    return this.updateProject((p) => {
+      p.settings.copyIntoProject = copy;
+    });
+  }
+
+  /** A moved project keeps external references and rebases only its own files. */
+  rebase(oldFolder: string): Promise<void> {
+    return this.serial(async () => {
+      const moved = (path: string) => {
+        const rel = relative(oldFolder, path);
+        return rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel)
+          ? join(this.folder, rel)
+          : path;
+      };
+      const p = await this.project();
+      for (const { sourceId } of p.sources) {
+        const source = await this.source(sourceId);
+        const path = moved(source.origin.path);
+        if (path !== source.origin.path)
+          await writeJsonAtomic(this.paths.source(sourceId), {
+            ...source,
+            origin: { ...source.origin, path },
+            mediaRevision: (source.mediaRevision ?? 0) + 1,
+          });
+      }
+      for (const clipId of p.clips) {
+        const clip = await this.clip(clipId);
+        if (clip.origin.path === undefined) continue;
+        const path = moved(clip.origin.path);
+        if (path !== clip.origin.path)
+          await writeJsonAtomic(this.paths.clip(clipId), {
+            ...clip,
+            origin: { ...clip.origin, path },
+          });
+      }
+    });
+  }
+
   // Thread
 
   appendMessage(message: Message): Promise<void> {
@@ -203,12 +244,21 @@ export class ProjectStore {
     return source;
   }
 
-  source(sourceId: string): Promise<Source> {
-    return readProjectFile<Source>(
+  /**
+   * A media path as stored: absolute, or relative to the stream folder (the
+   * committed demo uses "../demo/clip.mp4", so it works from any checkout).
+   */
+  private mediaPath(p: string): string {
+    return isAbsolute(p) ? p : resolve(this.folder, p);
+  }
+
+  async source(sourceId: string): Promise<Source> {
+    const s = await readProjectFile<Source>(
       this.paths.source(sourceId),
       "source",
       `sources/${sourceId}/source.json`,
     );
+    return { ...s, origin: { ...s.origin, path: this.mediaPath(s.origin.path) } };
   }
 
   async sources(): Promise<SourceView[]> {
@@ -216,7 +266,11 @@ export class ProjectStore {
     return Promise.all(
       project.sources.map(async ({ sourceId }) => {
         const source = await this.source(sourceId);
-        return { source, missing: !(await exists(source.origin.path)) };
+        return {
+          source,
+          missing:
+            !(await canAccessFile(source.origin.path)) || !(await exists(source.origin.path)),
+        };
       }),
     );
   }
@@ -262,8 +316,14 @@ export class ProjectStore {
     return file;
   }
 
-  clip(clipId: string): Promise<ClipFile> {
-    return readProjectFile<ClipFile>(this.paths.clip(clipId), "clip", `clips/${clipId}/clip.json`);
+  async clip(clipId: string): Promise<ClipFile> {
+    const c = await readProjectFile<ClipFile>(
+      this.paths.clip(clipId),
+      "clip",
+      `clips/${clipId}/clip.json`,
+    );
+    if (c.origin.path === undefined) return c;
+    return { ...c, origin: { ...c.origin, path: this.mediaPath(c.origin.path) } };
   }
 
   /** Every clip in project order. A clip whose file is unreadable is left out. */
@@ -305,7 +365,11 @@ export class ProjectStore {
         throw new StoreError("mismatch", "Only local files can be located.");
       if (!sameContent(await hashFile(path), source.fingerprint))
         throw new StoreError("mismatch", MISMATCH_MESSAGE);
-      const next = SourceSchema.parse({ ...source, origin: { ...source.origin, path } });
+      const next = SourceSchema.parse({
+        ...source,
+        origin: { ...source.origin, path },
+        mediaRevision: (source.mediaRevision ?? 0) + 1,
+      });
       await writeJsonAtomic(this.paths.source(sourceId), next);
       return next;
     });
@@ -406,7 +470,34 @@ export class ProjectStore {
   async version(shortId: string, n?: number): Promise<ShortVersion> {
     const target = n ?? (await this.shortFile(shortId)).head;
     const path = await this.versionPath(shortId, target);
-    return readProjectFile<ShortVersion>(path, "version", `shorts/${shortId}/versions/${target}`);
+    const version = await readProjectFile<ShortVersion>(
+      path,
+      "version",
+      `shorts/${shortId}/versions/${target}`,
+    );
+    const styles =
+      version.short.styles ?? (await readJson(this.paths.styles(shortId, target), ShortStyles));
+    return styles === null ? version : { ...version, short: { ...version.short, styles } };
+  }
+
+  /** Legacy versions remain immutable; their first resolved look is frozen beside them. */
+  freezeStyles(shortId: string, n: number, styles: ShortStyles): Promise<ShortStyles> {
+    return this.serial(async () => {
+      const file = this.paths.styles(shortId, n);
+      const existing = await readJson(file, ShortStyles);
+      if (existing !== null) return existing;
+      const checked = ShortStyles.parse(styles);
+      try {
+        await writeNewFileAtomic(file, JSON.stringify(checked));
+      } catch (error) {
+        if (!(error instanceof StoreError) || error.code !== "exists") throw error;
+        const raced = await readJson(file, ShortStyles);
+        if (raced === null)
+          throw new StoreError("bad-file", "This version's saved look couldn't be read.");
+        return raced;
+      }
+      return checked;
+    });
   }
 
   async versions(shortId: string): Promise<VersionSummary[]> {
@@ -536,7 +627,15 @@ export class ProjectStore {
       const entry = p.shorts.find((s) => s.shortId === shortId);
       if (entry !== undefined) entry.head = n;
       await writeJsonAtomic(this.paths.project, ProjectSchema.parse(p));
-      await removeQuietly(this.paths.draft(shortId));
+      const base = opts.parent ?? file.head;
+      const draft = await this.readDraft(shortId, base);
+      if (
+        draft !== null &&
+        JSON.stringify({ ...draft.short, styles: draft.short.styles ?? opts.short.styles }) ===
+          JSON.stringify(opts.short)
+      ) {
+        await this.removeDraft(shortId, base);
+      }
       return version;
     });
   }
@@ -582,32 +681,49 @@ export class ProjectStore {
     });
   }
 
-  saveDraft(shortId: string, short: Short): Promise<Draft> {
+  saveDraft(shortId: string, short: Short, baseVersion: number): Promise<Draft> {
     return this.serial(async () => {
-      const file = await this.shortFile(shortId);
+      const base = await this.version(shortId, baseVersion);
+      await this.checkAgainstSource(short, base.sourceId);
       const draft = DraftSchema.parse({
         schemaVersion: 1,
         shortId,
-        sourceId: file.sourceId,
-        baseVersion: file.head,
+        sourceId: base.sourceId,
+        baseVersion,
         savedAt: this.now().toISOString(),
         short,
       });
-      await writeJsonAtomic(this.paths.draft(shortId), draft);
+      await writeJsonAtomic(this.paths.draft(shortId, baseVersion), draft);
       return draft;
     });
   }
 
-  /** The draft, when it's newer than the head it was based on. */
-  async draft(shortId: string): Promise<Draft | null> {
-    if (!(await exists(this.paths.draft(shortId)))) return null;
-    const draft = await readProjectFile<Draft>(
-      this.paths.draft(shortId),
-      "draft",
-      `shorts/${shortId}/draft.json`,
-    );
-    const head = await this.version(shortId);
-    if (draft.baseVersion !== head.version || draft.savedAt <= head.createdAt) return null;
-    return draft;
+  private async readDraft(shortId: string, baseVersion: number): Promise<Draft | null> {
+    for (const path of [this.paths.draft(shortId, baseVersion), this.paths.draft(shortId)]) {
+      if (!(await exists(path))) continue;
+      const draft = await readProjectFile<Draft>(path, "draft", `shorts/${shortId}/draft`);
+      if (draft.baseVersion === baseVersion) return draft;
+    }
+    return null;
+  }
+
+  private async removeDraft(shortId: string, baseVersion: number): Promise<void> {
+    await removeQuietly(this.paths.draft(shortId, baseVersion));
+    if (await exists(this.paths.draft(shortId))) {
+      const legacy = await readProjectFile<Draft>(this.paths.draft(shortId), "draft");
+      if (legacy.baseVersion === baseVersion) await removeQuietly(this.paths.draft(shortId));
+    }
+  }
+
+  clearDraft(shortId: string, baseVersion: number): Promise<void> {
+    return this.serial(() => this.removeDraft(shortId, baseVersion));
+  }
+
+  /** Drafts belong to the version actually edited, including older branches. */
+  async draft(shortId: string, baseVersion?: number): Promise<Draft | null> {
+    await this.queue;
+    const base = await this.version(shortId, baseVersion);
+    const draft = await this.readDraft(shortId, base.version);
+    return draft !== null && draft.savedAt > base.createdAt ? draft : null;
   }
 }

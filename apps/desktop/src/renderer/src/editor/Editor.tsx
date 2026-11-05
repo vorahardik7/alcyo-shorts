@@ -13,7 +13,8 @@ import { Player, fmtTime } from "../streams/player";
 import { startRender } from "../streams/renders";
 import { copyLink } from "../streams/shorts";
 import { mergeMessage, plainError } from "../streams/store";
-import { Button } from "../ui/Button";
+import { Button, IconButton } from "../ui/Button";
+import { ArrowUpIcon, UndoIcon } from "../ui/icons";
 import { Kbd, Spinner } from "../ui/parts";
 import { toast } from "../ui/toast";
 import {
@@ -53,25 +54,61 @@ function isTyping(el: Element | null): boolean {
   );
 }
 
+type PendingDraft = { short: Short; baseVersion: number };
+let activeDrafts: DraftSaver<PendingDraft> | null = null;
+let savingVersion: { session: number; promise: Promise<number | null> } | null = null;
+
 /** Save as a user version; resolves to the new version number, or null. */
-async function saveVersion(): Promise<number | null> {
+function saveVersion(): Promise<number | null> {
+  const session = useEditor.getState().session;
+  if (savingVersion?.session === session) return savingVersion.promise;
+  const pending = {
+    session,
+    promise: writeVersion().finally(() => {
+      if (savingVersion === pending) savingVersion = null;
+    }),
+  };
+  savingVersion = pending;
+  return pending.promise;
+}
+
+async function writeVersion(): Promise<number | null> {
   const s = useEditor.getState();
   if (s.view === null) return null;
   const short = current();
+  const drafts = activeDrafts;
+  if (s.saved !== short) drafts?.edit({ short, baseVersion: s.base });
   try {
+    // Keep a recoverable draft until the version has actually been saved.
+    // A failed draft write must still allow an explicit version-save attempt.
+    await drafts?.flush().catch(() => undefined);
     const v = await window.alcyo.invoke("short:saveVersion", {
       streamId: s.streamId,
       shortId: s.shortId,
       short,
       note: saveNote(s.history, s.savedAt),
-      ...(s.base !== s.view.head ? { parent: s.base } : {}),
+      parent: s.base,
     });
     const view = await window.alcyo.invoke("editor:open", {
       streamId: s.streamId,
       shortId: s.shortId,
       version: v.version,
     });
-    useEditor.getState().markSaved(short, v.version, view);
+    const latest = useEditor.getState();
+    if (latest.view !== null && latest.session === s.session && latest.base === s.base) {
+      latest.markSaved(short, v.version, view);
+      // New edits made during the save are now drafts of the new version.
+      // A navigated-away branch retains its own newer autosave.
+      if (latest.history.present.value === short) {
+        drafts?.cancel();
+        await drafts?.settled();
+        await window.alcyo.invoke("short:clearDraft", {
+          streamId: s.streamId,
+          shortId: s.shortId,
+          baseVersion: s.base,
+        });
+      }
+    }
     toast(`Saved v${v.version}`, v.note);
     return v.version;
   } catch (e) {
@@ -253,6 +290,7 @@ function ChatDrawer({
   const shortId = useEditor((s) => s.shortId);
   const base = useEditor((s) => s.base);
   const end = useRef<HTMLDivElement>(null);
+  const [scope, setScope] = useState<"short" | "stream">("short");
 
   useEffect(() => {
     window.alcyo
@@ -282,7 +320,9 @@ function ChatDrawer({
       case "version":
         return `${m.author === "user" ? "You saved" : "Saved"} v${b.ref.version}: ${b.whatChanged}`;
       case "shorts":
-        return b.intro;
+        return scope === "short"
+          ? `Proposed this short (v${b.shorts.find((r) => r.shortId === shortId)?.version ?? 1})`
+          : b.intro;
       case "question":
         return b.text;
       default:
@@ -290,30 +330,78 @@ function ChatDrawer({
     }
   };
 
+  // "This short": your requests about it, the replies right after them, its
+  // versions, and the message that proposed it. "Whole stream": everything.
+  const all = messages
+    .map((m) => ({ m, text: line(m) }))
+    .filter((x): x is { m: Message; text: string } => x.text !== null);
+  const about = (m: Message) =>
+    m.replyTo?.shortId === shortId ||
+    (m.body.kind === "version" && m.body.ref.shortId === shortId) ||
+    (m.body.kind === "shorts" &&
+      m.body.shorts.length === 1 &&
+      m.body.shorts[0]!.shortId === shortId);
+  const shown = (
+    scope === "stream"
+      ? all
+      : all.filter(({ m }, i) => {
+          if (m.author === "app") return false;
+          if (about(m)) return true;
+          const prev = all[i - 1]?.m;
+          return (
+            m.author === "claude" && prev !== undefined && prev.author === "user" && about(prev)
+          );
+        })
+  ).slice(-40);
+
   return (
     <aside
       data-testid="chat-drawer"
-      className="flex min-h-0 w-[300px] shrink-0 flex-col border-l border-hairline bg-sidebar"
+      className="flex min-h-0 w-[320px] shrink-0 flex-col border-l border-hairline bg-sidebar"
     >
-      <div className="flex h-10 shrink-0 items-center border-b border-hairline px-3 text-[13px] font-medium">
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-hairline px-3 text-[13px] font-medium">
         Chat
+        <div
+          role="radiogroup"
+          aria-label="Which messages"
+          className="ml-1 flex rounded-md bg-white/[0.04] p-0.5 text-[11px] font-medium"
+        >
+          {(
+            [
+              ["short", "This short"],
+              ["stream", "Whole stream"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={scope === id}
+              onClick={() => setScope(id)}
+              className={`h-5 rounded-[5px] px-2 outline-none focus-visible:ring-2 focus-visible:ring-accent ${scope === id ? "bg-white/[0.1] text-text" : "text-tertiary hover:text-secondary"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <span className="ml-auto text-[11px] font-normal text-tertiary">
           <Kbd>{mod}K</Kbd>
         </span>
       </div>
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-        {messages
-          .map((m) => ({ m, text: line(m) }))
-          .filter((x) => x.text !== null)
-          .slice(-40)
-          .map(({ m, text: t }) => (
-            <p
-              key={m.id}
-              className={`rounded-2xl px-3 py-2 text-[13px] leading-snug select-text ${m.author === "user" ? "ml-6 bg-bubble-user" : "mr-6 bg-bubble-claude"}`}
-            >
-              {t}
-            </p>
-          ))}
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+        {shown.length === 0 && (
+          <p className="text-[12px] leading-5 text-tertiary">
+            Nothing about this short yet. Ask for a change below; the agent makes a new version.
+          </p>
+        )}
+        {shown.map(({ m, text: t }) => (
+          <p
+            key={m.id}
+            className={`text-[13px] leading-[1.55] select-text ${m.author === "user" ? "ml-8 rounded-2xl rounded-br-md bg-raised px-3 py-2" : m.author === "app" ? "mr-4 text-[12px] text-tertiary" : "mr-4 text-text"}`}
+          >
+            {t}
+          </p>
+        ))}
         {working !== null && (
           <p className="flex items-center gap-2 text-[12px] text-tertiary">
             <Spinner size={11} /> {working}
@@ -322,7 +410,7 @@ function ChatDrawer({
         <div ref={end} />
       </div>
       <form
-        className="border-t border-hairline p-2"
+        className="relative p-3"
         onSubmit={(e) => {
           e.preventDefault();
           const msg = text.trim();
@@ -339,8 +427,17 @@ function ChatDrawer({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={`Ask for a change to v${base}`}
-          className="h-9 w-full rounded-full bg-bubble-claude px-4 text-[13px] ring-1 ring-hairline outline-none placeholder:text-tertiary focus-visible:ring-2 focus-visible:ring-unread"
+          className="h-11 w-full rounded-2xl bg-surface/90 pr-12 pl-3.5 text-[13px] ring-1 ring-white/[0.07] outline-none placeholder:text-tertiary focus-visible:ring-white/[0.12]"
         />
+        <button
+          type="submit"
+          aria-label="Send"
+          title="Send (Enter)"
+          disabled={text.trim().length === 0}
+          className="absolute top-1/2 right-[18px] grid size-8 -translate-y-1/2 place-items-center rounded-full bg-text text-[#111214] outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:bg-raised disabled:text-tertiary"
+        >
+          <ArrowUpIcon size={14} strokeWidth={2.4} />
+        </button>
       </form>
     </aside>
   );
@@ -392,29 +489,71 @@ function EditorFor({
   useShortcuts(chatInput, showHelp);
   usePageTitle(view === null ? "Editor" : `Edit · ${short.title}`);
 
-  // Load once per short; the version in the route is where editing starts.
-  const first = useRef(version);
+  const saver = useMemo(
+    () =>
+      new DraftSaver<PendingDraft>(
+        ({ short: draft, baseVersion }) =>
+          window.alcyo
+            .invoke("short:saveDraft", {
+              streamId,
+              shortId,
+              short: draft,
+              baseVersion,
+            })
+            .then(() => undefined),
+        Date.now,
+        (e) =>
+          toast(
+            "Autosave failed",
+            `${plainError(e)} Your edits are still open; use Save version or retry.`,
+          ),
+      ),
+    [streamId, shortId],
+  );
   useEffect(() => {
-    const n = Number(first.current);
-    window.alcyo
-      .invoke("editor:open", {
+    activeDrafts = saver;
+    return () => {
+      if (activeDrafts === saver) activeDrafts = null;
+      void saver.flush().catch(() => undefined);
+      useEditor.getState().set({ view: null, player: null });
+    };
+  }, [saver]);
+
+  const loadingRoute = useRef<string | null>(null);
+  useEffect(() => {
+    const n = Number(version);
+    const st = useEditor.getState();
+    if (st.view !== null && st.streamId === streamId && st.shortId === shortId && st.base === n)
+      return;
+    let live = true;
+    loadingRoute.current = version;
+    void (async () => {
+      await saver.flush();
+      const v = await window.alcyo.invoke("editor:open", {
         streamId,
         shortId,
         ...(Number.isInteger(n) && n > 0 ? { version: n } : {}),
-      })
-      .then(
-        (v) => {
-          load(streamId, v, v.draft !== null);
-          if (v.draft !== null) toast("Restored your unsaved edits", "From the autosave.");
-        },
-        (e: unknown) => setError(plainError(e)),
-      );
-    return () => useEditor.getState().set({ view: null, player: null });
-  }, [streamId, shortId, load]);
+      });
+      if (!live) return;
+      loadingRoute.current = null;
+      load(streamId, v, v.draft !== null);
+      setError(null);
+      if (v.draft !== null) toast("Restored your unsaved edits", "From this version's autosave.");
+    })().catch((e: unknown) => {
+      if (live) {
+        loadingRoute.current = null;
+        setError(plainError(e));
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [streamId, shortId, version, load, saver]);
 
-  // Keep the route on the version being edited.
+  // A save changes the base without discarding undo history. An incoming URL
+  // is loaded above first, instead of being replaced with the old base.
   useEffect(() => {
-    if (view === null || String(base) === version) return;
+    if (view === null || loadingRoute.current !== null || String(base) === version) return;
     void router.navigate({
       to: "/s/$streamId/short/$shortId/v/$version/edit",
       params: { streamId, shortId, version: String(base) },
@@ -422,21 +561,63 @@ function EditorFor({
     });
   }, [base, version, view, router, streamId, shortId]);
 
-  // Autosave a draft when editing the latest version.
-  const saver = useMemo(
-    () =>
-      new DraftSaver<Short>((s) =>
-        window.alcyo
-          .invoke("short:saveDraft", { streamId, shortId, short: s })
-          .then(() => undefined),
-      ),
-    [streamId, shortId],
-  );
   useEffect(() => {
-    if (view === null || !dirty || base !== view.head) return;
-    saver.edit(short);
-  }, [short, dirty, base, view, saver]);
-  useEffect(() => () => void saver.flush(), [saver]);
+    if (view === null) return;
+    if (dirty) saver.edit({ short, baseVersion: base });
+    else {
+      saver.cancel();
+      void saver
+        .settled()
+        .then(() =>
+          window.alcyo.invoke("short:clearDraft", {
+            streamId,
+            shortId,
+            baseVersion: base,
+          }),
+        )
+        .catch((e: unknown) => toast("Couldn't clear autosave", plainError(e)));
+    }
+  }, [short, dirty, base, view, saver, streamId, shortId]);
+
+  // Keep windowed transcript reads: expand only when an edit reaches an edge.
+  const [mediaRevision, setMediaRevision] = useState(0);
+  useEffect(
+    () =>
+      window.alcyo.on("source:changed", (e) => {
+        if (e.streamId === streamId) setMediaRevision((n) => n + 1);
+      }),
+    [streamId],
+  );
+  const lastMediaRevision = useRef(0);
+  const fromMs = short.segments?.[0]?.srcIn ?? 0;
+  const toMs = short.segments?.at(-1)?.srcOut ?? 0;
+  useEffect(() => {
+    if (view === null || loadingRoute.current !== null) return;
+    const refresh = mediaRevision !== lastMediaRevision.current;
+    if (!refresh && fromMs >= view.window.fromMs && toMs <= view.window.toMs) return;
+    let live = true;
+    void window.alcyo
+      .invoke("editor:open", {
+        streamId,
+        shortId,
+        version: base,
+        range: { fromMs, toMs },
+      })
+      .then(
+        (next) => {
+          const st = useEditor.getState();
+          if (!live || st.base !== base || st.shortId !== shortId) return;
+          lastMediaRevision.current = mediaRevision;
+          st.set({ view: next });
+        },
+        (e: unknown) => {
+          if (live) toast("Couldn't load this part", plainError(e));
+        },
+      );
+    return () => {
+      live = false;
+    };
+  }, [streamId, shortId, base, fromMs, toMs, view, mediaRevision]);
 
   // A new version of this short from the agent: offer it.
   useEffect(
@@ -451,8 +632,11 @@ function EditorFor({
   );
   const takeIncoming = async () => {
     if (incoming === null) return;
+    const session = useEditor.getState().session;
+    await saver.flush();
     const v = await window.alcyo.invoke("editor:open", { streamId, shortId, version: incoming });
     const st = useEditor.getState();
+    if (st.session !== session || st.view === null) return;
     st.apply(`Agent's v${incoming}`, () => v.version.short);
     st.markSaved(v.version.short, incoming, v);
     setIncoming(null);
@@ -501,7 +685,7 @@ function EditorFor({
           <h1 className="truncate text-[14px] leading-tight font-semibold">{short.title}</h1>
           <p data-testid="editor-origin" className="truncate text-[12px] text-tertiary">
             {origin}
-            {dirty && <span className="text-[#fcd34d]"> · Unsaved edits</span>}
+            {dirty && <span className="text-warn"> · Unsaved edits</span>}
           </p>
         </div>
         <select
@@ -512,16 +696,16 @@ function EditorFor({
             const n = Number(e.target.value);
             if (
               dirty &&
-              !window.confirm(
-                "Open another version? Unsaved edits stay in the autosave only for the latest version.",
-              )
+              !window.confirm("Open another version? Your edits stay in this version’s autosave.")
             )
               return;
-            void window.alcyo
-              .invoke("editor:open", { streamId, shortId, version: n })
-              .then((v) => load(streamId, v, false));
+            void router.navigate({
+              to: "/s/$streamId/short/$shortId/v/$version/edit",
+              params: { streamId, shortId, version: String(n) },
+            });
           }}
-          className="no-drag h-8 rounded-lg bg-white/[0.04] px-2 text-[13px] ring-1 ring-hairline outline-none focus-visible:ring-2 focus-visible:ring-unread"
+          title="Versions of this short"
+          className="no-drag h-8 w-[190px] shrink-0 truncate rounded-lg border border-line-strong bg-raised px-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           {[...view.versions].reverse().map((x) => (
             <option key={x.version} value={x.version}>
@@ -533,45 +717,62 @@ function EditorFor({
         {base !== view.head && (
           <Button
             size="sm"
+            variant="ghost"
             data-testid="restore-version"
             onClick={() => {
-              void window.alcyo.invoke("short:restore", { streamId, shortId, version: base }).then(
-                async (v) => {
-                  const nv = await window.alcyo.invoke("editor:open", {
-                    streamId,
-                    shortId,
-                    version: v.version,
-                  });
-                  load(streamId, nv, false);
-                  toast(`Restored as v${v.version}`);
-                },
-                (e: unknown) => toast("Couldn't restore", plainError(e)),
-              );
+              const started = useEditor.getState();
+              const stillCurrent = () => {
+                const st = useEditor.getState();
+                return (
+                  st.view !== null &&
+                  st.session === started.session &&
+                  st.base === base &&
+                  st.history === started.history
+                );
+              };
+              void (async () => {
+                await saver.flush();
+                const v = await window.alcyo.invoke("short:restore", {
+                  streamId,
+                  shortId,
+                  version: base,
+                });
+                if (!stillCurrent()) return;
+                const nv = await window.alcyo.invoke("editor:open", {
+                  streamId,
+                  shortId,
+                  version: v.version,
+                });
+                if (!stillCurrent()) return;
+                load(streamId, nv, false);
+                toast(`Restored as v${v.version}`);
+              })().catch((e: unknown) => toast("Couldn't restore", plainError(e)));
             }}
           >
             Restore as latest
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="ghost"
-          data-testid="undo"
-          disabled={history.past.length === 0}
-          onClick={() => useEditor.getState().undo()}
-          title={`Undo (${mod}Z)`}
-        >
-          Undo
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          data-testid="redo"
-          disabled={history.future.length === 0}
-          onClick={() => useEditor.getState().redo()}
-          title={`Redo (⇧${mod}Z)`}
-        >
-          Redo
-        </Button>
+        <div className="no-drag flex items-center">
+          <IconButton
+            size="sm"
+            label={`Undo (${mod}Z)`}
+            data-testid="undo"
+            disabled={history.past.length === 0}
+            onClick={() => useEditor.getState().undo()}
+          >
+            <UndoIcon size={16} />
+          </IconButton>
+          <IconButton
+            size="sm"
+            label={`Redo (⇧${mod}Z)`}
+            data-testid="redo"
+            disabled={history.future.length === 0}
+            onClick={() => useEditor.getState().redo()}
+          >
+            <UndoIcon size={16} className="-scale-x-100" />
+          </IconButton>
+        </div>
+        <span aria-hidden className="h-5 w-px bg-line" />
         <Button
           size="sm"
           data-testid="save-version"
@@ -595,21 +796,15 @@ function EditorFor({
         >
           Render
         </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          data-testid="shortcuts"
-          onClick={showHelp}
-          title="Shortcuts (?)"
-        >
-          ?
-        </Button>
+        <IconButton size="sm" label="Shortcuts (?)" data-testid="shortcuts" onClick={showHelp}>
+          <span className="text-[14px] font-semibold">?</span>
+        </IconButton>
       </header>
 
       {incoming !== null && (
         <div
           data-testid="incoming"
-          className="flex items-center gap-3 border-b border-hairline bg-unread/10 px-4 py-2 text-[13px]"
+          className="flex items-center gap-3 border-b border-accent/20 bg-accent/[0.08] px-4 py-2 text-[13px]"
         >
           <span className="flex-1">The agent made v{incoming} of this short.</span>
           <Button
@@ -628,7 +823,7 @@ function EditorFor({
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 gap-5 p-4">
+          <div className="flex min-h-0 flex-1 gap-4 p-4">
             <div className="flex w-[clamp(14rem,24vw,20rem)] shrink-0 flex-col gap-2">
               <Player
                 short={short}
@@ -643,11 +838,12 @@ function EditorFor({
                 onTime={(t) => useEditor.getState().setT(t)}
                 overlay={guides ? <SafeAreas platforms={view.platforms} /> : undefined}
                 className="max-h-full w-full"
+                bare
               />
               <Transport />
             </div>
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl bg-card/40 ring-1 ring-hairline">
-              <div role="tablist" className="flex shrink-0 gap-1 border-b border-hairline p-1.5">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-line bg-card">
+              <div role="tablist" className="flex shrink-0 gap-1 border-b border-line px-2 py-1.5">
                 {PANELS.map(([id, label]) => (
                   <button
                     key={id}
@@ -656,7 +852,7 @@ function EditorFor({
                     aria-selected={panel === id}
                     data-testid={`panel-${id}`}
                     onClick={() => set({ panel: id })}
-                    className={`h-7 rounded-md px-2.5 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-unread ${panel === id ? "bg-white/[0.08] font-medium text-text" : "text-secondary hover:text-text"}`}
+                    className={`h-7 rounded-md px-2.5 text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${panel === id ? "bg-white/[0.08] text-text" : "text-tertiary hover:text-text"}`}
                   >
                     {label}
                   </button>
@@ -690,7 +886,7 @@ function EditorFor({
         >
           <div
             data-testid="shortcut-help"
-            className="w-[420px] rounded-2xl bg-sidebar p-5 ring-1 ring-hairline"
+            className="w-[420px] rounded-xl border border-line-strong bg-surface p-5 shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="mb-3 text-[15px] font-semibold">Editor shortcuts</h2>
@@ -717,9 +913,10 @@ function Transport() {
   const player = useEditor((s) => s.player);
   const [, force] = useState(0);
   return (
-    <div className="flex items-center gap-2 text-[12px] text-secondary">
+    <div className="flex items-center gap-2.5 text-[12px] text-secondary">
       <Button
         size="sm"
+        className="w-[72px]"
         data-testid="editor-play"
         onClick={() => {
           player?.toggle();

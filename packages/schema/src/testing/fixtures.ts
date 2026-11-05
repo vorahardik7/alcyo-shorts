@@ -223,6 +223,8 @@ export const settings: Settings = {
   theme: "dark",
   streamsDir: null,
   urlNoteShown: false,
+  grokModel: null,
+  codexModel: null,
 };
 
 export const streamsIndex: StreamsIndex = {

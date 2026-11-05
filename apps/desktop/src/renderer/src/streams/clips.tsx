@@ -76,7 +76,7 @@ function PlaceByHand({
         placeholder="1:02:03"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        className="h-8 w-28 rounded-full bg-bubble-user px-3 text-[14px] tabular-nums outline-none placeholder:text-tertiary focus-visible:ring-2 focus-visible:ring-unread"
+        className="h-8 w-28 rounded-lg border border-line-strong bg-raised px-2.5 text-[13px] tabular-nums outline-none placeholder:text-tertiary focus-visible:ring-2 focus-visible:ring-unread"
       />
       <Button size="sm" type="submit" disabled={busy || ms === null} data-testid="place-save">
         Save
@@ -99,13 +99,13 @@ export function ClipsBubble({
   return (
     <div
       data-testid="clips-message"
-      className="w-full max-w-md divide-y divide-hairline rounded-bubble bg-bubble-claude"
+      className="w-full max-w-[480px] divide-y divide-line overflow-hidden rounded-xl border border-line bg-card"
     >
       {clipIds.map((id) => {
         const clip = clips.find((c) => c.clipId === id);
         if (clip === undefined) {
           return (
-            <p key={id} className="px-5 py-3.5 text-[14px] text-tertiary">
+            <p key={id} className="px-4 py-3 text-[13px] text-tertiary">
               This clip was removed.
             </p>
           );
@@ -116,33 +116,37 @@ export function ClipsBubble({
             key={id}
             data-testid="clip-row"
             data-placed={placed}
-            className="flex flex-col gap-1.5 px-5 py-3.5"
+            className="flex flex-col gap-1 px-4 py-3"
           >
             <div className="flex items-baseline gap-2">
-              <span className="min-w-0 flex-1 truncate text-[15px]">{clipName(clip)}</span>
+              <span
+                aria-hidden
+                className={`size-1.5 shrink-0 translate-y-[-1px] rounded-full ${placed ? "bg-accent" : "bg-warn"}`}
+              />
+              <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                {clipName(clip)}
+              </span>
               {clip.durationMs > 0 && (
-                <span className="text-[13px] text-tertiary tabular-nums">
+                <span className="text-[12px] text-tertiary tabular-nums">
                   {clock(clip.durationMs)}
                 </span>
               )}
             </div>
             {placed && clip.match !== null ? (
-              <p data-testid="clip-placement" className="text-[14px] text-secondary">
+              <p data-testid="clip-placement" className="pl-3.5 text-[12px] text-secondary">
                 In the stream at {clock(clip.match.srcIn)} to {clock(clip.match.srcOut)}.{" "}
-                <span className="text-tertiary">
-                  {METHOD[clip.match.method]}
-                  {clip.match.method === "manual"
-                    ? ""
-                    : `, ${Math.round(clip.match.confidence * 100)}% sure`}
-                  .
-                </span>
+                <span className="text-tertiary">{METHOD[clip.match.method]}.</span>
               </p>
             ) : (
-              <p data-testid="clip-placement" className="text-[14px] text-secondary">
+              <p data-testid="clip-placement" className="pl-3.5 text-[12px] text-secondary">
                 Couldn&apos;t place this clip. Enter where it starts in the stream.
               </p>
             )}
-            {!placed && <PlaceByHand streamId={streamId} clip={clip} onPlaced={onChange} />}
+            {!placed && (
+              <div className="pt-1 pl-3.5">
+                <PlaceByHand streamId={streamId} clip={clip} onPlaced={onChange} />
+              </div>
+            )}
           </div>
         );
       })}
@@ -167,7 +171,7 @@ export function QuestionBubble({
   return (
     <div
       data-testid="question-message"
-      className="w-full max-w-md rounded-bubble bg-bubble-claude px-5 py-3.5"
+      className="w-full max-w-[480px] rounded-xl border border-line bg-card px-4 py-3"
     >
       <p className="text-[15px] leading-relaxed select-text">{message.body.text}</p>
       <div className="mt-3 flex flex-wrap gap-2">

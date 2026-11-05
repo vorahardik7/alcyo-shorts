@@ -27,6 +27,7 @@ import { z } from "zod";
 import type { Channel, EventName } from "./names";
 import { InterviewState, ProfileView } from "./profile";
 import { RenderView } from "./render";
+import { AgentSelection } from "./agents";
 import { LocalAgentId, WhisperModelName, SetupReport } from "./setup";
 
 export const AppInfo = z.object({
@@ -159,6 +160,20 @@ export const contract = {
   },
   /** Which signed-in agent answers. Saved; setup:check then reports it as chosen. */
   "agent:use": { input: z.object({ provider: ProviderId }), output: z.object({}) },
+  /** The provider in use and each agent's model, for the composer's picker. */
+  "agent:get": { input: z.object({}), output: AgentSelection },
+  /** One agent's model, from AGENT_MODELS. Main rejects ids not in the list. */
+  "agent:setModel": {
+    input: z.object({
+      agent: LocalAgentId,
+      model: z
+        .string()
+        .min(1)
+        .max(100)
+        .regex(/^[a-z0-9][a-z0-9._-]*$/i),
+    }),
+    output: z.object({}),
+  },
   /** Downloads the whisper model for this platform into the models folder. */
   "setup:downloadModel": {
     input: z.object({}),
@@ -176,13 +191,23 @@ export const contract = {
   },
   "streams:list": { input: z.object({}), output: z.array(StreamSummary) },
   "stream:open": { input: StreamRef, output: StreamDetail },
+  "stream:locate": {
+    input: StreamRef,
+    output: z.union([
+      z.object({ stream: StreamSummary }),
+      z.object({ cancelled: z.literal(true) }),
+      z.object({ mismatch: z.literal(true), message: z.string() }),
+    ]),
+  },
   "stream:markRead": { input: StreamRef, output: z.object({}) },
+  /** Copies the bundled demo stream into the streams folder the first time, then opens it. */
+  "demo:open": { input: z.object({}), output: z.object({ stream: StreamSummary }) },
   /**
    * Opens a file dialog in main. With no streamId, makes a new stream named
    * after the file. Starts analysis. The renderer never sends a path.
    */
   "source:chooseFile": {
-    input: z.object({ streamId: Id.optional() }),
+    input: z.object({ streamId: Id.optional(), copy: z.boolean().optional() }),
     output: z.union([
       z.object({ stream: StreamSummary, jobId: Id }),
       z.object({ cancelled: z.literal(true) }),
@@ -295,6 +320,15 @@ export const contract = {
     input: StreamRef.extend({ before: Id.optional(), limit: z.number().int().min(1).max(200) }),
     output: z.array(Message),
   },
+  "thread:locate": {
+    input: StreamRef.extend({
+      target: z.union([
+        z.object({ messageId: Id }),
+        z.object({ shortId: Id, version: z.number().int().positive().optional() }),
+      ]),
+    }),
+    output: z.object({ message: Message.nullable(), ref: ShortRef.nullable() }),
+  },
   "transcript:window": {
     input: StreamRef.extend({ sourceId: Id, fromMs: Ms, toMs: Ms }),
     output: TranscriptWindow,
@@ -328,13 +362,21 @@ export const contract = {
    * (from the drop:files event); the renderer never sees or sends a path.
    */
   "drop:use": {
-    input: z.object({ token: Id, streamId: Id.optional() }),
+    input: z.object({ token: Id, streamId: Id.optional(), copy: z.boolean().optional() }),
     output: z.union([
       z.object({ streamId: Id }),
       z.object({ failed: z.literal(true), message: z.string().max(300) }),
+      z.object({ cancelled: z.literal(true) }),
     ]),
   },
-  "short:saveDraft": { input: ShortInput.extend({ short: Short }), output: z.object({}) },
+  "short:saveDraft": {
+    input: ShortInput.extend({ short: Short, baseVersion: z.number().int().positive() }),
+    output: z.object({}),
+  },
+  "short:clearDraft": {
+    input: ShortInput.extend({ baseVersion: z.number().int().positive() }),
+    output: z.object({}),
+  },
   /**
    * Saves an editor edit as a user version and posts a version message.
    * parent: the version it was edited from (a branch), else the head.
@@ -349,7 +391,10 @@ export const contract = {
   },
   /** Everything the editor needs for one version, in one call. */
   "editor:open": {
-    input: ShortInput.extend({ version: z.number().int().positive().optional() }),
+    input: ShortInput.extend({
+      version: z.number().int().positive().optional(),
+      range: z.object({ fromMs: Ms, toMs: Ms }).optional(),
+    }),
     output: EditorView,
   },
   "short:restore": {
@@ -364,6 +409,11 @@ export const events = {
   "link:invalid": z.object({ message: z.string().max(200) }),
   /** The sidebar list changed: a stream was added, renamed, read or got news. */
   "streams:changed": z.object({}),
+  "source:changed": z.object({
+    streamId: Id,
+    sourceId: Id,
+    reason: z.enum(["ready", "relink"]).optional(),
+  }),
   /** A new message, or a new rev of one (status updates). */
   "thread:message": z.object({ streamId: Id, message: Message }),
   "job:progress": z.object({

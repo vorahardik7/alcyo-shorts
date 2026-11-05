@@ -167,3 +167,21 @@ export const PenSquareIcon = (p: IconProps) => (
     <path d="M17.6 3.6a2 2 0 0 1 2.8 2.8L12.5 14.3 9 15l.7-3.5z" />
   </Icon>
 );
+export const ReplyIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M9.5 6 4.5 11l5 5" />
+    <path d="M4.5 11h9a6 6 0 0 1 6 6v1" />
+  </Icon>
+);
+export const TrayIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 4v9M8.5 9.5 12 13l3.5-3.5" />
+    <path d="M4 14.5h4.2l1.3 2h5l1.3-2H20V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+  </Icon>
+);
+export const UndoIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M9 14 4.5 9.5 9 5" />
+    <path d="M4.5 9.5H15a5 5 0 0 1 0 10h-3" />
+  </Icon>
+);

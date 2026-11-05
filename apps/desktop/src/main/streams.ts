@@ -4,7 +4,8 @@
 // One queue runs every heavy job in order: analysis, downloads, and clip
 // checks (quick analysis, then matching to the VOD).
 import { mkdir } from "node:fs/promises";
-import { basename, extname, join } from "node:path";
+import { basename, extname, join, relative, isAbsolute, sep } from "node:path";
+import { ProbeFile } from "@alcyo/media";
 import { CANT_DOWNLOAD, PLACED_MIN, classifyLink } from "@alcyo/import";
 import type {
   AnalysisEvent,
@@ -32,6 +33,7 @@ import {
   createStream,
   exists,
   newId,
+  readJson,
 } from "@alcyo/store";
 
 type Handle<T> = { done: Promise<T>; cancel: () => void };
@@ -62,11 +64,14 @@ export interface StreamServiceDeps {
   /** The yt-dlp in use (updated or bundled) and the bundled ffmpeg's folder. */
   importBase: () => Promise<{ ytDlp: string; ffmpegDir: string }>;
   chooseVideo: () => Promise<string | null>;
+  chooseCopy?: (path: string) => Promise<boolean | null>;
+  chooseFolder?: () => Promise<string | null>;
   emit: <E extends EventName>(event: E, payload: EventPayload<E>) => void;
   /**
    * The transcript is in ("transcript"), or analysis and the clip checks after
    * it are done ("clips"). The planner's one automatic Find shorts listens.
    */
+  onLocated?: (streamId: string) => Promise<void>;
   onReady?: (streamId: string, phase: "transcript" | "clips") => void;
   now?: () => Date;
   log?: (line: string) => void;
@@ -144,6 +149,7 @@ export class StreamService {
   private jobs = new Map<string, Job>();
   private chain: Promise<void> = Promise.resolve();
   /** Link questions waiting for an answer, by message id. Gone after a restart. */
+  private recovery = new Map<string, Promise<void>>();
   private asks = new Map<string, { streamId: string; url: string; link: LinkVideo }>();
   private readonly now: () => Date;
   private readonly log: (line: string) => void;
@@ -177,6 +183,7 @@ export class StreamService {
   async open(streamId: string): Promise<Omit<StreamDetail, "planner">> {
     const entry = await this.entry(streamId);
     const store = await this.store(streamId);
+    await this.recover(streamId, store);
     return {
       stream: await this.summary(entry),
       project: await store.project(),
@@ -186,6 +193,79 @@ export class StreamService {
         .filter((j) => j.streamId === streamId)
         .map((j) => ({ jobId: j.jobId, sourceId: j.targetId })),
     };
+  }
+
+  private recover(streamId: string, store: ProjectStore): Promise<void> {
+    const pending = this.recovery.get(streamId);
+    if (pending !== undefined) return pending;
+    const run = (async () => {
+      for (const { source } of await store.sources()) {
+        if (source.probe === null) await this.sourceReady(streamId, source.sourceId);
+      }
+      for (const m of await store.messages()) {
+        if (m.body.kind !== "status" || this.jobs.has(m.body.jobId)) continue;
+        // Older builds called a partially failed analysis "done". Keep its
+        // transcript usable while making the failed background steps retryable.
+        const incomplete =
+          m.body.state === "done" &&
+          (m.body.jobKind === "analysis" || m.body.jobKind === undefined) &&
+          m.body.label === "Analysis finished, with problems";
+        if (m.body.state !== "running" && !incomplete) continue;
+        await this.post(
+          streamId,
+          {
+            ...m.body,
+            state: "failed",
+            pct: incomplete ? m.body.pct : 0,
+            label: incomplete
+              ? m.body.label
+              : "Stopped when Alcyo closed. Resume analysis to continue from its cache.",
+          },
+          { id: m.id, rev: m.rev + 1 },
+        );
+      }
+    })();
+    this.recovery.set(streamId, run);
+    void run.catch(() => {
+      this.recovery.delete(streamId);
+    });
+    return run;
+  }
+
+  async locate(
+    streamId: string,
+  ): Promise<
+    { stream: StreamSummary } | { cancelled: true } | { mismatch: true; message: string }
+  > {
+    const entry = await this.entry(streamId);
+    if ([...this.jobs.values()].some((j) => j.streamId === streamId))
+      throw new StoreError(
+        "mismatch",
+        "Cancel this stream's running jobs before locating its folder.",
+      );
+    const folder = await this.deps.chooseFolder?.();
+    if (folder == null) return { cancelled: true };
+    const store = await ProjectStore.open(folder, this.now);
+    const project = await store.project();
+    if (project.streamId !== streamId)
+      return {
+        mismatch: true,
+        message: "That's a different project. Choose this stream's .alcyo folder.",
+      };
+    await store.rebase(entry.folder);
+    const rel = entry.thumbnail === null ? null : relative(entry.folder, entry.thumbnail);
+    const thumbnail =
+      rel === null || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)
+        ? null
+        : join(folder, rel);
+    const next = await this.deps.index.update(streamId, { folder, name: project.name, thumbnail });
+    this.stores.set(streamId, store);
+    this.recovery.delete(streamId);
+    await this.deps.onLocated?.(streamId);
+    this.deps.emit("streams:changed", {});
+    for (const { sourceId } of project.sources)
+      this.deps.emit("source:changed", { streamId, sourceId, reason: "relink" });
+    return { stream: await this.summary(next) };
   }
 
   async markRead(streamId: string): Promise<void> {
@@ -243,23 +323,33 @@ export class StreamService {
   /** Choose a file: a new stream named after it (or the given stream), then analysis. */
   async chooseFile(
     streamId?: string,
+    copy?: boolean,
   ): Promise<{ stream: StreamSummary; jobId: string } | { cancelled: true }> {
     const path = await this.deps.chooseVideo();
     if (path === null) return { cancelled: true };
-    return this.addFile(path, streamId);
+    const copying =
+      copy ??
+      (await this.deps.chooseCopy?.(path)) ??
+      (this.deps.chooseCopy === undefined ? false : null);
+    if (copying === null) return { cancelled: true };
+    return this.addFile(path, streamId, copying);
   }
 
   /** A file as a new stream (or the given stream's recording), then analysis. */
   async addFile(
     path: string,
     streamId?: string,
+    copy = false,
   ): Promise<{ stream: StreamSummary; jobId: string }> {
     const id = streamId ?? (await this.newStream(basename(path, extname(path))));
     const store = await this.store(id);
-    const source = await store.addFileSource(path);
+    const source = await store.addFileSource(path, { copy });
+    await store.setCopyIntoProject(copy);
     await this.post(id, {
       kind: "text",
-      text: `Added ${basename(path)}. It stays where it is; nothing is copied or uploaded.`,
+      text: copy
+        ? `Added ${basename(path)}. A copy is stored in this project; nothing is uploaded.`
+        : `Added ${basename(path)}. It stays where it is; nothing is copied or uploaded.`,
     });
     const { jobId } = await this.startAnalysis(id, source.sourceId);
     return { stream: await this.summary(await this.entry(id)), jobId };
@@ -272,7 +362,9 @@ export class StreamService {
     const path = await this.deps.chooseVideo();
     if (path === null) return { cancelled: true };
     try {
-      return { source: await (await this.store(streamId)).relinkSource(sourceId, path) };
+      const source = await (await this.store(streamId)).relinkSource(sourceId, path);
+      this.deps.emit("source:changed", { streamId, sourceId, reason: "relink" });
+      return { source };
     } catch (error) {
       if (error instanceof StoreError && error.code === "mismatch")
         return { mismatch: true, message: error.message };
@@ -314,7 +406,15 @@ export class StreamService {
     const status: PostStatus = (label, pct, state) =>
       this.post(
         streamId,
-        { kind: "status", jobId: job.jobId, label, pct, state },
+        {
+          kind: "status",
+          jobId: job.jobId,
+          label,
+          pct,
+          state,
+          jobKind: job.kind,
+          targetId: job.targetId,
+        },
         { id: job.messageId, rev: job.rev++ },
       );
     await status(this.jobs.size > 1 ? "Waiting for the job before it" : labels.start, 0, "running");
@@ -366,6 +466,13 @@ export class StreamService {
     };
   }
 
+  private async sourceReady(streamId: string, sourceId: string): Promise<void> {
+    const store = await this.store(streamId);
+    const probe = await readJson(store.paths.analysis(sourceId, "probe.json"), ProbeFile);
+    if (probe !== null) await store.applyAnalysis(sourceId, probe);
+    this.deps.emit("source:changed", { streamId, sourceId });
+  }
+
   /** Queues analysis. One job runs at a time; a status message tracks it. */
   async startAnalysis(streamId: string, sourceId: string): Promise<{ jobId: string }> {
     const store = await this.store(streamId);
@@ -385,6 +492,12 @@ export class StreamService {
           cacheDir: store.paths.cacheDir(sourceId),
         };
         const handle = this.deps.worker().analyze(request, (event) => {
+          if (
+            event.kind === "step-done" &&
+            ["probe", "proxy", "peaks", "thumbnails"].includes(event.step)
+          ) {
+            void this.sourceReady(streamId, sourceId).catch((e: unknown) => this.log(String(e)));
+          }
           if (event.kind === "step-done" && event.step === "transcript") {
             this.deps.onReady?.(streamId, "transcript");
           }
@@ -407,12 +520,13 @@ export class StreamService {
           await progress.flush();
         }
         await store.applyAnalysis(sourceId, result);
+        this.deps.emit("source:changed", { streamId, sourceId });
         if (result.encoder !== null && result.encoder !== request.encoder) {
           await this.deps.settings.patch({ encoder: result.encoder });
         }
         const failed = Object.values(result.steps).some((s) => s === "failed");
         const label = failed ? "Analysis finished, with problems" : "Analysis finished";
-        await status(label, 100, "done");
+        await status(label, 100, failed ? "failed" : "done");
         for (const p of result.problems)
           await this.post(streamId, { kind: "text", text: p.message });
         await this.touch(streamId, label, {
@@ -443,7 +557,15 @@ export class StreamService {
     this.jobs.delete(jobId);
     await this.post(
       job.streamId,
-      { kind: "status", jobId, label: job.cancelledLabel, pct: 0, state: "cancelled" },
+      {
+        kind: "status",
+        jobId,
+        label: job.cancelledLabel,
+        pct: 0,
+        state: "cancelled",
+        jobKind: job.kind,
+        targetId: job.targetId,
+      },
       { id: job.messageId, rev: job.rev++ },
     );
   }
@@ -644,7 +766,8 @@ export class StreamService {
   async useFiles(
     paths: readonly string[],
     streamId?: string,
-  ): Promise<{ streamId: string } | { failed: true; message: string }> {
+    copy?: boolean,
+  ): Promise<{ streamId: string } | { failed: true; message: string } | { cancelled: true }> {
     const videos = paths.filter((p) => VIDEO_EXT.has(extname(p).toLowerCase()));
     if (videos.length === 0) {
       return { failed: true, message: COPY.notVideo };
@@ -652,7 +775,12 @@ export class StreamService {
     let id = streamId;
     let rest = videos;
     if (id === undefined || (await (await this.store(id)).project()).sources.length === 0) {
-      const added = await this.addFile(videos[0]!, id);
+      const copying =
+        copy ??
+        (await this.deps.chooseCopy?.(videos[0]!)) ??
+        (this.deps.chooseCopy === undefined ? false : null);
+      if (copying === null) return { cancelled: true };
+      const added = await this.addFile(videos[0]!, id, copying);
       id = added.stream.streamId;
       rest = videos.slice(1);
     }
@@ -804,6 +932,41 @@ export class StreamService {
   }
 
   // Thread, transcript and shorts: thin passes to the store.
+
+  async locateMessage(
+    streamId: string,
+    target: { messageId: string } | { shortId: string; version?: number | undefined },
+  ) {
+    const store = await this.store(streamId);
+    const messages = await store.messages();
+    if ("messageId" in target)
+      return { message: messages.find((m) => m.id === target.messageId) ?? null, ref: null };
+    let version;
+    try {
+      version = await store.version(target.shortId, target.version);
+    } catch (error) {
+      if (error instanceof StoreError && (error.code === "not-found" || error.code === "missing"))
+        return { message: null, ref: null };
+      throw error;
+    }
+    const ref = { shortId: version.shortId, version: version.version };
+    const message = [...messages].reverse().find((m) => {
+      const refs =
+        m.body.kind === "shorts" ? m.body.shorts : m.body.kind === "version" ? [m.body.ref] : [];
+      return refs.some((r) => r.shortId === ref.shortId && r.version === ref.version);
+    }) ?? {
+      id: `linked_${version.shortId}_${version.version}`,
+      rev: 0,
+      at: version.createdAt,
+      author: version.createdBy,
+      body: {
+        kind: "version" as const,
+        ref,
+        whatChanged: version.note || `Version ${version.version}`,
+      },
+    };
+    return { message, ref };
+  }
 
   async messages(streamId: string, limit: number, before?: string): Promise<Message[]> {
     return (await this.store(streamId)).pageMessages(limit, before);

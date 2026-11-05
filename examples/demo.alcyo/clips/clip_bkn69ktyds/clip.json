@@ -1,0 +1,16 @@
+{
+  "clipId": "clip_bkn69ktyds",
+  "origin": {
+    "kind": "file",
+    "path": "../demo/clip-ember.mp4"
+  },
+  "title": "1 in 200 drop",
+  "durationMs": 10000,
+  "match": {
+    "srcIn": 84500,
+    "srcOut": 94500,
+    "confidence": 1,
+    "method": "transcript"
+  },
+  "schemaVersion": 1
+}

@@ -65,6 +65,8 @@ export const Source = z.object({
   sourceId: Id,
   addedAt: IsoDateTime,
   origin: SourceOrigin,
+  /** Changes only when a source is relinked/moved; busts Chromium media caches. */
+  mediaRevision: z.number().int().nonnegative().optional(),
   fingerprint: Fingerprint,
   probe: Probe.nullable(),
   info: YtDlpInfo.nullable(),

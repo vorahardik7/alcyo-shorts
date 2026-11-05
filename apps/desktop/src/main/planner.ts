@@ -4,6 +4,7 @@
 // on a child process or a fetch, so proxies keep building meanwhile.
 //
 // One agent job runs per stream at a time; messages sent meanwhile wait in turn.
+import { snapshotShortStyles } from "@alcyo/render";
 import { PLACED_MIN } from "@alcyo/import";
 import type { AgentWork, EventName, EventPayload } from "@alcyo/ipc";
 import {
@@ -252,7 +253,7 @@ export class PlannerService {
     for (const short of shorts) {
       const v = await store.createShort({
         sourceId: inputs.sourceId,
-        short,
+        short: snapshotShortStyles(short, inputs.presets),
         createdBy: "claude",
         note: opts.request === null ? "Proposed" : `Asked for: ${opts.request}`.slice(0, 200),
         fromMessageId: opts.fromMessageId,
@@ -294,7 +295,11 @@ export class PlannerService {
   ): Promise<void> {
     if (message.body.kind !== "text") return;
     const inputs = await this.inputs(store);
-    const shorts = await this.heads(store);
+    let shorts = await this.heads(store);
+    if (message.replyTo !== undefined) {
+      const target = await store.version(message.replyTo.shortId, message.replyTo.version);
+      shorts = shorts.map((v) => (v.shortId === target.shortId ? target : v));
+    }
     const all = await store.messages();
     const at = all.findIndex((m) => m.id === message.id);
     const before = at === -1 ? all : all.slice(0, at);
@@ -319,10 +324,11 @@ export class PlannerService {
         let last = "";
         for (const c of result.changes) {
           const v = await store.saveVersion(c.shortId, {
-            short: c.short,
+            short: snapshotShortStyles(c.short, inputs.presets),
             createdBy: c.createdBy,
             note: c.note,
             fromMessageId: message.id,
+            parent: shorts.find((v) => v.shortId === c.shortId)!.version,
           });
           await this.deps.streams.post(
             streamId,

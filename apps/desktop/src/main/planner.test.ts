@@ -305,3 +305,22 @@ describe("chat", () => {
     expect(kinds).toEqual(["user:text", "user:text", "claude:text", "claude:shorts"]);
   });
 });
+
+it("branches chat from the explicitly replied-to version", async () => {
+  await addTranscript();
+  await planner.find(streamId);
+  await planner.idle(streamId);
+  const shortId = (await store.project()).shorts[0]!.shortId;
+  const old = await store.version(shortId, 1);
+  await store.saveVersion(shortId, {
+    short: { ...old.short, crop: { keys: [{ t: 0, x: 0.9, ease: "hold" }] } },
+    createdBy: "user",
+    note: "Later crop",
+    fromMessageId: null,
+  });
+  await planner.send(streamId, "make it punchier", { shortId, version: 1 });
+  await planner.idle(streamId);
+  const next = await store.version(shortId);
+  expect(next).toMatchObject({ version: 3, parent: 1 });
+  expect(next.short.crop.keys.every((k) => k.x === old.short.crop.keys[0]!.x)).toBe(true);
+});

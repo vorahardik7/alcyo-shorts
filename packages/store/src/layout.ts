@@ -16,7 +16,10 @@ export function layout(folder: string) {
     cacheDir: (id: string) => join(folder, "cache", id),
     shortDir: (id: string) => join(folder, "shorts", id),
     short: (id: string) => join(folder, "shorts", id, "short.json"),
-    draft: (id: string) => join(folder, "shorts", id, "draft.json"),
+    draft: (id: string, base?: number) =>
+      join(folder, "shorts", id, base === undefined ? "draft.json" : `draft-v${pad(base)}.json`),
+    styles: (id: string, n: number) =>
+      join(folder, "shorts", id, "versions", `${pad(n)}.styles.json`),
     versions: (id: string) => join(folder, "shorts", id, "versions"),
     version: (id: string, n: number, by: "claude" | "user") =>
       join(folder, "shorts", id, "versions", `${pad(n)}.${by}.json`),

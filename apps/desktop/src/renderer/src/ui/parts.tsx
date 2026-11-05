@@ -56,7 +56,7 @@ export function ComesIn({ spec }: { spec: number }) {
     <span
       data-testid="comes-in"
       title={`Comes in spec ${spec}`}
-      className="inline-flex shrink-0 items-center rounded-full bg-bubble-user px-2 py-0.5 text-[12px] whitespace-nowrap text-tertiary"
+      className="inline-flex shrink-0 items-center rounded-md bg-raised px-1.5 py-0.5 text-[11px] whitespace-nowrap text-tertiary"
     >
       Soon
     </span>
@@ -79,7 +79,7 @@ export function Card({
   return (
     <section
       data-testid={testId}
-      className="overflow-hidden rounded-xl bg-card/60 ring-1 ring-hairline"
+      className="overflow-hidden rounded-xl border border-line bg-card"
       aria-label={title}
     >
       <div className="flex items-center gap-4 px-4 py-3.5">

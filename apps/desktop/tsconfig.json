@@ -9,6 +9,7 @@
     "src/worker",
     "src/shared",
     "src/env.d.ts",
+    "scripts/build-demo.ts",
     "electron.vite.config.ts",
     "vitest.config.ts",
     "playwright.config.ts"

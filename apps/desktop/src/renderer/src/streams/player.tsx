@@ -165,7 +165,7 @@ export function Player({
     const ro = new ResizeObserver(([e]) => setBoxW(e?.contentRect.width ?? 0));
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [src]);
 
   const vid = (i: number) => (i === 0 ? vidA.current : vidB.current);
 
@@ -205,7 +205,7 @@ export function Player({
 
   const setT = useCallback((t: number) => {
     timeRef.current = t;
-    setTime(t);
+    setTime((prev) => (Math.floor(prev / 1000) === Math.floor(t / 1000) ? prev : t));
     onTimeRef.current?.(t);
   }, []);
 
@@ -215,16 +215,20 @@ export function Player({
       const clamped = Math.max(0, Math.min(Math.max(0, total - 1), Math.round(t)));
       let seg = 0;
       while (seg + 1 < segs.length && offs[seg + 1]! <= clamped) seg++;
-      at.current = { vid: 0, seg };
-      const a = vidA.current;
-      const b = vidB.current;
+      // Keep the active element: after a cut B may own playback. Resetting
+      // ownership to paused A leaves hidden B playing and freezes the clock.
+      const active = at.current.vid;
+      at.current = { vid: active, seg };
+      const a = active === 0 ? vidA.current : vidB.current;
+      const b = active === 0 ? vidB.current : vidA.current;
+      b?.pause();
       if (a !== null) a.currentTime = (segs[seg]!.srcIn + (clamped - offs[seg]!)) / 1000;
       const next = segs[seg + 1];
       if (b !== null && next !== undefined) b.currentTime = next.srcIn / 1000;
       setT(clamped);
-      draw(clamped);
+      drawRef.current(clamped);
     },
-    [segs, offs, total, draw, setT],
+    [segs, offs, total, setT],
   );
 
   // Captions: one JASSUB per mounted player; a new .ass replaces the track.
@@ -264,7 +268,7 @@ export function Player({
     };
     // One renderer per mount; track changes go through setTrack below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [src]);
 
   useEffect(() => {
     assRef.current = ass;
@@ -303,7 +307,7 @@ export function Player({
       seekTo(timeRef.current);
     });
     return () => cancelAnimationFrame(id);
-  }, [segs, ready, seekTo, stop]);
+  }, [segs, ready, seekTo, stop, src]);
 
   // While playing: follow the active video, swap at each cut, stop at the end.
   useEffect(() => {
@@ -386,7 +390,7 @@ export function Player({
   if (src === null) {
     return (
       <div
-        className={`grid aspect-[9/16] place-items-center rounded-xl bg-black/60 px-4 text-center text-[12px] text-tertiary ${className}`}
+        className={`grid aspect-[9/16] place-items-center rounded-[10px] bg-black/60 px-4 text-center text-[12px] text-tertiary ${className}`}
       >
         The preview shows once the recording or its proxy is ready.
       </div>
@@ -398,7 +402,7 @@ export function Player({
       ref={box}
       data-testid="short-player"
       data-playing={playing}
-      className={`group/player relative aspect-[9/16] overflow-hidden rounded-xl bg-black ${className}`}
+      className={`group/player relative aspect-[9/16] overflow-hidden rounded-[10px] bg-black ${className}`}
     >
       <video
         ref={vidA}
@@ -408,7 +412,6 @@ export function Player({
         playsInline
         className="absolute top-0 left-0 max-w-none origin-top-left"
         onLoadedData={() => {
-          if (ready) return;
           setReady(true);
           seekTo(timeRef.current);
         }}
@@ -433,9 +436,9 @@ export function Player({
           aria-label={playing ? "Pause" : "Play"}
           onClick={() => (playing ? stop() : play())}
           data-playing={playing}
-          className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/50 via-transparent to-transparent p-2.5 text-left opacity-100 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-unread focus-visible:ring-inset data-[playing=true]:opacity-0"
+          className="group/toggle absolute inset-0 bg-gradient-to-t from-black/50 via-transparent via-30% to-transparent text-left opacity-100 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset data-[playing=true]:opacity-0 data-[playing=true]:hover:opacity-100"
         >
-          <span className="grid size-8 place-items-center rounded-full bg-black/60 text-white backdrop-blur">
+          <span className="absolute bottom-2 left-2 grid size-8 place-items-center rounded-full bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-md transition-[transform,background-color] group-hover/toggle:scale-105 group-hover/toggle:bg-black/70">
             {!ready ? (
               <Spinner size={12} />
             ) : playing ? (
@@ -452,7 +455,7 @@ export function Player({
               </svg>
             )}
           </span>
-          <span className="rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] text-white tabular-nums backdrop-blur">
+          <span className="absolute right-2 bottom-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white tabular-nums backdrop-blur">
             {fmtTime(time)} / {fmtTime(total)}
           </span>
         </button>

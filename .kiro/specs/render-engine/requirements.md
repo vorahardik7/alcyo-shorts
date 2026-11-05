@@ -21,8 +21,9 @@ settings without paths everywhere.
 
 1. THE version-and-preset-to-args function SHALL be pure, with snapshot
    tests for multiple segments, 200 crop keys, captions and hook.
-2. Segment edges SHALL snap to source frames, with a 10 ms audio fade at
-   each cut. A source with no audio SHALL get silence.
+2. Saved segment milliseconds SHALL define the shared edit clock. Frames
+   SHALL be sampled once at output without per-cut rounding drift, with a
+   10 ms audio fade at each cut. A source with no audio SHALL get silence.
 3. THE same version rendered twice SHALL give identical args and caption
    files. No path SHALL appear inside the filter graph.
 

@@ -12,6 +12,8 @@ export const MessageBody = z.discriminatedUnion("kind", [
     label: z.string(),
     pct: z.number().min(0).max(100),
     state: z.enum(["running", "done", "failed", "cancelled"]),
+    jobKind: z.enum(["analysis", "download", "clip"]).optional(),
+    targetId: Id.optional(),
   }),
   z.object({
     kind: z.literal("shorts"),

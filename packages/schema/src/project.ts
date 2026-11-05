@@ -82,6 +82,9 @@ export const Settings = z.object({
   streamsDir: z.string().min(1).nullable().default(null),
   /** The "only download what you may use" note was posted once. Added in spec 6. */
   urlNoteShown: z.boolean().default(false),
+  /** Grok's and Codex's model, picked in the composer. Null: the agent's own default. Claude's is `model`. */
+  grokModel: z.string().min(1).max(100).nullable().default(null),
+  codexModel: z.string().min(1).max(100).nullable().default(null),
 });
 export type Settings = z.infer<typeof Settings>;
 
@@ -99,5 +102,7 @@ export function defaultSettings(platform: "darwin" | "win32" | "linux"): Setting
     theme: "dark",
     streamsDir: null,
     urlNoteShown: false,
+    grokModel: null,
+    codexModel: null,
   };
 }

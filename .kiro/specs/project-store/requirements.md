@@ -67,8 +67,10 @@ thread (cards, replies, chips) stays in spec 10.
 1. THE store SHALL never overwrite a version file. Each version SHALL record
    parent, author and `fromMessageId`.
 2. Restoring a version SHALL make a new version that copies it.
-3. THE store SHALL write `draft.json` within 1 s of an edit, and return the
-   draft when it's newer than the head version, so a crash loses nothing.
+3. THE store SHALL write a version-owned `draft-vNNNN.json` within 1 s of
+   an edit, and restore it only for its actual parent version, including
+   historical branches. Legacy `draft.json` files remain readable. Cancelling
+   pending writes and retrying failures SHALL never replay older edits.
 
 ### Requirement 6: Transcript reads (P0)
 

@@ -200,6 +200,6 @@ export function mediaHandler(deps: MediaDeps): (request: Request) => Promise<Res
 }
 
 /** alcyo-media://source/<streamId>/<sourceId> */
-export function sourceUrl(streamId: string, sourceId: string): string {
-  return `${MEDIA_SCHEME}://source/${streamId}/${sourceId}`;
+export function sourceUrl(streamId: string, sourceId: string, revision?: number): string {
+  return `${MEDIA_SCHEME}://source/${streamId}/${sourceId}${revision === undefined ? "" : `?v=${revision}`}`;
 }

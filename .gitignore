@@ -50,6 +50,8 @@ resources/models/*.bin
 *.aiff
 *.caf
 !examples/demo/**
+# The demo project keeps its thumbnails and waveform (no audio, no renders).
+!examples/demo.alcyo/cache/
 
 # OS and editor files
 .DS_Store

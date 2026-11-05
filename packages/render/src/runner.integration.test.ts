@@ -113,6 +113,54 @@ describe.skipIf(!have)("renderShort with the bundled ffmpeg", () => {
     },
   );
 
+  it(
+    "preserves the edit clock across 30 non-frame-aligned cuts with one input",
+    { timeout: 120_000 },
+    async () => {
+      const job = await setup();
+      const source24 = join(job.workDir, "..", "source-24.mp4");
+      execFileSync(ffmpeg, [
+        "-v",
+        "error",
+        "-y",
+        "-i",
+        job.sourcePath,
+        "-r",
+        "24",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-c:a",
+        "copy",
+        source24,
+      ]);
+      const cuts = Array.from({ length: 30 }, (_, i) => ({
+        srcIn: i * 300,
+        srcOut: i * 300 + 100,
+      }));
+      const inputs: number[] = [];
+      const out = await renderShort(
+        {
+          ...job,
+          sourcePath: source24,
+          source: { ...job.source, fpsNum: 24 },
+          short: { ...job.short, segments: cuts },
+        },
+        {
+          run: (file, args, opts) => {
+            if (file === ffmpeg) inputs.push(args.filter((a) => a === "-i").length);
+            return runTool(file, args, opts);
+          },
+        },
+        () => undefined,
+        new AbortController().signal,
+      );
+      expect(Math.abs(out.durationMs - 3000)).toBeLessThanOrEqual(34);
+      expect(inputs).toEqual([1]);
+    },
+  );
+
   it("leaves nothing behind when cancelled", { timeout: 120_000 }, async () => {
     const job = await setup();
     const controller = new AbortController();

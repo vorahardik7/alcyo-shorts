@@ -23,7 +23,7 @@ export function windowOptions(
     minHeight: 600,
     show: false,
     title: "Alcyo Shorts",
-    backgroundColor: "#0B0B0B",
+    backgroundColor: "#0E0F11",
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     // Centered in the sidebar's 52 px top bar (lights are 14 px tall).
     ...(process.platform === "darwin" ? { trafficLightPosition: { x: 16, y: 19 } } : {}),

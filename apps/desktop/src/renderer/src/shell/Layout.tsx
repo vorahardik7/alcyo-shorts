@@ -111,14 +111,12 @@ function useDroppedFiles(): void {
     () =>
       window.alcyo.on("drop:files", ({ token, names }) => {
         const streamId = /^\/s\/([^/]+)/.exec(router.state.location.pathname)?.[1];
-        toast(
-          names.length === 1 ? `Adding ${names[0]}` : `Adding ${names.length} files`,
-          "It stays where it is; nothing is copied or uploaded.",
-        );
+        toast(names.length === 1 ? `Adding ${names[0]}` : `Adding ${names.length} files`);
         window.alcyo
           .invoke("drop:use", { token, ...(streamId === undefined ? {} : { streamId }) })
           .then(
             (out) => {
+              if ("cancelled" in out) return;
               if ("failed" in out) toast("Couldn't add that", out.message);
               else if (out.streamId !== streamId) {
                 void router.navigate({ to: "/s/$streamId", params: { streamId: out.streamId } });
@@ -157,7 +155,7 @@ export function Layout() {
           <div
             role="alert"
             data-testid="link-notice"
-            className="toast-in no-drag absolute top-16 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 rounded-bubble bg-bubble-claude px-5 py-3 text-small shadow-lg ring-1 ring-hairline"
+            className="toast-in no-drag absolute top-16 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-[13px] shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
           >
             <span>{notice}</span>
             <button

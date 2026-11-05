@@ -2,6 +2,7 @@
 // crop key and hook times are short ms. Ordering and references are checked
 // in checks.ts, because .refine doesn't carry into JSON Schema.
 import { z } from "zod";
+import { CaptionPreset, HookPreset } from "./presets.ts";
 import { Id, IsoDateTime, Ms, SchemaVersion } from "./primitives.ts";
 
 export const Segment = z
@@ -33,6 +34,9 @@ export const Hook = z.object({
 });
 export type Hook = z.infer<typeof Hook>;
 
+export const ShortStyles = z.object({ caption: CaptionPreset, hook: HookPreset });
+export type ShortStyles = z.infer<typeof ShortStyles>;
+
 export const Short = z.object({
   title: z.string().min(1).max(80),
   reason: z.string().max(300),
@@ -44,6 +48,7 @@ export const Short = z.object({
     overrides: z.array(WordOverride),
   }),
   hook: Hook.optional(),
+  styles: ShortStyles.optional(),
 });
 export type Short = z.infer<typeof Short>;
 

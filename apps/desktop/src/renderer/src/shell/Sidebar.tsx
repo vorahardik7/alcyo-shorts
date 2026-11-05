@@ -10,7 +10,7 @@ import { openIssues, useSetup } from "../setup/store";
 import { useRenders } from "../streams/renders";
 import { useStreams } from "../streams/store";
 import { AppGlyph } from "../ui/AppMark";
-import { CloseIcon, FilmIcon, PenSquareIcon, SearchIcon, SettingsIcon } from "../ui/icons";
+import { CloseIcon, PenSquareIcon, SearchIcon, SettingsIcon, TrayIcon } from "../ui/icons";
 
 const mod = isMac ? "⌘" : "Ctrl+";
 
@@ -35,7 +35,7 @@ function initials(name: string): string {
 
 // 28 px square icon buttons, the sidebar's one button size.
 const iconBtn =
-  "no-drag grid size-7 shrink-0 place-items-center rounded-md text-secondary outline-none transition-colors hover:bg-white/[0.06] hover:text-text focus-visible:ring-2 focus-visible:ring-unread aria-pressed:bg-white/[0.08] aria-pressed:text-text";
+  "no-drag grid size-8 shrink-0 place-items-center rounded-md text-secondary outline-none transition-colors hover:bg-white/[0.06] hover:text-text focus-visible:ring-2 focus-visible:ring-accent aria-pressed:bg-white/[0.08] aria-pressed:text-text";
 
 function StreamRow({ stream, active }: { stream: StreamSummary; active: boolean }) {
   return (
@@ -44,8 +44,8 @@ function StreamRow({ stream, active }: { stream: StreamSummary; active: boolean 
       params={{ streamId: stream.streamId }}
       data-testid="stream-row"
       aria-current={active ? "page" : undefined}
-      className={`group flex items-center gap-2.5 rounded-lg px-2 py-[7px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-unread ${
-        active ? "bg-white/[0.07]" : "hover:bg-white/[0.04]"
+      className={`group flex items-center gap-2.5 rounded-md px-2 py-1.5 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset ${
+        active ? "bg-white/[0.09]" : "hover:bg-white/[0.06]"
       }`}
     >
       {stream.thumbnail !== null && !stream.missing ? (
@@ -53,13 +53,13 @@ function StreamRow({ stream, active }: { stream: StreamSummary; active: boolean 
           alt=""
           data-testid="stream-thumb"
           src={`alcyo-media://thumb/${stream.streamId}`}
-          className="size-8 shrink-0 rounded-[9px] object-cover ring-1 ring-white/[0.08]"
+          className="size-8 shrink-0 rounded-md object-cover ring-1 ring-white/[0.08]"
         />
       ) : (
         <span
           aria-hidden
-          className={`grid size-8 shrink-0 place-items-center rounded-[9px] font-mono text-[11px] font-semibold tracking-wide ring-1 ring-inset ring-white/[0.06] ${
-            active ? "bg-unread/15 text-[#9DB8FF]" : "bg-white/[0.05] text-secondary"
+          className={`grid size-8 shrink-0 place-items-center rounded-md text-[10px] font-semibold tracking-wide ring-1 ring-inset ring-white/[0.06] ${
+            active ? "bg-accent/15 text-accent-soft" : "bg-white/[0.05] text-secondary"
           }`}
         >
           {initials(stream.name)}
@@ -68,18 +68,18 @@ function StreamRow({ stream, active }: { stream: StreamSummary; active: boolean 
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline gap-2">
           <span
-            className={`min-w-0 flex-1 truncate text-[14px] leading-5 ${
+            className={`min-w-0 flex-1 truncate text-[13px] leading-[18px] ${
               stream.unread || active ? "font-medium text-text" : "text-[#d4d4d4]"
             }`}
           >
             {stream.name}
           </span>
-          <span className="shrink-0 text-[12px] text-tertiary tabular-nums">
+          <span className="shrink-0 text-[11px] text-tertiary tabular-nums">
             {ago(stream.lastActivityAt)}
           </span>
         </span>
-        <span className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-[13px] leading-[18px] text-tertiary">
+        <span className="mt-0.5 flex items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-[12px] leading-4 text-tertiary">
             {stream.missing ? "Folder moved" : stream.preview || "New stream"}
           </span>
           {stream.unread && (
@@ -102,23 +102,23 @@ function SearchField() {
   useEscape("overlay", searchOpen, () => setSearch(false));
 
   const box =
-    "no-drag flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg px-2 text-[14px] outline-none transition-colors";
+    "no-drag flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-[13px] outline-none transition-colors";
   if (!searchOpen) {
     return (
       <button
         type="button"
         data-testid="search-button"
         onClick={() => setSearch(true)}
-        className={`${box} text-tertiary hover:bg-white/[0.04] hover:text-secondary focus-visible:ring-2 focus-visible:ring-unread`}
+        className={`${box} text-tertiary hover:bg-white/[0.06] hover:text-secondary focus-visible:ring-2 focus-visible:ring-accent`}
       >
-        <SearchIcon size={16} className="shrink-0" />
+        <SearchIcon size={14} className="shrink-0" />
         <span className="flex-1 text-left">Search</span>
-        <span className="text-[12px] text-[#5c5c5c]">{mod}F</span>
+        <span className="text-[11px] text-[#525252]">{mod}F</span>
       </button>
     );
   }
   return (
-    <div data-overlay className={`${box} bg-white/[0.05] ring-1 ring-unread/50`}>
+    <div data-overlay className={`${box} bg-white/[0.06] ring-1 ring-accent/50`}>
       <SearchIcon size={16} className="shrink-0 text-secondary" />
       <input
         ref={input}
@@ -165,20 +165,20 @@ export function Sidebar() {
   return (
     <aside
       data-testid="sidebar"
-      className="flex w-[264px] shrink-0 flex-col border-r border-hairline bg-sidebar"
+      className="flex w-[256px] shrink-0 flex-col border-r border-hairline bg-sidebar"
     >
-      {/* The macOS traffic lights sit at x 16, y 19; the name starts after them. */}
+      {/* Like T3 Code: the traffic lights, then the name, all one drag region. */}
       <div
-        className={`drag flex h-[52px] shrink-0 items-center pr-2 ${isMac ? "pl-[84px]" : "pl-3"}`}
+        className={`drag flex h-[52px] shrink-0 items-center pr-3 ${isMac ? "pl-[78px]" : "pl-4"}`}
       >
         <Link
           to="/"
           data-testid="brand"
-          className="no-drag flex items-center gap-2 rounded-md px-1 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-unread"
+          className="no-drag flex min-w-0 items-center gap-2 rounded-md px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
-          <AppGlyph size={17} className="text-text" />
-          <span className="text-[14px] leading-none font-semibold tracking-[-0.01em]">
-            Alcyo <span className="font-normal text-secondary">Shorts</span>
+          <AppGlyph size={16} />
+          <span className="truncate text-[13px] leading-none font-semibold tracking-[-0.01em]">
+            Alcyo <span className="font-medium text-tertiary">Shorts</span>
           </span>
         </Link>
       </div>
@@ -189,22 +189,28 @@ export function Sidebar() {
           type="button"
           data-testid="new-stream"
           aria-label="New stream"
-          title="New stream"
+          title={`New stream (${mod}N)`}
           onClick={newStream}
           className={iconBtn}
         >
-          <PenSquareIcon size={16} />
+          <PenSquareIcon size={15} />
         </button>
       </div>
 
-      <nav aria-label="Streams" className="min-h-0 flex-1 overflow-y-auto px-2">
+      <div className="flex h-8 shrink-0 items-center px-4 text-[12px] font-medium text-tertiary">
+        Streams
+        {streams.length > 0 && (
+          <span className="ml-1.5 text-[11px] text-[#525252] tabular-nums">{streams.length}</span>
+        )}
+      </div>
+      <nav aria-label="Streams" className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         {searchOpen && query.length > 0 && matches.length === 0 ? (
           <p data-testid="no-matches" className="px-2 py-2 text-[13px] text-tertiary">
             No streams match “{query}”.
           </p>
         ) : streams.length === 0 ? (
           loaded && (
-            <div data-testid="empty-streams" className="px-2 py-2">
+            <div data-testid="empty-streams" className="px-2 py-1">
               <p className="text-[13px] text-secondary">No streams yet</p>
               <p className="mt-0.5 text-[12px] leading-snug text-tertiary">
                 Paste a link or choose a recording to start one.
@@ -212,7 +218,7 @@ export function Sidebar() {
             </div>
           )
         ) : (
-          <div className="space-y-px">
+          <div className="space-y-0.5">
             {matches.map((s) => (
               <StreamRow key={s.streamId} stream={s} active={s.streamId === activeId} />
             ))}
@@ -220,55 +226,54 @@ export function Sidebar() {
         )}
       </nav>
 
-      {report !== null && !report.complete && (
-        <div className="shrink-0 px-2 pt-1">
+      <footer className="flex shrink-0 flex-col px-2 pt-1 pb-2">
+        {/* Compact icon buttons, one row, like T3 Code's sidebar footer. */}
+        <div className="flex items-center gap-0.5">
           <Link
-            to="/setup"
-            data-testid="setup-row"
-            className="flex h-8 items-center gap-2 rounded-lg px-2 text-[13px] text-text outline-none transition-colors hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-unread"
+            to="/settings"
+            data-testid="settings-row"
+            aria-label="Settings"
+            title={`Settings (${mod},)`}
+            className={iconBtn}
           >
-            <span className="size-1.5 shrink-0 rounded-full bg-warn" />
-            <span className="min-w-0 flex-1 truncate">Finish setup</span>
-            <span className="text-[12px] text-tertiary tabular-nums">
-              {issues} {issues === 1 ? "issue" : "issues"}
-            </span>
+            <SettingsIcon size={16} />
           </Link>
-        </div>
-      )}
-
-      <footer className="flex h-12 shrink-0 items-center gap-0.5 px-2">
-        <Link
-          to="/settings"
-          data-testid="settings-row"
-          aria-label="Settings"
-          title={`Settings (${mod},)`}
-          className={iconBtn}
-        >
-          <SettingsIcon size={17} />
-        </Link>
-        <button
-          type="button"
-          data-testid="render-queue-button"
-          aria-label="Render queue"
-          title="Render queue"
-          aria-pressed={onRenders}
-          onClick={() => {
-            if (!onRenders) void router.navigate({ to: "/renders" });
-            else if (router.history.canGoBack()) router.history.back();
-            else void router.navigate({ to: "/" });
-          }}
-          className={`${iconBtn} relative`}
-        >
-          <FilmIcon size={17} />
-          {rendering > 0 && (
-            <span
-              data-testid="rendering-count"
-              className="absolute -top-0.5 -right-0.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-unread px-1 text-[9px] font-semibold text-white tabular-nums"
+          <button
+            type="button"
+            data-testid="render-queue-button"
+            aria-label="Render queue"
+            title="Render queue"
+            aria-pressed={onRenders}
+            onClick={() => {
+              if (!onRenders) void router.navigate({ to: "/renders" });
+              else if (router.history.canGoBack()) router.history.back();
+              else void router.navigate({ to: "/" });
+            }}
+            className={`${iconBtn} relative`}
+          >
+            <TrayIcon size={16} />
+            {rendering > 0 && (
+              <span
+                data-testid="rendering-count"
+                className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[9px] font-semibold text-white tabular-nums ring-2 ring-sidebar"
+              >
+                {rendering}
+              </span>
+            )}
+          </button>
+          {report !== null && !report.complete && (
+            <Link
+              to="/setup"
+              data-testid="setup-row"
+              title={`${issues} setup ${issues === 1 ? "issue" : "issues"}`}
+              className="no-drag ml-1 flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 text-[12px] text-secondary outline-none transition-colors hover:bg-white/[0.06] hover:text-text focus-visible:ring-2 focus-visible:ring-accent"
             >
-              {rendering}
-            </span>
+              <span className="size-1.5 shrink-0 rounded-full bg-warn" />
+              <span className="min-w-0 flex-1 truncate">Finish setup</span>
+              <span className="text-[11px] text-tertiary tabular-nums">{issues}</span>
+            </Link>
           )}
-        </button>
+        </div>
       </footer>
     </aside>
   );

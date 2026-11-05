@@ -49,20 +49,20 @@ export function Toaster() {
         role="status"
         data-testid="toast"
         data-overlay
-        className="toast-in pointer-events-auto flex max-w-lg items-start gap-3 rounded-[18px] bg-[#232323] py-3 pr-2 pl-4 shadow-[0_12px_40px_rgba(0,0,0,0.5)] ring-1 ring-hairline"
+        className="toast-in pointer-events-auto flex max-w-lg items-start gap-3 rounded-xl border border-line-strong bg-[#1f2126] py-2.5 pr-1.5 pl-3.5 shadow-[0_12px_32px_rgba(0,0,0,0.45)]"
       >
-        <InfoIcon size={18} className="mt-0.5 shrink-0 text-unread" />
+        <InfoIcon size={16} className="mt-0.5 shrink-0 text-accent-soft" />
         <div className="min-w-0 flex-1">
-          <p className="text-small font-medium">{current.title}</p>
+          <p className="text-[13px] font-medium">{current.title}</p>
           {current.body !== undefined && (
-            <p className="mt-0.5 text-[14px] text-secondary">{current.body}</p>
+            <p className="mt-0.5 text-[13px] text-secondary">{current.body}</p>
           )}
         </div>
         <button
           type="button"
           onClick={dismiss}
           aria-label="Dismiss"
-          className="grid size-7 shrink-0 place-items-center rounded-full text-secondary outline-none hover:bg-bubble-user hover:text-text focus-visible:ring-2 focus-visible:ring-unread"
+          className="grid size-7 shrink-0 place-items-center rounded-md text-secondary outline-none hover:bg-bubble-user hover:text-text focus-visible:ring-2 focus-visible:ring-unread"
         >
           <CloseIcon size={14} />
         </button>

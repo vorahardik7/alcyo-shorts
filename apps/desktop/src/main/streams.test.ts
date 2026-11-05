@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { rename, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CANT_DOWNLOAD } from "@alcyo/import";
@@ -15,7 +15,8 @@ import type {
   LinkInfoResult,
 } from "@alcyo/ipc";
 import type { Message } from "@alcyo/schema";
-import { SettingsFile, StreamsIndex } from "@alcyo/store";
+import * as F from "@alcyo/schema/testing";
+import { createStream, SettingsFile, StreamsIndex, writeJsonAtomic } from "@alcyo/store";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type AnalysisWorker,
@@ -173,6 +174,7 @@ let clock: number;
 let chosen: string | null;
 let settings: SettingsFile;
 let index: StreamsIndex;
+let deps: StreamServiceDeps;
 
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "alcyo-service-"));
@@ -184,7 +186,7 @@ beforeEach(async () => {
   chosen = video;
   settings = new SettingsFile(join(root, "userData"), "darwin");
   index = new StreamsIndex(join(root, "userData"));
-  service = new StreamService({
+  deps = {
     index,
     settings,
     defaultStreamsDir: join(root, "Streams"),
@@ -203,7 +205,8 @@ beforeEach(async () => {
     emit: (event, payload) => events.push({ event, payload }),
     now: () => new Date(clock),
     log: () => undefined,
-  });
+  };
+  service = new StreamService(deps);
 });
 
 const statuses = (messages: Message[]) =>
@@ -230,7 +233,15 @@ describe("StreamService", () => {
     const messages = await service.messages(out.stream.streamId, 50);
     expect(messages[0]!.body).toMatchObject({ kind: "text" });
     expect(statuses(messages)).toEqual([
-      { kind: "status", jobId: out.jobId, label: "Analysis finished", pct: 100, state: "done" },
+      {
+        kind: "status",
+        jobId: out.jobId,
+        label: "Analysis finished",
+        pct: 100,
+        state: "done",
+        jobKind: "analysis",
+        targetId: detail.sources[0]!.source.sourceId,
+      },
     ]);
     const [entry] = await service.list();
     expect(entry).toMatchObject({ unread: true, preview: "Analysis finished" });
@@ -541,5 +552,158 @@ describe("links and clips", () => {
     await service.addLink(streamId, "https://clips.twitch.tv/Abc");
     await until(() => worker.downloads.length === 1);
     expect(worker.downloads[0]!.request.outDir).toContain(join("clips", "clip_"));
+  });
+});
+
+describe("audit recovery and project flows", () => {
+  it("keeps partial analysis retryable and reuses the completed step cache", async () => {
+    const out = await service.chooseFile();
+    if ("cancelled" in out) throw new Error("cancelled");
+    await until(() => worker.jobs.length === 1);
+    worker.jobs[0]!.finish({
+      steps: { probe: "done", transcript: "done", proxy: "failed" },
+      problems: [{ step: "proxy", message: "The preview step stopped." }],
+    });
+    await service.idle();
+    const last = statuses(await service.messages(out.stream.streamId, 50)).at(-1)!;
+    expect(last).toMatchObject({
+      state: "failed",
+      jobKind: "analysis",
+      label: "Analysis finished, with problems",
+    });
+    await service.startAnalysis(out.stream.streamId, last.targetId!);
+    await until(() => worker.jobs.length === 2);
+    expect(worker.jobs[1]!.request.cacheDir).toBe(worker.jobs[0]!.request.cacheDir);
+    worker.jobs[1]!.finish();
+    await service.idle();
+    expect(statuses(await service.messages(out.stream.streamId, 50)).at(-1)!.state).toBe("done");
+  });
+
+  it("recovers partial failures marked done by older builds", async () => {
+    const out = await service.chooseFile();
+    if ("cancelled" in out) throw new Error("cancelled");
+    await until(() => worker.jobs.length === 1);
+    worker.jobs[0]!.finish();
+    await service.idle();
+    const sourceId = (await service.open(out.stream.streamId)).project.sources[0]!.sourceId;
+    await service.post(out.stream.streamId, {
+      kind: "status",
+      jobId: "job_partialold",
+      label: "Analysis finished, with problems",
+      pct: 100,
+      state: "done",
+      jobKind: "analysis",
+      targetId: sourceId,
+    });
+    const restarted = new StreamService(deps);
+    await restarted.open(out.stream.streamId);
+    expect(statuses(await restarted.messages(out.stream.streamId, 50)).at(-1)).toMatchObject({
+      state: "failed",
+      targetId: sourceId,
+      label: "Analysis finished, with problems",
+    });
+  });
+
+  it("copies a chosen recording and relocates the whole project without losing its media", async () => {
+    const out = await service.chooseFile(undefined, true);
+    if ("cancelled" in out) throw new Error("cancelled");
+    await until(() => worker.jobs.length === 1);
+    worker.jobs[0]!.finish();
+    await service.idle();
+    const before = await service.open(out.stream.streamId);
+    expect(before.sources[0]!.source.origin).toMatchObject({ kind: "file", copied: true });
+    expect(before.project.settings.copyIntoProject).toBe(true);
+    expect(await readFile(video, "utf8")).toBe("video");
+    const moved = join(root, "Moved.alcyo");
+    await rename(out.stream.folder, moved);
+    deps.chooseFolder = () => Promise.resolve(moved);
+    expect(await service.locate(out.stream.streamId)).toMatchObject({
+      stream: { folder: moved, missing: false },
+    });
+    const after = await service.open(out.stream.streamId);
+    expect(after.sources[0]!.missing).toBe(false);
+    expect(after.sources[0]!.source.origin.path.startsWith(moved)).toBe(true);
+    expect(await readFile(after.sources[0]!.source.origin.path, "utf8")).toBe("video");
+  });
+
+  it("refuses rebinding a stream id to a different project", async () => {
+    const out = await service.chooseFile();
+    if ("cancelled" in out) throw new Error("cancelled");
+    await service.cancel(out.jobId);
+    await service.idle();
+    const other = await createStream({ dir: root, name: "Other" });
+    deps.chooseFolder = () => Promise.resolve(other.folder);
+    expect(await service.locate(out.stream.streamId)).toMatchObject({ mismatch: true });
+    expect((await index.get(out.stream.streamId)).folder).toBe(out.stream.folder);
+  });
+
+  it("reconciles interrupted statuses, hydrates a cached probe, and resumes the existing cache", async () => {
+    const out = await service.chooseFile();
+    if ("cancelled" in out) throw new Error("cancelled");
+    await until(() => worker.jobs.length === 1);
+    await service.cancel(out.jobId);
+    await service.idle();
+    const store = await service.forStream(out.stream.streamId);
+    const source = (await store.sources())[0]!.source;
+    await writeJsonAtomic(store.paths.analysis(source.sourceId, "probe.json"), {
+      schemaVersion: 1,
+      sourceId: source.sourceId,
+      probe,
+      fingerprint: { ...source.fingerprint, durationMs: probe.durationMs, layout: "v+a" },
+    });
+    await service.post(out.stream.streamId, {
+      kind: "status",
+      jobId: "job_interrupted",
+      label: "Transcribing",
+      pct: 45,
+      state: "running",
+      jobKind: "analysis",
+      targetId: source.sourceId,
+    });
+    const restarted = new StreamService(deps);
+    const view = await restarted.open(out.stream.streamId);
+    expect(view.sources[0]!.source.probe).toEqual(probe);
+    expect(view.jobs).toEqual([]);
+    expect((await restarted.messages(out.stream.streamId, 50)).at(-1)!.body).toMatchObject({
+      state: "failed",
+      jobId: "job_interrupted",
+    });
+    await restarted.startAnalysis(out.stream.streamId, source.sourceId);
+    await until(() => worker.jobs.length === 2);
+    expect(worker.jobs[1]!.request.cacheDir).toBe(worker.jobs[0]!.request.cacheDir);
+    worker.jobs[1]!.finish();
+    await restarted.idle();
+  });
+
+  it("locates a real older card directly and resolves unposted latest versions", async () => {
+    const out = await service.chooseFile();
+    if ("cancelled" in out) throw new Error("cancelled");
+    await service.cancel(out.jobId);
+    await service.idle();
+    const store = await service.forStream(out.stream.streamId);
+    const sourceId = (await store.project()).sources[0]!.sourceId;
+    const v1 = await store.createShort({
+      sourceId,
+      short: F.short,
+      createdBy: "user",
+      note: "First",
+      fromMessageId: null,
+    });
+    const old = await service.post(out.stream.streamId, {
+      kind: "shorts",
+      intro: "First",
+      shorts: [{ shortId: v1.shortId, version: 1 }],
+    });
+    for (let i = 0; i < 250; i++)
+      await service.post(out.stream.streamId, { kind: "text", text: String(i) });
+    const found = await service.locateMessage(out.stream.streamId, {
+      shortId: v1.shortId,
+      version: 1,
+    });
+    expect(found.message?.id).toBe(old.id);
+    const v2 = await store.restore(v1.shortId, 1);
+    expect(await service.locateMessage(out.stream.streamId, { shortId: v1.shortId })).toMatchObject(
+      { ref: { version: v2.version }, message: { body: { kind: "version", ref: { version: 2 } } } },
+    );
   });
 });

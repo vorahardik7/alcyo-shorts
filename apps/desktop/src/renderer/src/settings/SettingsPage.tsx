@@ -25,6 +25,7 @@ import {
   WaveIcon,
 } from "../ui/icons";
 import { Card, ComesIn, CopyButton, Row, Spinner, StateBadge } from "../ui/parts";
+import { AgentIcon } from "../ui/AgentIcon";
 import { toast } from "../ui/toast";
 
 export type SectionId = "profile" | "claude" | "models" | "encoder" | "storage" | "about";
@@ -99,13 +100,6 @@ const PROVIDER: Record<LocalAgentId, "claude-cli" | "grok-cli" | "codex-cli"> = 
   codex: "codex-cli",
 };
 /** A colored monogram per agent, not their logos. */
-const AGENT_BADGE: Record<AgentRowId, { text: string; className: string }> = {
-  claude: { text: "C", className: "bg-[#D97757]/15 text-[#E8A487]" },
-  grok: { text: "G", className: "bg-white/[0.08] text-text" },
-  codex: { text: "X", className: "bg-[#10A37F]/15 text-[#5FD3AE]" },
-  api: { text: "K", className: "bg-unread/15 text-[#9DB8FF]" },
-};
-
 interface AgentState {
   headline: string;
   detail: string;
@@ -151,14 +145,13 @@ const TONE_DOT: Record<AgentState["tone"], string | null> = {
 };
 
 function Badge({ id, size = 20 }: { id: AgentRowId; size?: number }) {
-  const b = AGENT_BADGE[id];
   return (
     <span
       aria-hidden
-      style={{ width: size, height: size, fontSize: size * 0.5 }}
-      className={`grid shrink-0 place-items-center rounded-md font-semibold ${b.className}`}
+      style={{ width: size, height: size }}
+      className="grid shrink-0 place-items-center rounded-md bg-white/[0.05] ring-1 ring-white/[0.06]"
     >
-      {b.text}
+      <AgentIcon id={id} size={Math.round(size * 0.6)} />
     </span>
   );
 }
@@ -287,7 +280,7 @@ function AgentDetail({ id }: { id: LocalAgentId }) {
         )}
       </div>
       {row?.state === "fail" && row.fix !== null && (
-        <div className="flex items-center gap-3 border-b border-hairline px-5 py-3 text-[13px] text-[#fcd34d]">
+        <div className="flex items-center gap-3 border-b border-hairline bg-warn/[0.05] px-5 py-3 text-[13px] text-secondary">
           <span className="min-w-0 flex-1">{row.fix}</span>
           {row.command !== null && <CopyButton text={row.command} label="Copy command" />}
         </div>
@@ -485,7 +478,7 @@ function ClaudeSection() {
         <CheckAgain />
       </div>
       {summary?.state === "fail" && (
-        <p className="rounded-xl bg-warn/8 px-4 py-3 text-[13px] text-[#fcd34d] ring-1 ring-warn/20">
+        <p className="rounded-xl bg-warn/8 px-4 py-3 text-[13px] text-warn ring-1 ring-warn/20">
           {summary.fix}
         </p>
       )}
@@ -630,7 +623,7 @@ function EncoderSection() {
               <span
                 key={e}
                 title={hw.includes(e) ? "Hardware" : undefined}
-                className={`rounded-full px-2.5 py-0.5 font-mono text-[12px] ${hw.includes(e) ? "bg-unread/10 text-[#93b8fb]" : "bg-bubble-user text-secondary"}`}
+                className={`rounded-full px-2.5 py-0.5 font-mono text-[12px] ${hw.includes(e) ? "bg-unread/10 text-accent-soft" : "bg-bubble-user text-secondary"}`}
               >
                 {e}
               </span>

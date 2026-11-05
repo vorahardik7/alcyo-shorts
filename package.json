@@ -22,7 +22,8 @@
     "format": "prettier --write .",
     "check:media": "node scripts/check-no-media.mjs",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
-    "media:drift": "node scripts/media-drift.ts"
+    "media:drift": "node scripts/media-drift.ts",
+    "demo:build": "pnpm --filter @alcyo/desktop demo:build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

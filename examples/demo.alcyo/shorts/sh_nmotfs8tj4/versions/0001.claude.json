@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "shortId": "sh_nmotfs8tj4",
+  "version": 1,
+  "parent": null,
+  "createdBy": "claude",
+  "createdAt": "2026-11-04T04:29:21.856Z",
+  "fromMessageId": null,
+  "note": "Proposed",
+  "sourceId": "src_sky4lxhzys",
+  "sourceFingerprint": "3010775:e603cf4584dfe539bcaa884f3edf61d6b3d2b029da69d1a05104962f87454ce7:e603cf4584dfe539bcaa884f3edf61d6b3d2b029da69d1a05104962f87454ce7",
+  "short": {
+    "title": "Parried the tail on one hit",
+    "reason": "He calls the tail, lives on one hit, parries it, and drops the Warden on the twelfth try while he is still shaking.",
+    "segments": [
+      {
+        "srcIn": 39285,
+        "srcOut": 63385
+      }
+    ],
+    "crop": {
+      "keys": [
+        {
+          "t": 235,
+          "x": 0.5,
+          "ease": "hold"
+        }
+      ]
+    },
+    "captions": {
+      "presetId": "bold-pop",
+      "wordsPerLine": 3,
+      "overrides": []
+    },
+    "hook": {
+      "text": "Watch the tail",
+      "start": 235,
+      "end": 3235,
+      "presetId": "hook-bold"
+    },
+    "styles": {
+      "caption": {
+        "id": "bold-pop",
+        "name": "Bold pop",
+        "font": "Inter Black",
+        "sizePx": 88,
+        "color": "#FFFFFF",
+        "highlightColor": "#FACC15",
+        "outlineColor": "#000000",
+        "outlinePx": 6,
+        "shadowPx": 0,
+        "uppercase": true,
+        "positionY": 0.72,
+        "wordsPerLine": 3,
+        "origin": "builtin"
+      },
+      "hook": {
+        "id": "hook-bold",
+        "name": "Bold",
+        "font": "Inter Black",
+        "sizePx": 72,
+        "color": "#000000",
+        "background": "#FFFFFF",
+        "uppercase": true,
+        "positionY": 0.18,
+        "origin": "builtin"
+      }
+    }
+  }
+}

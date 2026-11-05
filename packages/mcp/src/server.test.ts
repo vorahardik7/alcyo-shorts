@@ -301,6 +301,39 @@ describe.skipIf(!have)("alcyo MCP server", () => {
   });
 });
 
+describe.skipIf(!have)("portable saved looks", () => {
+  it("validates and renders a custom style snapshot without the desktop profile", async () => {
+    const caption = {
+      ...F.presets.captionPresets[0]!,
+      id: "custom-portable",
+      name: "Portable",
+      sizePx: 99,
+      origin: "template" as const,
+    };
+    const hook = F.presets.hookPresets[0]!;
+    const created = await store.createShort({
+      sourceId: (await store.project()).sources[0]!.sourceId,
+      short: {
+        ...F.short,
+        captions: { ...F.short.captions, presetId: caption.id },
+        styles: { caption, hook },
+      },
+      createdBy: "user",
+      note: "Portable look",
+      fromMessageId: null,
+    });
+    expect(await data("validate_version", { folder, shortId: created.shortId })).toMatchObject({
+      valid: true,
+    });
+    const out = await data<{ path: string; ffprobe: { width: number } }>("render_short", {
+      folder,
+      shortId: created.shortId,
+    });
+    expect(existsSync(out.path)).toBe(true);
+    expect(out.ffprobe.width).toBe(1080);
+  });
+});
+
 describe.skipIf(!have)("over stdio, from dist/index.js", () => {
   it("starts, lists tools and answers a call", { timeout: 60_000 }, async () => {
     const pkg = resolve(import.meta.dirname, "..");

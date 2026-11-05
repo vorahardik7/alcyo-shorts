@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "shortId": "sh_nmotfs8tj4",
+  "version": 2,
+  "parent": 1,
+  "createdBy": "user",
+  "createdAt": "2026-11-04T04:30:00.408Z",
+  "fromMessageId": null,
+  "note": "Added a hook and reframed to follow the boss",
+  "sourceId": "src_sky4lxhzys",
+  "sourceFingerprint": "3010775:e603cf4584dfe539bcaa884f3edf61d6b3d2b029da69d1a05104962f87454ce7:e603cf4584dfe539bcaa884f3edf61d6b3d2b029da69d1a05104962f87454ce7",
+  "short": {
+    "title": "Parried the tail on one hit",
+    "reason": "He calls the tail, lives on one hit, parries it, and drops the Warden on the twelfth try while he is still shaking.",
+    "segments": [
+      {
+        "srcIn": 39285,
+        "srcOut": 63385
+      }
+    ],
+    "crop": {
+      "keys": [
+        {
+          "t": 0,
+          "x": 0.7418117833426368,
+          "ease": "linear"
+        },
+        {
+          "t": 1500,
+          "x": 0.9106950659164953,
+          "ease": "linear"
+        },
+        {
+          "t": 3000,
+          "x": 0.97902587286283,
+          "ease": "linear"
+        },
+        {
+          "t": 4500,
+          "x": 0.9300744395209736,
+          "ease": "linear"
+        },
+        {
+          "t": 6000,
+          "x": 0.775825784013934,
+          "ease": "linear"
+        },
+        {
+          "t": 7500,
+          "x": 0.5540453568197642,
+          "ease": "linear"
+        },
+        {
+          "t": 9000,
+          "x": 0.31903274137840204,
+          "ease": "linear"
+        },
+        {
+          "t": 10500,
+          "x": 0.12832722230139654,
+          "ease": "linear"
+        },
+        {
+          "t": 12000,
+          "x": 0.02862016174629518,
+          "ease": "linear"
+        },
+        {
+          "t": 13500,
+          "x": 0.04432332554229189,
+          "ease": "linear"
+        },
+        {
+          "t": 15000,
+          "x": 0.17159203152514305,
+          "ease": "linear"
+        },
+        {
+          "t": 16500,
+          "x": 0.3792664618189528,
+          "ease": "linear"
+        },
+        {
+          "t": 18000,
+          "x": 0.6165006729888318,
+          "ease": "linear"
+        },
+        {
+          "t": 19500,
+          "x": 0.8252114563080303,
+          "ease": "linear"
+        },
+        {
+          "t": 21000,
+          "x": 0.9542991329769687,
+          "ease": "linear"
+        },
+        {
+          "t": 22500,
+          "x": 0.9721585376569765,
+          "ease": "linear"
+        },
+        {
+          "t": 24000,
+          "x": 0.8744170652138739,
+          "ease": "linear"
+        }
+      ]
+    },
+    "captions": {
+      "presetId": "bold-pop",
+      "wordsPerLine": 3,
+      "overrides": []
+    },
+    "hook": {
+      "text": "One hit left. Then this.",
+      "start": 0,
+      "end": 2500,
+      "presetId": "hook-bold"
+    },
+    "styles": {
+      "caption": {
+        "id": "bold-pop",
+        "name": "Bold pop",
+        "font": "Inter Black",
+        "sizePx": 88,
+        "color": "#FFFFFF",
+        "highlightColor": "#FACC15",
+        "outlineColor": "#000000",
+        "outlinePx": 6,
+        "shadowPx": 0,
+        "uppercase": true,
+        "positionY": 0.72,
+        "wordsPerLine": 3,
+        "origin": "builtin"
+      },
+      "hook": {
+        "id": "hook-bold",
+        "name": "Bold",
+        "font": "Inter Black",
+        "sizePx": 72,
+        "color": "#000000",
+        "background": "#FFFFFF",
+        "uppercase": true,
+        "positionY": 0.18,
+        "origin": "builtin"
+      }
+    }
+  }
+}

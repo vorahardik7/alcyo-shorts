@@ -5,16 +5,17 @@ import type { ComponentProps, ReactNode } from "react";
 export type Variant = "primary" | "secondary" | "ghost";
 
 const base =
-  "no-drag inline-flex items-center justify-center gap-2 rounded-full font-medium transition-[background-color,color,transform,box-shadow] duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-unread focus-visible:ring-offset-2 focus-visible:ring-offset-bg active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40";
+  "no-drag inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-[background-color,color,border-color,box-shadow] duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:pointer-events-none disabled:opacity-40";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-text text-bg hover:bg-white active:bg-[#dcdcdc]",
+  primary:
+    "bg-text text-[#111214] shadow-[inset_0_-1px_0_rgba(0,0,0,0.12)] hover:bg-white active:bg-[#d9dbdf]",
   secondary:
-    "bg-bubble-claude text-text ring-1 ring-hairline hover:bg-bubble-user active:bg-[#333333]",
-  ghost: "text-secondary hover:bg-bubble-claude hover:text-text active:bg-bubble-user",
+    "border border-line-strong bg-raised text-text hover:border-[#454850] hover:bg-[#2b2d33] active:bg-[#323439]",
+  ghost: "text-secondary hover:bg-white/[0.06] hover:text-text active:bg-white/[0.09]",
 };
 
-const sizes = { md: "h-10 px-5 text-small", sm: "h-8 px-3.5 text-[14px]" };
+const sizes = { md: "h-9 px-3.5 text-[13px]", sm: "h-8 px-3 text-[13px]" };
 
 export function buttonClass(variant: Variant = "secondary", size: "md" | "sm" = "md"): string {
   return `${base} ${variants[variant]} ${sizes[size]}`;
@@ -31,10 +32,10 @@ export function Button({
 }
 
 const iconBase =
-  "no-drag grid shrink-0 place-items-center rounded-full text-secondary outline-none transition-[background-color,color,transform] duration-150 hover:bg-bubble-claude hover:text-text active:scale-[0.94] active:bg-bubble-user focus-visible:ring-2 focus-visible:ring-unread disabled:pointer-events-none disabled:opacity-40";
+  "no-drag grid shrink-0 place-items-center rounded-lg text-secondary outline-none transition-[background-color,color] duration-150 hover:bg-white/[0.06] hover:text-text active:bg-white/[0.09] focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-40";
 
 export function iconButtonClass(size: "md" | "sm" = "md", active = false): string {
-  return `${iconBase} ${size === "md" ? "size-9" : "size-8"} ${active ? "bg-bubble-user text-text" : ""}`;
+  return `${iconBase} ${size === "md" ? "size-9" : "size-8"} ${active ? "bg-white/[0.08] text-text" : ""}`;
 }
 
 export function IconButton({

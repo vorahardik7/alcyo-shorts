@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "streamId": "s_demostream",
+  "name": "Demo Stream",
+  "createdAt": "2026-11-04T04:26:18.413Z",
+  "sources": [
+    {
+      "sourceId": "src_sky4lxhzys"
+    }
+  ],
+  "shorts": [
+    {
+      "shortId": "sh_djp9ik56jb",
+      "head": 2
+    },
+    {
+      "shortId": "sh_nmotfs8tj4",
+      "head": 2
+    },
+    {
+      "shortId": "sh_5ec9m3i1jq",
+      "head": 1
+    }
+  ],
+  "clips": [
+    "clip_i9orvmi8hp",
+    "clip_bkn69ktyds"
+  ],
+  "settings": {
+    "copyIntoProject": false
+  },
+  "autoFindAt": "2026-11-04T04:26:29.472Z"
+}

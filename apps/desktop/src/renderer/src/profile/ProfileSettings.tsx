@@ -6,6 +6,7 @@ import { useState } from "react";
 import { plainError } from "../streams/store";
 import { Button, ButtonLink } from "../ui/Button";
 import { Card, Row, Spinner, StateBadge } from "../ui/parts";
+import { CheckIcon } from "../ui/icons";
 import { toast } from "../ui/toast";
 import { CaptionLook } from "./CaptionLook";
 import { useProfile } from "./store";
@@ -26,7 +27,7 @@ const PLATFORMS: Array<[Platform, string]> = [
 ];
 
 const box =
-  "rounded-xl bg-bubble-claude px-3 py-2 text-[14px] outline-none ring-1 ring-hairline placeholder:text-tertiary focus-visible:ring-2 focus-visible:ring-unread";
+  "rounded-lg border border-line-strong bg-surface px-3 py-2 text-[14px] outline-none placeholder:text-tertiary focus-visible:border-accent/70";
 const field = `${box} w-full`;
 
 const sec = (ms: number | undefined) => (ms === undefined ? "—" : `${(ms / 1000).toFixed(1)} s`);
@@ -37,10 +38,13 @@ function Toggle({ on, label, onClick }: { on: boolean; label: string; onClick: (
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className={`h-8 rounded-full px-3 text-[14px] outline-none ring-1 transition-colors focus-visible:ring-2 focus-visible:ring-unread ${
-        on ? "bg-text text-bg ring-transparent" : "text-secondary ring-hairline hover:text-text"
+      className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${
+        on
+          ? "border-[#4b6590] bg-[#22304a] text-[#dce7fc]"
+          : "border-line text-secondary hover:border-line-strong hover:text-text"
       }`}
     >
+      {on && <CheckIcon size={13} strokeWidth={2.4} />}
       {label}
     </button>
   );

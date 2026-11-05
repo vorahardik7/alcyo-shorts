@@ -68,7 +68,7 @@ export function RenderStatus({ r, compact = false }: { r: RenderView; compact?: 
             className={`shrink-0 ${r.state === "failed" ? "text-bad" : "text-tertiary"}`}
           />
         )}
-        <span className="min-w-0 flex-1 truncate text-[15px]">
+        <span className="min-w-0 flex-1 truncate text-[14px]">
           {STATE_TEXT[r.state]}
           {!compact && <span className="text-secondary"> · {r.title}</span>}
         </span>
@@ -166,7 +166,7 @@ export function RenderBubble({ streamId, renderId }: { streamId: string; renderI
   return (
     <div
       data-testid="render-message"
-      className="w-full max-w-md rounded-bubble bg-bubble-claude px-5 py-4"
+      className="w-full max-w-[480px] rounded-xl border border-line bg-card px-4 py-3.5"
     >
       {r === undefined ? (
         <Spinner size={14} />

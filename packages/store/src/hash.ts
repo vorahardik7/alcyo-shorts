@@ -2,7 +2,7 @@
 // SHA-256 of the first and last 4 MB. Locate file compares these; it needs no
 // ffprobe.
 import { createHash } from "node:crypto";
-import { open } from "node:fs/promises";
+import { open } from "./access.ts";
 import type { Fingerprint } from "@alcyo/schema";
 
 const PART = 4 * 1024 * 1024;

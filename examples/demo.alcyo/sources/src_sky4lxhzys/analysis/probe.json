@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "src_sky4lxhzys",
+  "probe": {
+    "durationMs": 112000,
+    "container": "mov,mp4,m4a,3gp,3g2,mj2",
+    "video": {
+      "codec": "h264",
+      "width": 1280,
+      "height": 720,
+      "fpsNum": 30,
+      "fpsDen": 1
+    },
+    "audio": {
+      "codec": "aac",
+      "sampleRate": 48000,
+      "channels": 2
+    },
+    "playsDirectly": true
+  },
+  "fingerprint": {
+    "sizeBytes": 3010775,
+    "headSha256": "e603cf4584dfe539bcaa884f3edf61d6b3d2b029da69d1a05104962f87454ce7",
+    "tailSha256": "e603cf4584dfe539bcaa884f3edf61d6b3d2b029da69d1a05104962f87454ce7",
+    "durationMs": 112000,
+    "layout": "v:h264:1280x720@30/1|a:aac:48000x2"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "src_sky4lxhzys",
+  "steps": {
+    "probe": {
+      "key": "3018f611eaf5179eb6aef1cf6e0e8b685a7b2b894da7ae844dad057d54b45031",
+      "toolVersion": "ffmpeg 9.0.2",
+      "finishedAt": "2026-11-04T04:26:18.469Z"
+    },
+    "audio": {
+      "key": "9facd40039e131e4530a5d653e718a1a8cecea412c0329abdc134ab43ff03678",
+      "toolVersion": "ffmpeg 9.0.2",
+      "finishedAt": "2026-11-04T04:26:18.583Z"
+    },
+    "silences": {
+      "key": "5faf2846c9ffd88a58ae8c6b2e7d12fe2e2969e800eba3b7bf2071afbd3c1a86",
+      "toolVersion": "ffmpeg 9.0.2",
+      "finishedAt": "2026-11-04T04:26:18.624Z"
+    },
+    "transcript": {
+      "key": "6a505c050d8233441d523e8ef3e1d256efb00ab4db36ca837d2c738382242a16",
+      "toolVersion": "whisper 1.9.5",
+      "finishedAt": "2026-11-04T04:26:25.009Z"
+    },
+    "loudness": {
+      "key": "a8a60b61c373f54f0e3e8c2f54d684dc4fd0e97a6074d6872be7ac4baba9bf4a",
+      "toolVersion": "ffmpeg 9.0.2",
+      "finishedAt": "2026-11-04T04:26:25.085Z"
+    },
+    "scenes": {
+      "key": "e766de56aa72ffb5a85fd10ac10b614df42960c93f1e8ec8e35b54ae2186fa35",
+      "toolVersion": "ffmpeg 9.0.2",
+      "finishedAt": "2026-11-04T04:26:25.947Z"
+    },
+    "peaks": {
+      "key": "e9039d005863dcfd43e10c4c6b0ff654bd219e9959e91a42f0c69ba3dd23be0e",
+      "toolVersion": "alcyo 1",
+      "finishedAt": "2026-11-04T04:26:25.956Z"
+    },
+    "thumbnails": {
+      "key": "538bbbfa96973a0656e58925d88f18bb4f36781206650a4c58faad5f99ea3d24",
+      "toolVersion": "ffmpeg 9.0.2",
+      "finishedAt": "2026-11-04T04:26:26.469Z"
+    }
+  }
+}

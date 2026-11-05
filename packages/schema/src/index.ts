@@ -14,3 +14,4 @@ export * from "./checks.ts";
 export * from "./migrate.ts";
 export * from "./files.ts";
 export * from "./edit.ts";
+export * from "./agents.ts";

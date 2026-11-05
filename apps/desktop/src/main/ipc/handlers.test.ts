@@ -72,6 +72,13 @@ function deps(overrides: Partial<HandlerDeps> = {}): HandlerDeps {
     editor: {} as never,
     reveal: () => undefined,
     useAgent: () => Promise.resolve(),
+    agentSelection: () =>
+      Promise.resolve({
+        provider: "claude-cli" as const,
+        models: { claude: "sonnet", grok: "default", codex: "default" },
+      }),
+    setAgentModel: () => Promise.resolve(),
+    openDemo: () => Promise.reject(new Error("not used")),
     ...overrides,
   };
 }
@@ -103,6 +110,42 @@ describe("handlers", () => {
   });
 });
 
+describe("demo:open", () => {
+  const summary = {
+    streamId: "s_demostream",
+    folder: "/Users/me/Movies/Alcyo Shorts/Demo Stream.alcyo",
+    name: "Demo Stream",
+    thumbnail: null,
+    lastActivityAt: at.toISOString(),
+    unread: false,
+    preview: "",
+    missing: false,
+  };
+
+  it("returns the copied stream's summary", async () => {
+    const h = createHandlers(
+      deps({
+        openDemo: () => Promise.resolve("s_demostream"),
+        streams: { list: () => Promise.resolve([summary]) } as never,
+      }),
+    );
+    await expect(makeHandler("demo:open", h["demo:open"])({})).resolves.toEqual({
+      stream: summary,
+    });
+  });
+
+  it("says plainly when the demo isn't there", async () => {
+    const h = createHandlers(
+      deps({
+        openDemo: () => Promise.reject(new Error("The demo isn't in this build of Alcyo.")),
+      }),
+    );
+    await expect(makeHandler("demo:open", h["demo:open"])({})).rejects.toThrow(
+      "The demo isn't in this build of Alcyo.",
+    );
+  });
+});
+
 describe("new channels", () => {
   it("render channels are checked, and reveal takes only an id", async () => {
     const revealed: string[] = [];
@@ -123,6 +166,24 @@ describe("new channels", () => {
       call("render:reveal", { streamId: "s_1", renderId: "r_1", path: "/etc" }),
     ).resolves.toEqual({});
     expect(revealed).toEqual(["/Users/me/Movies/Alcyo Shorts/s.alcyo/renders/a-v1-1080p30.mp4"]);
+  });
+
+  it("agent:get returns the provider and models", async () => {
+    const run = makeHandler("agent:get", createHandlers(deps())["agent:get"]);
+    await expect(run({})).resolves.toMatchObject({ provider: "claude-cli" });
+  });
+
+  it("agent:setModel takes only a model from the list", async () => {
+    const set: string[] = [];
+    const h = createHandlers(
+      deps({ setAgentModel: (a, m) => Promise.resolve(void set.push(`${a}:${m}`)) }),
+    );
+    const run = makeHandler("agent:setModel", h["agent:setModel"]);
+    await expect(run({ agent: "claude", model: "opus" })).resolves.toEqual({});
+    await expect(run({ agent: "grok", model: "grok-4.7" })).resolves.toEqual({});
+    await expect(run({ agent: "claude", model: "grok-4.7" })).rejects.toThrow();
+    await expect(run({ agent: "codex", model: "--dangerous" })).rejects.toThrow();
+    expect(set).toEqual(["claude:opus", "grok:grok-4.7"]);
   });
 
   it("agent:use takes only a known provider", async () => {
@@ -357,7 +418,7 @@ describe("stream channels", () => {
     });
     const shortId = v1.shortId;
     const draft = { ...F.short, title: "Draft title" };
-    await call("short:saveDraft", { streamId, shortId, short: draft });
+    await call("short:saveDraft", { streamId, shortId, short: draft, baseVersion: 1 });
     expect(await call("short:get", { streamId, shortId })).toMatchObject({
       version: { version: 1 },
       draft: { short: { title: "Draft title" } },
