@@ -38,7 +38,10 @@ test.describe("demo stream", () => {
     await page.getByTestId("shorts-message").scrollIntoViewIfNeeded();
     await expect(page.getByTestId("shorts-message").getByTestId("short-card")).toHaveCount(3);
     await expect(page.getByText("make the first one punchier", { exact: false })).toBeVisible();
-    await expect(page.getByTestId("version-message")).toHaveCount(2);
+    const versions = page.getByTestId("version-message");
+    await expect(versions).toHaveCount(2);
+    // Each version card loads once it has been in view, wherever the thread settled.
+    for (const v of await versions.all()) await v.scrollIntoViewIfNeeded();
     await expect(
       page.getByTestId("version-message").getByTestId("version-chip").filter({ hasText: "You" }),
     ).not.toHaveCount(0);
