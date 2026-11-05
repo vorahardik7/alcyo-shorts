@@ -35,6 +35,8 @@ export async function askChecked<S extends z.ZodType>(
 ): Promise<z.output<S>> {
   let instruction = req.instruction;
   for (let attempt = 0; attempt < 2; attempt++) {
+    // Cancelled before the call (say, while inputs were read): don't start the agent.
+    if (req.signal.aborted) throw new PlannerError("The request was cancelled.", "cancelled");
     let raw: unknown;
     try {
       raw = await provider.complete({ ...req, instruction });

@@ -202,9 +202,10 @@ describe("Find shorts", () => {
       name: "fake",
       complete: (req) =>
         new Promise((_, reject) => {
-          req.signal.addEventListener("abort", () =>
-            reject(new PlannerError("The request was cancelled.", "cancelled")),
-          );
+          // Like the real providers: reject at once if the signal is already aborted.
+          const stop = () => reject(new PlannerError("The request was cancelled.", "cancelled"));
+          if (req.signal.aborted) stop();
+          else req.signal.addEventListener("abort", stop, { once: true });
         }),
     };
     const { jobId } = await planner.find(streamId);
