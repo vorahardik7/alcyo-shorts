@@ -1,10 +1,12 @@
 # Checks, end-to-end tests and packaging on macOS (arm64) and Windows (x64).
-# Plan section 19. Runs once the GitHub repo exists.
+# Plan section 19. A v* tag also publishes both installers to a GitHub Release,
+# once every check on both systems has passed.
 name: CI
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -40,6 +42,17 @@ jobs:
       TURBO_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
+
+      # Before the long build: v0.1.0 must match apps/desktop/package.json.
+      - name: Tag matches the app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          app=$(node -p "require('./apps/desktop/package.json').version")
+          if [ "${GITHUB_REF_NAME#v}" != "$app" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match the app version $app (apps/desktop/package.json)."
+            exit 1
+          fi
 
       - uses: pnpm/action-setup@v4
 
@@ -111,3 +124,42 @@ jobs:
           name: test-results-${{ matrix.target }}
           path: apps/desktop/test-results
           if-no-files-found: ignore
+
+  release:
+    name: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download both installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: alcyo-shorts-*
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: dist
+        run: |
+          ls -la
+          test -n "$(ls *.dmg)" && test -n "$(ls *.exe)"
+          sha256sum *.dmg *.exe > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      # Creates the release, or on a re-run replaces its files.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --verify-tag \
+              --title "Alcyo Shorts ${GITHUB_REF_NAME#v}" \
+              --notes-file .github/release-notes.md
+          fi

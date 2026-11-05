@@ -34,10 +34,11 @@ Working name. MIT licensed.
 
 ## Download
 
-Installers will be on this repo's Releases page once the repo is public:
+Installers are on the [Releases page](https://github.com/vorahardik7/alcyo-shorts/releases):
 `Alcyo-Shorts-<version>-mac-arm64.dmg` (Apple silicon) and
-`Alcyo-Shorts-<version>-win-x64.exe`. Both are built by CI
-(`.github/workflows/ci.yml`).
+`Alcyo-Shorts-<version>-win-x64.exe`, with `SHA256SUMS.txt`. CI
+(`.github/workflows/ci.yml`) builds and tests both from a `v*` tag and
+publishes them only when every check passes on both systems.
 
 Neither build is signed with a paid certificate yet, so the first open needs
 one extra step.
