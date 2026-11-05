@@ -1685,11 +1685,11 @@ These are checks the build itself answers, plus two decisions only you can make.
 
 ## 36. Current status
 
-As of Nov 3, local `main` only (no GitHub repo yet).
+As of Nov 5. Public repo: https://github.com/vorahardik7/alcyo-shorts (created Nov 5).
 
 | Spec | State | Notes |
 |---|---|---|
-| 1 `project-setup` | Done | Monorepo, locked-down Electron, worker over MessagePort, pinned binaries, footage guard, dmg/nsis, e2e, CI workflow (not yet run: no repo). Hook self-test recorded. |
+| 1 `project-setup` | Done | Monorepo, locked-down Electron, worker over MessagePort, pinned binaries, footage guard, dmg/nsis, e2e, CI workflow, green on `macos-15` and `windows-latest` since Nov 5 (checks, unit tests, e2e on the built and packaged app, dmg and nsis uploaded). Hook self-test recorded. |
 | `app-shell-polish` (extra) | Done | Setup and Settings screens, navigation, sidebar, render queue drawer, headless e2e, screenshots. A second pass made Settings full-window with its own nav, so Back leaves Settings in one step, and quieted home, sidebar and Setup. |
 | 2 `schema` | Done | Section 22 schemas plus files, checks, time math, id mapping and snapping with property tests, Claude JSON Schemas, migrations, `plan:validate`. |
 | 3 `media-engine` | Done | `@alcyo/media`: probe, audio, silences, chunked transcript with resume, loudness, scenes, encoder test, proxy, peaks, thumbnails; cache keys; cancel; worker job. Real-tools test passes on this Mac. Not wired to a stream yet (needs spec 4). |
@@ -1731,16 +1731,16 @@ On this Mac (Nov 2): Node 24.18, pnpm 12.14, the pinned tools fetched,
 All three agents' auth commands exit 0 (checked Nov 2, output discarded). Gemini, cursor-agent, opencode and
 amp are installed and are not used.
 
-No Windows PC is available (Hardik, Nov 1). Windows is checked only by CI on
-`windows-latest`, which needs the GitHub repo; until then Windows builds are
-untested. Windows-only code paths (claude.exe lookup, nsis, EPERM retries,
+No Windows PC is available (Hardik, Nov 1). Windows is checked by CI on
+`windows-latest` (1920 x 1080 display for the e2e tests), green since Nov 5;
+nobody has run the installer on a real Windows PC yet. Windows-only code paths (claude.exe lookup, nsis, EPERM retries,
 path rules) have unit tests that run on macOS.
 
 Footage on hand: a local folder with a creator's 5-minute edit (the
 VOD's yt-dlp info and YouTube word times, cut list, fonts, CC-BY music), used
 with permission for local tests only; nothing from it is in the repo.
 
-Waiting on Hardik: signing; and the go-ahead to create the GitHub repo.
+Waiting on Hardik: signing.
 
 ---
 

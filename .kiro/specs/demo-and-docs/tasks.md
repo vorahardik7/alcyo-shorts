@@ -12,5 +12,5 @@
 - [x] 6. README, KIRO.md, `.kiro/agents/reviewer.json`
   - _Requirements: 4_
 - [ ] 7. Real demo footage recorded by Hardik, then `pnpm demo:build --new-clip`
-- [ ] 8. CI on Windows once the repo exists
+- [x] 8. CI on Windows once the repo exists
   - _Requirements: 3.1_
