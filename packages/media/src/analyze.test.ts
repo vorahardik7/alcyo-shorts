@@ -106,9 +106,11 @@ function fakeTools(): Fake {
         const out = args.at(-1);
         if (out !== undefined && out !== "-") await writeFile(out, "partial");
         await new Promise((_, reject) => {
-          opts.signal?.addEventListener("abort", () =>
-            reject(new MediaError("cancelled", "Cancelled.")),
-          );
+          // The abort may land during the write above (slow disks on Windows CI):
+          // like the real runner, reject at once if it already has.
+          const stop = () => reject(new MediaError("cancelled", "Cancelled."));
+          if (opts.signal?.aborted === true) stop();
+          else opts.signal?.addEventListener("abort", stop, { once: true });
         });
       }
       if (typeof failure === "number")
