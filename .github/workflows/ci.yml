@@ -70,7 +70,8 @@ jobs:
         run: pnpm typecheck
 
       - name: Unit tests
-        run: pnpm test
+        # --continue: report every failing package, not just the first.
+        run: pnpm exec turbo run test --continue
 
       - name: Build
         run: pnpm build

@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   anthropicBody,
@@ -153,7 +154,7 @@ describe("grok and codex", () => {
       return Promise.resolve(envelope({ ok: true }));
     };
     await expect(grokProvider("/bin/grok", spawnDeps).complete(req)).resolves.toEqual({ ok: true });
-    const prompt = "/tmp/alcyo-1/prompt.txt";
+    const prompt = join("/tmp/alcyo-1", "prompt.txt");
     expect(calls[0]?.args).toEqual(grokArgs(prompt, schema));
     expect(files.get(prompt)).toBe("Pick shorts.\n\nL0001 hello");
     expect(calls[0]?.env["XAI_API_KEY"]).toBeUndefined();
@@ -168,17 +169,21 @@ describe("grok and codex", () => {
     }> = [];
     spawnDeps.spawn = (_file, args, opts) => {
       calls.push({ args, env: opts.env, input: opts.input });
-      files.set("/tmp/alcyo-1/last.txt", '{"ok":3}');
+      files.set(join("/tmp/alcyo-1", "last.txt"), '{"ok":3}');
       return Promise.resolve({ code: 0, stdout: "", stderr: "" });
     };
     await expect(codexProvider("/bin/codex", spawnDeps).complete(req)).resolves.toEqual({ ok: 3 });
     expect(calls[0]?.args).toEqual(
-      codexArgs("/tmp/alcyo-1/schema.json", "/tmp/alcyo-1/last.txt", "/tmp/alcyo-1"),
+      codexArgs(
+        join("/tmp/alcyo-1", "schema.json"),
+        join("/tmp/alcyo-1", "last.txt"),
+        "/tmp/alcyo-1",
+      ),
     );
     expect(calls[0]?.args).toContain("read-only");
     expect(calls[0]?.env["OPENAI_API_KEY"]).toBeUndefined();
     expect(calls[0]?.input).toContain("L0001 hello");
-    expect(JSON.parse(files.get("/tmp/alcyo-1/schema.json") ?? "")).toEqual(schema);
+    expect(JSON.parse(files.get(join("/tmp/alcyo-1", "schema.json")) ?? "")).toEqual(schema);
   });
 });
 

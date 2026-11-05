@@ -133,7 +133,8 @@ describe("formatReport", () => {
   });
 });
 
-describe("the command", () => {
+// Each test starts node a few times; shared CI runners need more than 5 s.
+describe("the command", { timeout: 30_000 }, () => {
   const run = (args: string[], input?: string) =>
     spawnSync(process.execPath, [SCRIPT, ...args], { input: input ?? "", encoding: "utf8" });
 

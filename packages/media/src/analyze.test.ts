@@ -177,7 +177,10 @@ let req: AnalysisRequest;
 
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "alcyo-analyze-"));
-  sourceDir = join(root, `My "Stream" folder 名前`);
+  // Windows forbids " in file names, so it gets an apostrophe there instead.
+  const quoted =
+    process.platform === "win32" ? "My 'Stream' folder 名前" : `My "Stream" folder 名前`;
+  sourceDir = join(root, quoted);
   await mkdir(sourceDir);
   source = join(sourceDir, "stream.mp4");
   await writeFile(source, "not really a video, but the fake tools don't mind");
